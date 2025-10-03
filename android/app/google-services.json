@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "53409765369",
+    "project_id": "cbtdrktv",
+    "storage_bucket": "cbtdrktv.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:53409765369:android:3ec8f2062d1913e2340f28",
+        "android_client_info": {
+          "package_name": "com.drktv.cbt"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "53409765369-o6md77npe1bad91pe52gl8segffh4n6j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD86us9d9DqSmHuGRSITJKorboTfB59Mt8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "53409765369-o6md77npe1bad91pe52gl8segffh4n6j.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:53409765369:android:bf35004c5fc746e2340f28",
+        "android_client_info": {
+          "package_name": "com.example.cbt_drktv"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "53409765369-o6md77npe1bad91pe52gl8segffh4n6j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD86us9d9DqSmHuGRSITJKorboTfB59Mt8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "53409765369-o6md77npe1bad91pe52gl8segffh4n6j.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
