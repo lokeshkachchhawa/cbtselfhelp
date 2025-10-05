@@ -93,6 +93,9 @@ class _RelaxPmrPageState extends State<RelaxPmrPage> {
   Timer? _phaseEndTimer;
   int _phaseSecondsRemaining = 0;
 
+  // NEW: tutorial language toggle (false = English, true = Hindi)
+  bool _tutorialInHindi = false;
+
   @override
   void initState() {
     super.initState();
@@ -392,6 +395,401 @@ class _RelaxPmrPageState extends State<RelaxPmrPage> {
     }
   }
 
+  /// UPDATED: show tutorial modal with English/Hindi toggle
+  void _showTutorial() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          expand: false,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: cardDark,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16.0),
+                ),
+                border: Border.all(color: Colors.white.withOpacity(0.02)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              child: StatefulBuilder(
+                builder: (sheetCtx, sheetSetState) {
+                  String t(String en, String hi) => _tutorialInHindi ? hi : en;
+
+                  Widget headerToggle() {
+                    return Row(
+                      children: [
+                        Text(
+                          _tutorialInHindi ? 'Switch to EN' : 'Switch to हिंदी',
+                          style: TextStyle(
+                            color: mutedText,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Switch(
+                          value: _tutorialInHindi,
+                          activeColor: teal3,
+                          onChanged: (v) {
+                            sheetSetState(() => _tutorialInHindi = v);
+                            setState(() => _tutorialInHindi = v);
+                          },
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          icon: Icon(Icons.close, color: dimText),
+                        ),
+                      ],
+                    );
+                  }
+
+                  return SingleChildScrollView(
+                    controller: scrollController,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Container(
+                          height: 6,
+                          width: 60,
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white24,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                t(
+                                  'Progressive Muscle Relaxation — Tutorial',
+                                  'प्रोग्रेसिव मसल रिलैक्सेशन — ट्यूटोरियल',
+                                ),
+                                style: TextStyle(
+                                  color: mutedText,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+
+                        // language toggle + close
+                        headerToggle(),
+                        const SizedBox(height: 8),
+
+                        // Intro
+                        Text(
+                          t('What is PMR?', 'PMR क्या है?'),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          t(
+                            'Progressive Muscle Relaxation (PMR) is a guided exercise that helps '
+                                'you release physical tension by systematically tensing and relaxing '
+                                'muscle groups. It can reduce anxiety, improve sleep, and increase body awareness.',
+                            'प्रोग्रेसिव मसल रिलैक्सेशन (PMR) एक मार्गदर्शित अभ्यास है जो मांसपेशियों को क्रमिक रूप से तनाव देकर और छोड़कर शारीरिक तनाव कम करने में मदद करता है। यह चिंता घटाने, नींद सुधारने और शरीर की जागरूकता बढ़ाने में सहायक है।',
+                          ),
+                          style: TextStyle(color: dimText),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // How to perform
+                        Text(
+                          t(
+                            'How to perform (step-by-step)',
+                            'कैसे करें (चरण-दर-चरण)',
+                          ),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          t(
+                            '1. Find a quiet, comfortable place and sit or lie down.\n'
+                                '2. Breathe normally. For each step: breathe in, firmly tense the target muscles for the tense seconds, hold for the hold seconds, then release fully and relax for the relax seconds.\n'
+                                '3. Move through the body from hands/fingers → forearms → upper arms → shoulders → neck → face → chest/back → stomach → thighs → calves/feet.\n'
+                                '4. Focus on the sensation of relaxation after each release (don’t rush).',
+                            '1. एक शांत और आरामदायक जगह चुनें और बैठ जाएँ या लेट जाएँ।\n'
+                                '2. सामान्य रूप से साँस लें। प्रत्येक चरण में: साँस लेते समय लक्षित मांसपेशियों को दृढ़ता से तनाव दें (tense सेकंड), थोड़ी देर रोकें (hold सेकंड), फिर पूरी तरह छोड़ें और relax सेकंड के लिए शांत रहें।\n'
+                                '3. शरीर के हिस्सों की श्रेणी पालन करें: हाथ/ऊँगलियाँ → कलाई/पूर्व-बाह → ऊपरी बांह/बाइसेप्स → कंधे → गर्दन → चेहरा → छाती/पीठ → पेट → जांघें → पिंडलियां/पैर।\n'
+                                '4. प्रत्येक रिलीज़ के बाद विश्राम की भावना पर ध्यान दें (जल्दी न करें)।',
+                          ),
+                          style: TextStyle(color: dimText),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Timing guidance
+                        Text(
+                          t('Timing & cues', 'समय और संकेत'),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          t(
+                            '• Tension: 4–8 seconds (we default to 5s for most steps).\n'
+                                '• Hold: about 3–5 seconds (we use 4s).\n'
+                                '• Relax: 8–12 seconds — notice the contrast between tightness and release.\n'
+                                '• Use the bell and gentle vibration/haptic cue to mark phase transitions.',
+                            '• Tension: 4–8 सेकंड (हम अधिकांश चरणों के लिए 5s डिफ़ॉल्ट करते हैं)।\n'
+                                '• Hold: लगभग 3–5 सेकंड (हम 4s उपयोग करते हैं)।\n'
+                                '• Relax: 8–12 सेकंड — तनाव और रिलीज़ के बीच के अंतर पर ध्यान दें।\n'
+                                '• चरण परिवर्तन के लिए घन्टी और हल्का वाइब्रेशन/हैप्टिक संकेत उपयोग करें।',
+                          ),
+                          style: TextStyle(color: dimText),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Safety + common mistakes
+                        Text(
+                          t('Safety & common tips', 'सुरक्षा और सामान्य सुझाव'),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          t(
+                            '• Do not force a painful contraction — tension should be firm but safe.\n'
+                                '• Stop if you feel sharp pain, dizziness, or unusual breathlessness.\n'
+                                '• If you have recent injuries, cardiovascular conditions, or pregnancy, consult a healthcare professional first.\n'
+                                '• If you feel light-headed, stop, breathe normally, and rest.',
+                            '• दर्दनाक संकुचन न करें — तनाव कड़ा पर सुरक्षित होना चाहिए।\n'
+                                '• तेज़ दर्द, चक्कर या असामान्य साँस फूलने पर रुक जाएँ।\n'
+                                '• हाल की चोट, हृदय संबंधी स्थितियाँ या गर्भावस्था होने पर पहले चिकित्सक से सलाह लें।\n'
+                                '• चक्कर आएँ तो रुकें, सामान्य साँस लें और आराम करें।',
+                          ),
+                          style: TextStyle(color: dimText),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Using the app tips
+                        Text(
+                          t('Using this screen', 'इस स्क्रीन का उपयोग'),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          t(
+                            '• Toggle Auto-advance (top-right) to let the app move automatically to the next step.\n'
+                                '• Use the large play button to Start / Pause the guided sequence.\n'
+                                '• Tap any list item to jump to that step.\n'
+                                '• Use "Stop / Reset" to return to the first step.',
+                            '• Auto-advance (ऊपर-दाएँ) को टॉगल करें ताकि ऐप स्वतः अगला चरण चलाए।\n'
+                                '• Start / Pause के लिए बड़े प्ले बटन का उपयोग करें।\n'
+                                '• किसी भी सूची आइटम पर टैप करके उस चरण पर जाएँ।\n'
+                                '• प्रारंभिक चरण पर लौटने के लिए "Stop / Reset" का उपयोग करें।',
+                          ),
+                          style: TextStyle(color: dimText),
+                        ),
+                        const SizedBox(height: 18),
+
+                        // Step quick reference (compact)
+                        Text(
+                          t('Quick step reference', 'त्वरित चरण सार'),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        for (int i = 0; i < _steps.length; i++)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    color: teal3,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      '${i + 1}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _tutorialInHindi
+                                            ? _translateStepTitleToHindi(
+                                                _steps[i].title,
+                                              )
+                                            : _steps[i].title,
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      Text(
+                                        _tutorialInHindi
+                                            ? _translateStepInstructionToHindi(
+                                                _steps[i].instruction,
+                                              )
+                                            : _steps[i].instruction,
+                                        style: TextStyle(
+                                          color: dimText,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                        const SizedBox(height: 18),
+
+                        // Actions
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  // Start guided session from step 0
+                                  Navigator.of(ctx).pop();
+                                  _jumpToStep(0);
+                                  // restartCurrent true to ensure we begin fresh
+                                  _startSequence(restartCurrent: true);
+                                },
+                                icon: const Icon(Icons.play_arrow),
+                                label: Text(
+                                  t(
+                                    'Start guided session',
+                                    'दर्शित सत्र शुरू करें',
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: teal3,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            OutlinedButton(
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(color: Colors.white24),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 16,
+                                ),
+                              ),
+                              child: Text(
+                                t('Close', 'बंद करें'),
+                                style: TextStyle(color: dimText),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 18),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Simple step title translations (concise)
+  static String _translateStepTitleToHindi(String title) {
+    switch (title) {
+      case 'Hands & Fingers':
+        return 'हाथ और उँगलियाँ';
+      case 'Wrists & Forearms':
+        return 'कलाई और अग्र-बाह';
+      case 'Upper Arms / Biceps':
+        return 'ऊपरी बांह / बाइसेप्स';
+      case 'Shoulders':
+        return 'कंधे';
+      case 'Neck':
+        return 'गर्दन';
+      case 'Face (Jaw, Eyes)':
+        return 'चेहरा (जॉ, आँखें)';
+      case 'Chest & Back':
+        return 'छाती और पीठ';
+      case 'Stomach':
+        return 'पेट';
+      case 'Thighs':
+        return 'जाँघें';
+      case 'Calves & Feet':
+        return 'पिंडलियां और पैर';
+      default:
+        return title;
+    }
+  }
+
+  // Simple instruction translations (concise)
+  static String _translateStepInstructionToHindi(String instr) {
+    if (instr.contains('Clench fists')) {
+      return 'मुट्ठियाँ कसें और उँगलियाँ मोड़ें।';
+    } else if (instr.contains('Bend backwards')) {
+      return 'पीछे की ओर मोड़ें और अग्र-बाह को तना दें।';
+    } else if (instr.contains('Tighten your upper arms')) {
+      return 'ऊपरी बांह को कस कर तना दें।';
+    } else if (instr.contains('Lift shoulders')) {
+      return 'कंधों को कानों की तरफ उठाएँ और रोकें।';
+    } else if (instr.contains('press chin to chest')) {
+      return 'ठोड़ी को धीरे से छाती की ओर दबाएँ और गर्दन तनाएँ।';
+    } else if (instr.contains('Clench jaw')) {
+      return 'जबड़ा कसें, आँखें बंद कर के निचोड़ें।';
+    } else if (instr.contains('deep breath')) {
+      return 'गहरी साँस लें और छाती/पीठ को तनाएँ।';
+    } else if (instr.contains('Tighten stomach')) {
+      return 'पेट की मांसपेशियाँ कसें।';
+    } else if (instr.contains('Squeeze thigh')) {
+      return 'जाँघ की मांसपेशियाँ ज़ोर से संकुचित करें।';
+    } else if (instr.contains('Point toes')) {
+      return 'पोइंट टो और पिंडलियां को कसें, फिर छोड़ें।';
+    } else {
+      return instr;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final step = _steps[_index];
@@ -417,6 +815,14 @@ class _RelaxPmrPageState extends State<RelaxPmrPage> {
           ),
         ),
         actions: [
+          // NEW: Tutorial button (top-right)
+          IconButton(
+            onPressed: _showTutorial,
+            icon: Icon(Icons.help_outline, color: mutedText),
+            tooltip: 'PMR tutorial',
+          ),
+
+          // existing auto-advance toggle
           IconButton(
             onPressed: () {
               setState(() => _autoAdvance = !_autoAdvance);

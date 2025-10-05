@@ -1,6 +1,7 @@
 // lib/screens/relax_grounding_page.dart
 // Grounding 5-4-3-2-1 exercise (dark teal theme)
 // - Fixed keyboard / bottom overflow and chip deletion behavior
+// - Added draggable bottom-sheet tutorial with English/Hindi toggle
 
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -54,6 +55,9 @@ class _RelaxGroundingPageState extends State<RelaxGroundingPage> {
 
   bool _loading = true;
 
+  // NEW: tutorial language toggle (false = English, true = Hindi)
+  bool _tutorialInHindi = false;
+
   @override
   void initState() {
     super.initState();
@@ -67,13 +71,12 @@ class _RelaxGroundingPageState extends State<RelaxGroundingPage> {
 
     await _loadSaved();
 
-    // show info dialog on first open
+    // show tutorial bottom-sheet on first open
     final prefs = await SharedPreferences.getInstance();
     final seen = prefs.getBool(_kSeenInfoKey) ?? false;
     if (!seen && mounted) {
-      // show after frame so context is ready
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showInfoDialog();
+        _showTutorial();
         prefs.setBool(_kSeenInfoKey, true);
       });
     }
@@ -427,148 +430,371 @@ class _RelaxGroundingPageState extends State<RelaxGroundingPage> {
     );
   }
 
-  Future<void> _showInfoDialog() async {
-    await showDialog<void>(
+  /// Draggable bottom-sheet tutorial with English/Hindi toggle
+  void _showTutorial() {
+    showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (ctx) {
-        return AlertDialog(
-          backgroundColor: Colors.black.withOpacity(0.9),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: teal3,
-                  borderRadius: BorderRadius.circular(8),
+        return DraggableScrollableSheet(
+          expand: false,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.9),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16.0),
                 ),
-                child: const Icon(Icons.info_outline, color: Colors.white),
+                border: Border.all(color: Colors.white.withOpacity(0.02)),
               ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text(
-                  'How the 5-4-3-2-1 grounding technique helps',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              child: StatefulBuilder(
+                // local setState for sheet + we still update parent _tutorialInHindi
+                builder: (sheetCtx, sheetSetState) {
+                  String t(String en, String hi) => _tutorialInHindi ? hi : en;
+
+                  Widget headerToggle() {
+                    return Row(
+                      children: [
+                        // Language toggle label
+                        Text(
+                          _tutorialInHindi
+                              ? 'Switch to EN'
+                              : 'Switch to हिंदी ',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Switch(
+                          value: _tutorialInHindi,
+                          activeColor: teal3,
+                          onChanged: (v) {
+                            // update both sheet state and parent state
+                            sheetSetState(() => _tutorialInHindi = v);
+                            setState(() => _tutorialInHindi = v);
+                          },
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          icon: Icon(Icons.close, color: Colors.white70),
+                        ),
+                      ],
+                    );
+                  }
+
+                  return SingleChildScrollView(
+                    controller: scrollController,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Container(
+                          height: 6,
+                          width: 60,
+                          margin: const EdgeInsets.only(bottom: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.white24,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                t(
+                                  'Grounding — 5-4-3-2-1 (Tutorial)',
+                                  'ग्राउंडिंग — 5-4-3-2-1 (ट्यूटोरियल)',
+                                ),
+                                style: TextStyle(
+                                  color: teal2,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+
+                        // language toggle + close
+                        headerToggle(),
+                        const SizedBox(height: 6),
+
+                        Text(
+                          t('What is grounding?', 'ग्राउंडिंग क्या है?'),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          t(
+                            'The 5-4-3-2-1 grounding technique helps reduce anxiety by bringing attention to your five senses. It is quick, portable, and effective at interrupting worry loops.',
+                            '5-4-3-2-1 ग्राउंडिंग तकनीक आपकी पाँच इन्द्रियों पर ध्यान केंद्रित कर के चिंता घटाने में मदद करती है। यह तेज़, कहीं भी करने योग्य और चिंतामुक्ति में प्रभावी है।',
+                          ),
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                        const SizedBox(height: 12),
+
+                        Text(
+                          t('How to do it', 'इसे कैसे करें'),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          t(
+                            '1. Look around and name 5 things you can SEE (notice colors, shapes, details).\n'
+                                '2. Identify 4 things you can FEEL (texture, temperature, contact points).\n'
+                                '3. Listen for 3 things you can HEAR (near or far).\n'
+                                '4. Notice 2 things you can SMELL (or imagine scents).\n'
+                                '5. Find 1 taste — or take 1 slow intentional breath and notice it.\n\n'
+                                'You can write each item if it helps focus (this screen supports quick entry).',
+                            '1. चारों ओर देखें और 5 चीजें बताइए जिन्हें आप देख सकते हैं (रंग, आकार, विवरण देखें)।\n'
+                                '2. 4 चीजें बताइए जिन्हें आप महसूस कर सकते हैं (बनावट, तापमान)।\n'
+                                '3. 3 आवाज़ें सुनिए जो आप सुन सकते हैं (पास या दूर)।\n'
+                                '4. 2 सुंघने योग्य चीजें नोट कीजिए (वास्तविक या कल्पित)।\n'
+                                '5. 1 स्वाद ढूँढिए — या एक धीमी और इरादतन साँस लें और उस पर ध्यान दें।\n\n'
+                                'यदि लिखना मदद करता है तो आप प्रत्येक आइटम लिख सकते हैं (यह स्क्रीन यह सुविधा देती है)।',
+                          ),
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                        const SizedBox(height: 12),
+
+                        Text(
+                          t('Timing & options', 'समय एवं विकल्प'),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          t(
+                            '• Use the per-step seconds slider to allow automatic countdowns. Set to 0 to add items manually.\n'
+                                '• Toggle Auto-advance to move to the next sense automatically after the timer or after you add required items.\n'
+                                '• If you prefer, do this exercise moving physically (touch objects, smell something pleasant).',
+                            '• प्रति-स्टेप सेकंड स्लाइडर का उपयोग स्वचालित काउंटडाउन के लिए करें। मैन्युअल जोड़ने के लिए 0 सेट करें।\n'
+                                '• ऑटो-एडवांस चालू करें ताकि टाइमर या आवश्यक आइटम जोड़ने के बाद अगला चरण स्वतः चले।\n'
+                                '• चाहें तो वास्तविक वस्तुओं को छूकर या खुशबू लेकर भी यह अभ्यास कर सकते हैं।',
+                          ),
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                        const SizedBox(height: 12),
+
+                        Text(
+                          t(
+                            'Why it helps & safety',
+                            'यह क्यों मदद करता है एवं सुरक्षा',
+                          ),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          t(
+                            '• It anchors attention to the present and reduces rumination.\n'
+                                '• Move slowly and describe items to yourself — naming details improves focus.\n'
+                                '• If you feel dizzy or unwell, stop and breathe normally. For severe symptoms, seek help.',
+                            '• यह ध्यान को वर्तमान में केंद्रित करता है और चिन्तन चक्र को तोड़ता है।\n'
+                                '• धीरे-धीरे करें और वस्तुओं का वर्णन खुद से करें — विवरण बताने से ध्यान बढ़ता है।\n'
+                                '• चक्कर आएँ या अस्वस्थ महसूस हो तो रुकें और सामान्य साँस लें। गंभीर लक्षणों के लिए मदद लें।',
+                          ),
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                        const SizedBox(height: 12),
+
+                        Text(
+                          t('Quick step reference', 'त्वरित चरण सार'),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        _tutorialStepRow(
+                          1,
+                          t('See', 'देखें'),
+                          t(
+                            '5 things you can see — describe details.',
+                            'आप जो 5 चीजें देख रहे हैं — विवरण बताइए।',
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        _tutorialStepRow(
+                          2,
+                          t('Feel', 'महसूस करें'),
+                          t(
+                            '4 things you can feel — textures/pressure.',
+                            'आप जो 4 चीजें महसूस कर सकते हैं — बनावट/दबाव।',
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        _tutorialStepRow(
+                          3,
+                          t('Hear', 'सुनें'),
+                          t(
+                            '3 things you can hear — near or far.',
+                            'आप जो 3 आवाज़ें सुन सकते हैं — पास या दूर।',
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        _tutorialStepRow(
+                          4,
+                          t('Smell', 'सूंघें'),
+                          t(
+                            '2 scents — real or imagined.',
+                            '2 सुगंध — वास्तविक या कल्पित।',
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        _tutorialStepRow(
+                          5,
+                          t('Taste', 'स्वाद'),
+                          t(
+                            '1 thing you can taste, or take one slow breath.',
+                            '1 चीज़ का स्वाद, या एक धीमी साँस लें।',
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        Text(
+                          t('Using this screen', 'इस स्क्रीन का उपयोग'),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          t(
+                            '• Tap Start to begin the exercise.\n'
+                                '• Use the entry field to type items and press + or Enter to add.\n'
+                                '• Tap any chip to delete an entry if you made a mistake.\n'
+                                '• Use Save to persist current progress locally.\n',
+                            '• अभ्यास शुरू करने के लिए Start पर टैप करें।\n'
+                                '• आइटम टाइप करने के लिए एंट्री फील्ड का उपयोग करें और + या Enter दबाएँ।\n'
+                                '• गलती होने पर किसी भी चिप को टैप कर हटाएँ।\n'
+                                '• Save से प्रगति लोकली सेव होती है।\n',
+                          ),
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                        const SizedBox(height: 18),
+
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.of(ctx).pop();
+                                  // reset to initial phase and start
+                                  setState(() {
+                                    _see.clear();
+                                    _feel.clear();
+                                    _hear.clear();
+                                    _smell.clear();
+                                    _taste.clear();
+                                    _phase = _GroundPhase.ready;
+                                    _isRunning = false;
+                                    _phaseSecondsRemaining = 0;
+                                  });
+                                  _startSequence();
+                                },
+                                icon: const Icon(Icons.play_arrow),
+                                label: Text(
+                                  t(
+                                    'Start grounding exercise',
+                                    'ग्राउंडिंग अभ्यास शुरू करें',
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: teal3,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            OutlinedButton(
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(color: Colors.white24),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 16,
+                                ),
+                              ),
+                              child: Text(
+                                t('Close', 'बंद करें'),
+                                style: TextStyle(color: Colors.white70),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 18),
+                      ],
+                    ),
+                  );
+                },
               ),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'The 5-4-3-2-1 grounding technique is a simple mindfulness exercise '
-                  'that helps manage anxiety and stress by using your five senses '
-                  'to anchor you to the present moment.\n\n'
-                  'You can do this exercise with real movements or by imaginative focus.\n',
-                  style: TextStyle(color: Colors.white70, height: 1.4),
-                ),
-                const Text(
-                  'Note: Writing input inreasses focus',
-                  style: TextStyle(
-                    color: Colors.yellow,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Steps:',
-                  style: TextStyle(
-                    color: teal2,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                _bulletItem(
-                  Icons.remove_red_eye,
-                  '5 — Notice five things you can SEE. Focus on details and name them.',
-                ),
-                _bulletItem(
-                  Icons.touch_app,
-                  '4 — Notice four things you can FEEL. Pay attention to textures and contact points.',
-                ),
-                _bulletItem(
-                  Icons.hearing,
-                  '3 — Notice three things you can HEAR. Listen to distinct sounds.',
-                ),
-                _bulletItem(
-                  Icons.local_florist,
-                  '2 — Notice two things you can SMELL. Inhale and identify scents.',
-                ),
-                _bulletItem(
-                  Icons.restaurant,
-                  '1 — Notice one thing you can TASTE, or take one deep intentional breath.',
-                ),
-
-                const SizedBox(height: 16),
-                const Text(
-                  'Why it works:',
-                  style: TextStyle(
-                    color: teal2,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                _bulletItem(
-                  Icons.sensors,
-                  'It engages the senses and interrupts the worry loop.',
-                ),
-                _bulletItem(
-                  Icons.self_improvement,
-                  'It activates your calming nervous system by shifting attention to the present.',
-                ),
-                _bulletItem(
-                  Icons.flash_on,
-                  'It’s quick, portable, and can be used anywhere.',
-                ),
-
-                const SizedBox(height: 16),
-                const Text(
-                  '💡 Tip: Move slowly and describe each item to yourself — naming details increases focus.',
-                  style: TextStyle(
-                    color: Colors.white60,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Got it', style: TextStyle(color: teal2)),
-            ),
-          ],
+            );
+          },
         );
       },
     );
   }
 
-  // helper widget for bullet items with icon
-  Widget _bulletItem(IconData icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 20, color: teal2),
-          const SizedBox(width: 8),
-          Expanded(
+  Widget _tutorialStepRow(int num, String title, String subtitle) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(color: teal3, shape: BoxShape.circle),
+          child: Center(
             child: Text(
-              text,
-              style: const TextStyle(color: Colors.white70, height: 1.4),
+              '$num',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(subtitle, style: const TextStyle(color: Colors.white70)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -583,14 +809,15 @@ class _RelaxGroundingPageState extends State<RelaxGroundingPage> {
       backgroundColor: Colors.transparent,
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        title: const Text('Grounding — 5‑4‑3‑2‑1'),
+        title: const Text('Grounding — 5-4-3-2-1'),
         backgroundColor: teal4,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
           IconButton(
             tooltip: 'Show how this works',
-            onPressed: _showInfoDialog,
+            onPressed:
+                _showTutorial, // opens the multilingual bottom-sheet tutorial
             icon: const Icon(Icons.help_outline),
           ),
           IconButton(

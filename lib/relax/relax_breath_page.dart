@@ -61,6 +61,9 @@ class _RelaxBreathPageState extends State<RelaxBreathPage>
   int _sessionSecondsRemaining = 0;
   int _phaseSecondsRemaining = 0;
 
+  // NEW: tutorial language toggle (false = English, true = Hindi)
+  bool _tutorialInHindi = false;
+
   @override
   void initState() {
     super.initState();
@@ -299,6 +302,309 @@ class _RelaxBreathPageState extends State<RelaxBreathPage>
     return (0.25 + normal * 0.65).clamp(0.0, 1.0);
   }
 
+  /// Draggable tutorial bottom sheet with English/Hindi toggle
+  void _showTutorial() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          expand: false,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.92),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16.0),
+                ),
+                border: Border.all(color: Colors.white.withOpacity(0.02)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              child: StatefulBuilder(
+                builder: (sheetCtx, sheetSetState) {
+                  String t(String en, String hi) => _tutorialInHindi ? hi : en;
+
+                  Widget headerToggle() {
+                    return Row(
+                      children: [
+                        Text(
+                          _tutorialInHindi ? 'Switch to EN' : 'Switch to हिंदी',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Switch(
+                          value: _tutorialInHindi,
+                          activeColor: teal3,
+                          onChanged: (v) {
+                            sheetSetState(() => _tutorialInHindi = v);
+                            setState(() => _tutorialInHindi = v);
+                          },
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          icon: const Icon(Icons.close, color: Colors.white70),
+                        ),
+                      ],
+                    );
+                  }
+
+                  return SingleChildScrollView(
+                    controller: scrollController,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Container(
+                          height: 6,
+                          width: 60,
+                          margin: const EdgeInsets.only(bottom: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.white24,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                t(
+                                  'Guided Breathing — Tutorial',
+                                  'निर्देशित श्वसन — ट्यूटोरियल',
+                                ),
+                                style: TextStyle(
+                                  color: teal2,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+
+                        // language toggle + close
+                        headerToggle(),
+                        const SizedBox(height: 6),
+
+                        Text(
+                          t('What is this exercise?', 'यह अभ्यास क्या है?'),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          t(
+                            'A guided breathing exercise helps regulate your breath and calm the nervous system by following a simple inhale → hold → exhale pattern. Use the sliders to adjust inhale/hold/exhale durations to your comfort.',
+                            'निर्देशित श्वसन अभ्यास आपकी साँस को नियमित करने और स्नायविक तंत्र को शांत करने में मदद करता है। यह inhale → hold → exhale पैटर्न का पालन करता है। अपनी सुविधा के अनुसार अवधि समायोजित करने के लिए स्लाइडर का उपयोग करें।',
+                          ),
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                        const SizedBox(height: 12),
+
+                        Text(
+                          t('How to use (quick)', 'कैसे उपयोग करें (संकलित)'),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          t(
+                            '1. Choose session length (minutes) using the slider.\n'
+                                '2. Adjust inhale, hold and exhale seconds using the sliders below.\n'
+                                '3. Press Start to begin; the bell and a gentle vibration will mark phase changes.\n'
+                                '4. Follow the expanding/contracting sphere to pace your breath.',
+                            '1. सेशन की लम्बाई (मिनट) स्लाइडर से चुनें।\n'
+                                '2. नीचे दिए गए स्लाइडर्स से inhale, hold और exhale सेकंड समायोजित करें।\n'
+                                '3. शुरू करने के लिए Start दबाएँ; चरण परिवर्तन के लिए घन्टी और हल्का वाइब्रेशन होगा।\n'
+                                '4. अपनी साँस की गति के लिए बढ़ते/संकुचित होते गोले का पालन करें।',
+                          ),
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                        const SizedBox(height: 12),
+
+                        Text(
+                          t('Timing guidance', 'समय संबंधी मार्गदर्शन'),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          t(
+                            'Common patterns: 4-4-6, 5-5-8, or 4-2-6 (inhale-hold-exhale). Start gently and do not strain. Adjust times to what feels comfortable.',
+                            'सामान्य पैटर्न: 4-4-6, 5-5-8, या 4-2-6 (inhale-hold-exhale)। धीरे शुरू करें और ज़ोर न लगाएँ। समय अपनी सहूलियत अनुसार समायोजित करें।',
+                          ),
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                        const SizedBox(height: 12),
+
+                        Text(
+                          t('Safety & tips', 'सुरक्षा और सुझाव'),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          t(
+                            '• Sit comfortably with straight spine or lie down.\n'
+                                '• Do not force breath; if you feel dizzy, stop and breathe normally.\n'
+                                '• For medical conditions (recent surgery, severe respiratory or cardiovascular issues, pregnancy), consult a professional before trying intense breathwork.',
+                            '• सीधे रीढ़ के साथ आराम से बैठें या लेटें।\n'
+                                '• साँस को बलपूर्वक न लें; यदि चक्कर आएँ तो रुकें और सामान्य साँस लें।\n'
+                                '• यदि चिकित्सा स्थिति हो (हाल की सर्जरी, श्वसन/हृदय संबंधी गंभीर समस्याएँ, गर्भावस्था), तो पहले विशेषज्ञ से सलाह लें।',
+                          ),
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                        const SizedBox(height: 12),
+
+                        Text(
+                          t('Quick step reference', 'त्वरित चरण सार'),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        _tutorialRow(
+                          1,
+                          t('Inhale', 'साँस अंदर लें'),
+                          t(
+                            'Grow the sphere slowly for the inhale duration.',
+                            'इनहेल अवधि के दौरान गोला धीरे-धीरे बढ़ाएँ।',
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        _tutorialRow(
+                          2,
+                          t('Hold', 'रोकें'),
+                          t(
+                            'Hold gently at the peak — do not strain.',
+                            'पीक पर हल्के से रोकें — ज़ोर न लगाएँ।',
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        _tutorialRow(
+                          3,
+                          t('Exhale', 'साँस बाहर छोड़ें'),
+                          t(
+                            'Slowly let the sphere contract for the exhale duration.',
+                            'एक्सहेल अवधि में गोला धीरे-धीरे सिकुड़े।',
+                          ),
+                        ),
+
+                        const SizedBox(height: 18),
+
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.of(ctx).pop();
+                                  // start session fresh
+                                  _startSession();
+                                },
+                                icon: const Icon(Icons.play_arrow),
+                                label: Text(
+                                  t(
+                                    'Start breathing session',
+                                    'श्वसन सत्र शुरू करें',
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: teal3,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            OutlinedButton(
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(color: Colors.white24),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 16,
+                                ),
+                              ),
+                              child: Text(
+                                t('Close', 'बंद करें'),
+                                style: const TextStyle(color: Colors.white70),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 18),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _tutorialRow(int num, String title, String subtitle) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(color: teal3, shape: BoxShape.circle),
+          child: Center(
+            child: Text(
+              '$num',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(subtitle, style: const TextStyle(color: Colors.white70)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenW = MediaQuery.of(context).size.width;
@@ -319,6 +625,13 @@ class _RelaxBreathPageState extends State<RelaxBreathPage>
         backgroundColor: teal4, // keep teal appbar
         elevation: 0,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            tooltip: 'Tutorial',
+            onPressed: _showTutorial,
+            icon: const Icon(Icons.help_outline, color: Colors.white70),
+          ),
+        ],
       ),
       body: Container(
         decoration: const BoxDecoration(

@@ -67,7 +67,7 @@ class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
       subtitle: 'Rain, waves, birds & white noise. Loopable playback.',
       icon: Icons.music_note,
       color: Colors.indigoAccent,
-      route: '/relax/sounds',
+      route: '/sounds',
     ),
   ];
 

@@ -1,4 +1,5 @@
 // lib/main.dart
+import 'package:cbt_drktv/relax/relax_sounds_page.dart';
 import 'package:cbt_drktv/relax/grounding_54321_page.dart';
 import 'package:cbt_drktv/relax/mini_meditation_timer.dart';
 import 'package:cbt_drktv/relax/relax_breath_page.dart';
@@ -12,6 +13,7 @@ import 'package:cbt_drktv/screens/safety_page.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'package:provider/provider.dart';
 
 // Screens & utils
@@ -27,6 +29,7 @@ import 'theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+
   runApp(MyApp());
 }
 
@@ -70,6 +73,7 @@ class MyApp extends StatelessWidget {
           '/relax_pmr': (_) => const RelaxPmrPage(),
           '/grounding': (_) => const RelaxGroundingPage(),
           '/minimeditation': (_) => const MiniMeditationTimer(),
+          '/sounds': (_) => const RelaxSoundsPage(),
         },
       ),
     );
