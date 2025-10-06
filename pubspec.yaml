@@ -59,6 +59,7 @@ dependencies:
   vibration: ^3.1.4
   just_audio: ^0.10.5
   just_audio_background: ^0.0.1-beta.17
+  flutter_tts: ^3.8.0
 
 dev_dependencies:
   flutter_test:
@@ -85,6 +86,7 @@ flutter:
   assets:
     - images/
     - assets/sounds/
+    - assets/programs/
 flutter_icons:
   android: true
   ios: true

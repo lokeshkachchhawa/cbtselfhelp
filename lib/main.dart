@@ -1,4 +1,5 @@
 // lib/main.dart
+import 'package:cbt_drktv/programs/programs_page.dart';
 import 'package:cbt_drktv/relax/relax_sounds_page.dart';
 import 'package:cbt_drktv/relax/grounding_54321_page.dart';
 import 'package:cbt_drktv/relax/mini_meditation_timer.dart';
@@ -74,6 +75,7 @@ class MyApp extends StatelessWidget {
           '/grounding': (_) => const RelaxGroundingPage(),
           '/minimeditation': (_) => const MiniMeditationTimer(),
           '/sounds': (_) => const RelaxSoundsPage(),
+          '/programs': (_) => const ProgramsPage(),
         },
       ),
     );

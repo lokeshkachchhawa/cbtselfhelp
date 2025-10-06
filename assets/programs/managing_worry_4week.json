@@ -1,0 +1,730 @@
+{
+    "id": "managing_worry_4week",
+    "title": "Managing Worry — 4 Week Program",
+    "shortDescription": "A practical 4-week program (28 short lessons) teaching evidence-informed strategies to notice, test and reduce worry — includes brief practices, behavioural experiments and journaling prompts.",
+    "description": "Over four weeks you'll learn how worry works, how to spot unhelpful worry habits, test anxious predictions, plan small experiments, use acceptance and problem-solving, and build a maintenance routine. Each daily lesson is short (5–15 min) and includes a micro-practice and a prompt that can be saved to the Thought Record or ABCD tools.",
+    "version": "1.0",
+    "language": "en",
+    "days": 28,
+    "recommendedDailyMinutes": 10,
+    "notes": "Blocks of type 'action' map to in-app routes (for example: /thought, /abcd, /relax). 'exercise' blocks include a suggested duration. Use prompts to practice journaling in Thought Record or ABCD.",
+    "lessons": [
+      {
+        "id": "w1-day1-what-is-worry",
+        "day": 1,
+        "title": "What is worry?",
+        "summary": "Understand the basic function of worry and notice how it shows up in your day.",
+        "minutes": 7,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Worry: a quick overview",
+            "content": "Worry is the mind's attempt to predict and prevent future problems. It's often repetitive, uses 'what if' thinking, and feels productive even when it isn't."
+          },
+          {
+            "type": "exercise",
+            "title": "Worry awareness (2 minutes)",
+            "content": "For 2 minutes, notice any worry thoughts that come up. Label them briefly (e.g., 'health', 'money', 'work'). No need to solve anything — just notice.",
+            "durationMinutes": 2
+          },
+          {
+            "type": "prompt",
+            "title": "Quick journal",
+            "content": "Write the main topic of the worry you noticed and how intense it felt (0–10). You can expand this in Thought Record.",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+  
+      {
+        "id": "w1-day2-worry-cycle",
+        "day": 2,
+        "title": "The worry cycle",
+        "summary": "Learn how avoidance and checking can keep worry going.",
+        "minutes": 8,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Why worry stays",
+            "content": "Avoiding feared situations or repeatedly seeking reassurance reduces short-term anxiety but prevents learning. This keeps the worry cycle running."
+          },
+          {
+            "type": "exercise",
+            "title": "Notice your response",
+            "content": "When you notice worry today, pause and note whether you avoid, check, or seek reassurance. Write the action next to the worry label.",
+            "durationMinutes": 3
+          },
+          {
+            "type": "prompt",
+            "title": "Reflection",
+            "content": "Pick one worry and the action you took. How did that action affect the worry right after (more/less/same)?",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+  
+      {
+        "id": "w1-day3-grounding-breath",
+        "day": 3,
+        "title": "Grounding + breathing",
+        "summary": "A short grounding exercise to interrupt worry loops.",
+        "minutes": 6,
+        "blocks": [
+          {
+            "type": "exercise",
+            "title": "Grounding + 3-minute breath",
+            "content": "Use 4-1-6 breathing: breathe in 4s, hold 1s, out 6s for 3 minutes. Focus on sensations, not thoughts.",
+            "durationMinutes": 3,
+            "suggestedAction": "/relax"
+          },
+          {
+            "type": "prompt",
+            "title": "After the practice",
+            "content": "Note any change in worry intensity and one physical sensation you noticed.",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+  
+      {
+        "id": "w1-day4-notice-thoughts",
+        "day": 4,
+        "title": "Noticing automatic worried thoughts",
+        "summary": "Practice catching 'what if' thoughts early.",
+        "minutes": 7,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Automatic worried thoughts",
+            "content": "Worry thoughts often start with 'what if', 'what if I can't', or 'what will happen if...'. Spotting them early gives you choice."
+          },
+          {
+            "type": "exercise",
+            "title": "Thought catch",
+            "content": "Over the next hour, when you notice tension, ask: 'What just popped into my mind?' Write the short phrase.",
+            "durationMinutes": 5
+          },
+          {
+            "type": "prompt",
+            "title": "Journal",
+            "content": "Record one automatic thought and the image or prediction attached to it.",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+  
+      {
+        "id": "w1-day5-evidence-for-against",
+        "day": 5,
+        "title": "Gather evidence",
+        "summary": "List quick facts that support and contradict your worry.",
+        "minutes": 9,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Balance the case",
+            "content": "Worry relies on assumptions. Listing evidence for and against a feared prediction weakens unhelpful certainty."
+          },
+          {
+            "type": "prompt",
+            "title": "Try it",
+            "content": "Pick one worry and write 2 facts that support it and 2 that contradict it.",
+            "suggestedAction": "/thought"
+          },
+          {
+            "type": "exercise",
+            "title": "Mini reflection",
+            "content": "Notice whether the evidence shifts how probable the worry feels.",
+            "durationMinutes": 3
+          }
+        ]
+      },
+  
+      {
+        "id": "w1-day6-problem-solving",
+        "day": 6,
+        "title": "Problem-solving vs. worrying",
+        "summary": "Distinguish between productive problem-solving and unhelpful rumination.",
+        "minutes": 10,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Two approaches",
+            "content": "Problem-solving focuses on actionable steps; worry tends to loop without action. Use a 5-minute rule: if there's a clear next step, plan it briefly; otherwise postpone worrying."
+          },
+          {
+            "type": "exercise",
+            "title": "5-minute planning",
+            "content": "If your worry points to a solvable problem, spend 5 minutes listing one small next step and when you'll do it.",
+            "durationMinutes": 5
+          },
+          {
+            "type": "prompt",
+            "title": "Journal",
+            "content": "Note whether you planned a step or decided to postpone worry. How did that feel?",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+  
+      {
+        "id": "w1-day7-week1-review",
+        "day": 7,
+        "title": "Week 1 — Review",
+        "summary": "Review the first week's skills and set a small practice for week 2.",
+        "minutes": 8,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "What you learned",
+            "content": "You practiced noticing worry, brief grounding, gathering evidence, and distinguishing problem-solving from worry."
+          },
+          {
+            "type": "prompt",
+            "title": "Plan for week 2",
+            "content": "Choose one micro-skill to use daily next week (e.g., 2-minute thought catch or 3-minute breathing). Write it down.",
+            "suggestedAction": "/thought"
+          },
+          {
+            "type": "action",
+            "title": "Keep practising",
+            "content": "Use the chosen micro-skill each day. Revisit lessons when needed.",
+            "extra": ["/thought", "/relax"]
+          }
+        ]
+      },
+  
+      {
+        "id": "w2-day8-worry-triggers",
+        "day": 8,
+        "title": "Identify triggers",
+        "summary": "Map common situations or thoughts that trigger worry for you.",
+        "minutes": 7,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Triggers list",
+            "content": "Triggers may be specific (emails, money dates) or vague (loneliness, uncertainty). Knowing triggers helps prepare and choose a response."
+          },
+          {
+            "type": "exercise",
+            "title": "Trigger scan",
+            "content": "Spend 5 minutes listing recent situations when worry rose. Add a short label for each.",
+            "durationMinutes": 5
+          },
+          {
+            "type": "prompt",
+            "title": "Reflection",
+            "content": "Pick one trigger and write one small action that might reduce its impact (e.g., schedule a check-in, set a time to worry).",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+  
+      {
+        "id": "w2-day9-scheduled-worry",
+        "day": 9,
+        "title": "Worry time",
+        "summary": "Experiment with scheduled worry — a short, controlled slot for your concerns.",
+        "minutes": 10,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "What is worry time?",
+            "content": "Scheduled worry means setting aside 10–15 minutes each day to intentionally worry. It reduces intrusive worry outside that slot for many people."
+          },
+          {
+            "type": "exercise",
+            "title": "Try a 10-minute slot",
+            "content": "Choose a 10-minute window today. Bring up your worries intentionally, jot them down. After the slot, close the journal.",
+            "durationMinutes": 10
+          },
+          {
+            "type": "prompt",
+            "title": "After the slot",
+            "content": "Note whether intrusive worry reduced after scheduling it.",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+  
+      {
+        "id": "w2-day10-worry-probability",
+        "day": 10,
+        "title": "Estimating probability",
+        "summary": "Practice judging how likely your feared outcome actually is.",
+        "minutes": 8,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Probable vs possible",
+            "content": "Distinguish between 'possible' and 'probable'. Many worries describe possible but very unlikely outcomes."
+          },
+          {
+            "type": "exercise",
+            "title": "Probability estimate",
+            "content": "Pick a worry and estimate how likely it is (0–100%). Then list one fact that makes it less likely.",
+            "durationMinutes": 4
+          },
+          {
+            "type": "prompt",
+            "title": "Journal",
+            "content": "Record your percentage estimate and the moderating fact.",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+  
+      {
+        "id": "w2-day11-intolerance-uncertainty",
+        "day": 11,
+        "title": "Tolerance for uncertainty",
+        "summary": "Explore how discomfort with uncertainty fuels worry and how to practice tolerating it.",
+        "minutes": 9,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Uncertainty and worry",
+            "content": "Worry often tries to remove uncertainty. Learning to accept some uncertainty reduces the urge to worry."
+          },
+          {
+            "type": "exercise",
+            "title": "Sit with uncertainty",
+            "content": "Choose a minor uncertain situation and deliberately avoid checking for the answer immediately (e.g., delay looking at an email for 30 minutes). Notice the urge, then let it pass.",
+            "durationMinutes": 10
+          },
+          {
+            "type": "prompt",
+            "title": "Reflection",
+            "content": "What did you notice about the urge to check or reassure?",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+  
+      {
+        "id": "w2-day12-worry-as-habit",
+        "day": 12,
+        "title": "Worry as a habit",
+        "summary": "Treat worry like a habit you can change with small steps.",
+        "minutes": 7,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Habit loop",
+            "content": "Habits have cue → routine → reward. When you spot the cue, choose a different routine (brief breathing, scheduled worry) to break the loop."
+          },
+          {
+            "type": "exercise",
+            "title": "Swap the routine",
+            "content": "When you notice a worry cue today, use a different short routine (breath, 1-minute grounding) instead of checking or ruminating.",
+            "durationMinutes": 3
+          },
+          {
+            "type": "prompt",
+            "title": "Journal",
+            "content": "Record one cue and the alternative routine you used.",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+  
+      {
+        "id": "w2-day13-acceptance",
+        "day": 13,
+        "title": "Acceptance practices",
+        "summary": "Learn brief acceptance techniques — holding worry without fighting it.",
+        "minutes": 8,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "What is acceptance?",
+            "content": "Acceptance means allowing sensations and thoughts without getting entangled. It doesn't mean liking them — just not struggling more."
+          },
+          {
+            "type": "exercise",
+            "title": "Label and let go",
+            "content": "When a worry comes, silently label it 'worry' and imagine placing it on a leaf on a stream — observe it float away.",
+            "durationMinutes": 3
+          },
+          {
+            "type": "prompt",
+            "title": "Reflect",
+            "content": "Did labeling change how much you engaged with the thought?",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+  
+      {
+        "id": "w2-day14-week2-review",
+        "day": 14,
+        "title": "Week 2 — Review",
+        "summary": "Review week 2 skills and plan one behavioural experiment for week 3.",
+        "minutes": 8,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Summary",
+            "content": "You explored triggers, scheduled worry, probability estimates, and tolerance for uncertainty."
+          },
+          {
+            "type": "prompt",
+            "title": "Plan an experiment",
+            "content": "Pick a small behavioural experiment for next week that tests a worry prediction (5–15 minutes). Describe the prediction and the test.",
+            "suggestedAction": "/thought"
+          },
+          {
+            "type": "action",
+            "title": "Quick tools",
+            "content": "Use Thought Record or ABCD for planning and recording your experiment.",
+            "extra": ["/thought", "/abcd"]
+          }
+        ]
+      },
+  
+      {
+        "id": "w3-day15-plan-experiment",
+        "day": 15,
+        "title": "Design an experiment",
+        "summary": "Create a focused, safe experiment to test a key worry prediction.",
+        "minutes": 10,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Good experiments",
+            "content": "They are specific, observable and short. Define the prediction, the action you will take, and what outcome would disconfirm the worry."
+          },
+          {
+            "type": "exercise",
+            "title": "Design it now",
+            "content": "Write a clear prediction, a 5–15 minute action to test it, and how you'll measure the result.",
+            "durationMinutes": 10
+          },
+          {
+            "type": "prompt",
+            "title": "Save the plan",
+            "content": "Save the experiment plan into Thought Record or ABCD so you can record the result later.",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+  
+      {
+        "id": "w3-day16-run-experiment",
+        "day": 16,
+        "title": "Run the experiment",
+        "summary": "Carry out the plan and record the outcome objectively.",
+        "minutes": 15,
+        "blocks": [
+          {
+            "type": "exercise",
+            "title": "Do the test",
+            "content": "Carry out the small action you planned. Observe and note what actually happened, focusing on facts.",
+            "durationMinutes": 15
+          },
+          {
+            "type": "prompt",
+            "title": "Outcome",
+            "content": "Record results and what you learned. Did the prediction hold? How does this change the worry?",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+  
+      {
+        "id": "w3-day17-review-experiment",
+        "day": 17,
+        "title": "Review the experiment",
+        "summary": "Reflect on what the experiment taught you and adjust beliefs.",
+        "minutes": 8,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Learning from results",
+            "content": "Focus on what the data (results) say, not on whether you 'passed' or 'failed'. Use that data to update your estimate of risk."
+          },
+          {
+            "type": "prompt",
+            "title": "Update your thought",
+            "content": "Using evidence, write a balanced alternative to the original worry.",
+            "suggestedAction": "/abcd"
+          }
+        ]
+      },
+  
+      {
+        "id": "w3-day18-coping-strategies",
+        "day": 18,
+        "title": "Coping toolbox",
+        "summary": "Build a short set of reliable coping actions you can try when worry rises.",
+        "minutes": 7,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Create a toolbox",
+            "content": "List 3 things you can do quickly when worry starts (breathing, short walk, scheduled worry)."
+          },
+          {
+            "type": "prompt",
+            "title": "Make your list",
+            "content": "Write your 3-item coping toolbox and pick one to try today.",
+            "suggestedAction": "/thought"
+          },
+          {
+            "type": "exercise",
+            "title": "Try one",
+            "content": "Use one coping tool when worry appears and note the immediate effect.",
+            "durationMinutes": 5
+          }
+        ]
+      },
+  
+      {
+        "id": "w3-day19-problem-solving-2",
+        "day": 19,
+        "title": "Active problem-solving",
+        "summary": "When worries point to solvable problems, plan practical, small steps.",
+        "minutes": 9,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Action focus",
+            "content": "Break larger problems into tiny next steps. Focused action reduces rumination and increases control."
+          },
+          {
+            "type": "exercise",
+            "title": "Small step plan",
+            "content": "Choose a problem-related worry and write 2 tiny next steps you can do this week.",
+            "durationMinutes": 5
+          },
+          {
+            "type": "prompt",
+            "title": "Record",
+            "content": "Save the steps and when you'll do them.",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+  
+      {
+        "id": "w3-day20-self-compassion",
+        "day": 20,
+        "title": "Self-compassion for worry",
+        "summary": "Use kind internal language to reduce shame and increase persistence.",
+        "minutes": 6,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Be kind to yourself",
+            "content": "Worry often comes with shame. A compassionate tone reduces secondary distress and supports learning."
+          },
+          {
+            "type": "exercise",
+            "title": "Compassionate phrase",
+            "content": "Take 1 minute to breathe and repeat a short kind phrase to yourself (e.g., 'This is hard — I'm doing my best').",
+            "durationMinutes": 1
+          },
+          {
+            "type": "prompt",
+            "title": "Note",
+            "content": "Write one compassionate sentence you can use when worry is strong.",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+  
+      {
+        "id": "w3-day21-week3-review",
+        "day": 21,
+        "title": "Week 3 — Review",
+        "summary": "Reflect on experiments, coping tools, and problem-solving progress.",
+        "minutes": 8,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "What changed",
+            "content": "Review your experiment outcomes and toolbox. Notice any shifts in certainty or behaviour."
+          },
+          {
+            "type": "prompt",
+            "title": "Plan for week 4",
+            "content": "Choose two sustainable habits to continue: one acceptance practice and one action-based step.",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+  
+      {
+        "id": "w4-day22-avoidance-and-exposure",
+        "day": 22,
+        "title": "Reducing avoidance",
+        "summary": "Gradual exposure to avoided situations reduces long-term worry.",
+        "minutes": 10,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Why exposure helps",
+            "content": "Avoidance prevents learning. Small, repeated exposures let you collect evidence and reduce fear."
+          },
+          {
+            "type": "exercise",
+            "title": "Create a small exposure",
+            "content": "Pick a mildly avoided situation and plan a 5–10 minute approach action this week.",
+            "durationMinutes": 10
+          },
+          {
+            "type": "prompt",
+            "title": "Record plan",
+            "content": "Write the plan and how you'll measure what happened.",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+  
+      {
+        "id": "w4-day23-worry-defusion",
+        "day": 23,
+        "title": "Cognitive defusion",
+        "summary": "Learn to disentangle from worry thoughts so they have less control.",
+        "minutes": 7,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Defusion idea",
+            "content": "See thoughts as mental events, not facts. Use short exercises to reduce literal belief in them."
+          },
+          {
+            "type": "exercise",
+            "title": "Name the story",
+            "content": "When a worry arises, add 'I'm having the thought that...' before it. Notice distance in tone.",
+            "durationMinutes": 3
+          },
+          {
+            "type": "prompt",
+            "title": "Reflect",
+            "content": "Did changing the wording change how you felt about the thought?",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+  
+      {
+        "id": "w4-day24-valued-action",
+        "day": 24,
+        "title": "Actions that matter",
+        "summary": "Connect actions with values to stay motivated when worry resurfaces.",
+        "minutes": 9,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Values focus",
+            "content": "When worries are loud, acting in line with values (relationships, work, health) grounds behaviour and reduces avoidance."
+          },
+          {
+            "type": "exercise",
+            "title": "Values list",
+            "content": "Write 3 values and one small action this week that reflects each value.",
+            "durationMinutes": 6
+          },
+          {
+            "type": "prompt",
+            "title": "Note",
+            "content": "Choose one value-based action to prioritise this week and record it.",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+  
+      {
+        "id": "w4-day25-maintenance-routine",
+        "day": 25,
+        "title": "Maintenance routine",
+        "summary": "Build a weekly plan to keep using skills after the program.",
+        "minutes": 8,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Routine helps",
+            "content": "A simple routine (brief daily practice + weekly review) keeps skills active without overwhelming you."
+          },
+          {
+            "type": "prompt",
+            "title": "Design your routine",
+            "content": "Write a short weekly plan: one daily micro-practice and a 10-minute weekly review.",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+  
+      {
+        "id": "w4-day26-relapse-plan",
+        "day": 26,
+        "title": "Relapse prevention",
+        "summary": "Create a plan for when worry increases again.",
+        "minutes": 7,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Expect setbacks",
+            "content": "Setbacks are normal. A concrete relapse plan helps you respond quickly instead of reverting to avoidance."
+          },
+          {
+            "type": "prompt",
+            "title": "Make a relapse plan",
+            "content": "List early warning signs, three actions to take, and who to contact if worry feels overwhelming.",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+  
+      {
+        "id": "w4-day27-support-and-resources",
+        "day": 27,
+        "title": "Getting support",
+        "summary": "Consider social and professional supports and when to seek them.",
+        "minutes": 6,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Support is useful",
+            "content": "Friends, family, and professionals can offer perspective and practical help. Reach out when worry interferes with daily functioning."
+          },
+          {
+            "type": "prompt",
+            "title": "List supports",
+            "content": "Name 2 people you could talk to and one practical support (e.g., GP, counsellor) you might contact if needed.",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+  
+      {
+        "id": "w4-day28-conclusion",
+        "day": 28,
+        "title": "Conclusion & next steps",
+        "summary": "Review progress, celebrate effort, and commit to a simple maintenance plan.",
+        "minutes": 10,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Well done",
+            "content": "You practiced noticing worry, testing predictions, running experiments, and building coping actions. Progress is gradual—small consistent steps matter."
+          },
+          {
+            "type": "prompt",
+            "title": "Your commitment",
+            "content": "Write one short plan you'll follow for the next two weeks (daily micro-practice + one weekly review). Save it.",
+            "suggestedAction": "/thought"
+          },
+          {
+            "type": "action",
+            "title": "Keep the tools handy",
+            "content": "Use Thought Record or ABCD when strong worries arise; revisit lessons anytime.",
+            "extra": ["/thought", "/abcd"]
+          }
+        ]
+      }
+    ]
+  }
+  

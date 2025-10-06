@@ -1,0 +1,374 @@
+{
+    "id": "sleep_better_2week",
+    "title": "Sleep Better — 2 Week Program",
+    "shortDescription": "A practical 2-week (14-day) program with brief lessons and exercises to improve sleep habits using evidence-based strategies (sleep hygiene, stimulus control, relaxation, and simple CBT-I techniques).",
+    "description": "This 14-day program teaches short, practical strategies to improve sleep: consistent scheduling, healthy sleep practices, brief relaxation exercises, worry-management at night, and planning for sustainable changes. Each lesson takes about 5–15 minutes and links to in-app tools for journaling or practice.",
+    "version": "1.0",
+    "language": "en",
+    "days": 14,
+    "recommendedDailyMinutes": 10,
+    "notes": "Blocks of type 'action' map to in-app routes (for example: /thought, /abcd, /relax). 'exercise' blocks include durationMinutes. Use prompts to capture sleep observations in Thought Record or ABCD.",
+    "lessons": [
+      {
+        "id": "s1-day1-intro-sleep-basics",
+        "day": 1,
+        "title": "Intro — Sleep basics",
+        "summary": "Understand why consistent sleep matters and take a baseline sleep note.",
+        "minutes": 8,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Why sleep matters",
+            "content": "Good sleep supports mood, focus, immune function and learning. Small changes in routine often lead to better sleep within days to weeks."
+          },
+          {
+            "type": "exercise",
+            "title": "Baseline sleep note",
+            "content": "Write down your usual bedtime, wake time, and how many hours you typically sleep on workdays and free days.",
+            "durationMinutes": 5
+          },
+          {
+            "type": "prompt",
+            "title": "Journal",
+            "content": "Record one change you'd like to try this week (eg: earlier wind-down). Save it to Thought Record if you'd like.",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+      {
+        "id": "s1-day2-sleep-schedule",
+        "day": 2,
+        "title": "Set a consistent schedule",
+        "summary": "Pick a realistic target bedtime and wake time you can keep every day.",
+        "minutes": 10,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Consistency helps",
+            "content": "Keeping a stable sleep window strengthens your body clock and makes falling asleep easier."
+          },
+          {
+            "type": "exercise",
+            "title": "Choose your sleep window",
+            "content": "Decide on a target wake time and bedtime that give you ~7–9 hours. Write them down and plan to stick to them for the next week.",
+            "durationMinutes": 6
+          },
+          {
+            "type": "prompt",
+            "title": "Plan",
+            "content": "Note one realistic change to support the schedule (eg: move alarm 15 minutes earlier).",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+      {
+        "id": "s1-day3-wind-down",
+        "day": 3,
+        "title": "Create a wind-down routine",
+        "summary": "Design a 20–30 minute pre-sleep ritual to signal your body it's time to sleep.",
+        "minutes": 9,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Wind-down elements",
+            "content": "A wind-down may include dim lights, low-stimulation activities (reading, light stretching), and avoiding screens. Aim for the same routine nightly."
+          },
+          {
+            "type": "exercise",
+            "title": "Design the routine",
+            "content": "Write a simple 20–30 minute sequence you'll use before bed for the next week.",
+            "durationMinutes": 6
+          },
+          {
+            "type": "prompt",
+            "title": "Try it tonight",
+            "content": "After trying, note what you did and whether it felt relaxing.",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+      {
+        "id": "s1-day4-stimulus-control",
+        "day": 4,
+        "title": "Stimulus control basics",
+        "summary": "Use your bed only for sleep and intimacy — get up if you can't sleep.",
+        "minutes": 8,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Stimulus control rule",
+            "content": "If you can't fall asleep within ~20 minutes, get out of bed, do a quiet activity in low light, and return only when sleepy. This helps the bed regain its sleep cue."
+          },
+          {
+            "type": "exercise",
+            "title": "Plan a 'get up' strategy",
+            "content": "Identify a calm place/activity you'll use if you can't sleep (eg: sit and read in dim light).",
+            "durationMinutes": 4
+          },
+          {
+            "type": "prompt",
+            "title": "Reflect",
+            "content": "Note how long it usually takes you to fall asleep and whether you'll try the 20-minute rule tonight.",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+      {
+        "id": "s1-day5-relaxation",
+        "day": 5,
+        "title": "Relaxation skills",
+        "summary": "Practice a short relaxation exercise to reduce physical tension before bed.",
+        "minutes": 8,
+        "blocks": [
+          {
+            "type": "exercise",
+            "title": "Progressive relaxation (5 min)",
+            "content": "Tense then relax each major muscle group, moving from feet to head or vice versa. Breathe slowly while doing it.",
+            "durationMinutes": 5,
+            "suggestedAction": "/relax"
+          },
+          {
+            "type": "prompt",
+            "title": "After practice",
+            "content": "Write whether tension decreased and how easy it was to do.",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+      {
+        "id": "s1-day6-caffeine-and-timing",
+        "day": 6,
+        "title": "Caffeine, alcohol & naps",
+        "summary": "Small timing changes to caffeine, alcohol and napping can help sleep quality.",
+        "minutes": 7,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Timing matters",
+            "content": "Caffeine can affect sleep for 6+ hours. Alcohol may help you fall asleep but fragments sleep later. Long naps can reduce sleep pressure at night."
+          },
+          {
+            "type": "exercise",
+            "title": "Check your intake",
+            "content": "Note today when you consume caffeine/alcohol and whether you nap. Aim to avoid caffeine after early afternoon and keep naps short (20–30 min) or remove them if they impact night sleep.",
+            "durationMinutes": 5
+          },
+          {
+            "type": "prompt",
+            "title": "Plan change",
+            "content": "Choose one timing to adjust (eg: no coffee after 2pm) and record it.",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+      {
+        "id": "s1-day7-week1-review",
+        "day": 7,
+        "title": "Week 1 — Review & refine",
+        "summary": "Review what helped and refine your plan for week 2 (focus on stimulus control and schedule).",
+        "minutes": 9,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Review week 1",
+            "content": "You experimented with schedule, wind-downs, stimulus control and relaxation. Small consistent steps are key."
+          },
+          {
+            "type": "prompt",
+            "title": "Refine",
+            "content": "Pick one habit to keep and one to adjust next week.",
+            "suggestedAction": "/thought"
+          },
+          {
+            "type": "action",
+            "title": "Keep tools handy",
+            "content": "Use the Relax tool or Thought Record when night-worry starts.",
+            "extra": ["/relax", "/thought"]
+          }
+        ]
+      },
+      {
+        "id": "s2-day8-worry-at-night",
+        "day": 8,
+        "title": "Managing night-time worry",
+        "summary": "Brief strategies to handle worries that arrive in bed.",
+        "minutes": 9,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Night worry is common",
+            "content": "The quiet of night can amplify worries. Use brief strategies to postpone or contain worry so it doesn't block sleep."
+          },
+          {
+            "type": "exercise",
+            "title": "Worry postponement",
+            "content": "If a worry arrives, note it on paper with a single sentence and a time to revisit (eg: tomorrow 6pm). Then return to your wind-down.",
+            "durationMinutes": 4
+          },
+          {
+            "type": "prompt",
+            "title": "Try it",
+            "content": "Record one worry you postponed and whether it reduced night thinking.",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+      {
+        "id": "s2-day9-sleep-restriction-intro",
+        "day": 9,
+        "title": "Sleep restriction (intro)",
+        "summary": "Learn the idea of matching time in bed to actual sleep to increase sleep drive (brief explanation only).",
+        "minutes": 10,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "What is sleep restriction?",
+            "content": "Sleep restriction temporarily reduces time in bed to increase sleep pressure, then gradually increases it. It's effective but best done with careful tracking."
+          },
+          {
+            "type": "exercise",
+            "title": "Track tonight",
+            "content": "Note your actual sleep time tonight (estimate) to inform whether a small restriction might help later.",
+            "durationMinutes": 5
+          },
+          {
+            "type": "prompt",
+            "title": "Journal",
+            "content": "If curious about sleep restriction, note questions and consider trying small changes before committing to a strict schedule.",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+      {
+        "id": "s2-day10-bedroom-environment",
+        "day": 10,
+        "title": "Optimize the bedroom",
+        "summary": "Small environmental tweaks often improve sleep (light, noise, temperature).",
+        "minutes": 8,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Environment tips",
+            "content": "Keep your bedroom cool, dark and quiet. Remove or dim strong lights, use earplugs or white noise if needed, and reserve the room for sleep."
+          },
+          {
+            "type": "exercise",
+            "title": "Quick check",
+            "content": "Spend 5 minutes adjusting lights, curtains, and thermostat or noise to make the bedroom more sleep-friendly.",
+            "durationMinutes": 5
+          },
+          {
+            "type": "prompt",
+            "title": "Note change",
+            "content": "Record what you changed and whether falling asleep felt different.",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+      {
+        "id": "s2-day11-tech-and-light",
+        "day": 11,
+        "title": "Screens, blue light and evening habits",
+        "summary": "Reduce stimulating screen use before bed and prefer low-light activities.",
+        "minutes": 7,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Why screens affect sleep",
+            "content": "Bright screens and stimulating content raise alertness and suppress melatonin. A 30–60 minute reduction before bed helps most people."
+          },
+          {
+            "type": "exercise",
+            "title": "Evening tech plan",
+            "content": "Choose a cut-off time for screens (e.g., 30–60 min before bed) and a low-stimulation substitute (reading, calm music).",
+            "durationMinutes": 3
+          },
+          {
+            "type": "prompt",
+            "title": "Try it",
+            "content": "Note whether reducing screens changed how quickly you felt sleepy.",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+      {
+        "id": "s2-day12-sleep-pressure",
+        "day": 12,
+        "title": "Boost sleep pressure safely",
+        "summary": "Use daytime activity and light to support night sleep without racing the body.",
+        "minutes": 9,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Daytime behaviours",
+            "content": "Daylight exposure, regular activity and avoiding long naps increase sleepiness at night. Aim for daytime movement and morning light where possible."
+          },
+          {
+            "type": "exercise",
+            "title": "Daily activity plan",
+            "content": "Add a 20–30 minute walk or light exercise earlier in the day and avoid naps longer than 30 minutes.",
+            "durationMinutes": 5
+          },
+          {
+            "type": "prompt",
+            "title": "Record",
+            "content": "Note the activity and whether you felt sleepier in the evening.",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+      {
+        "id": "s2-day13-bedtime-worry-strategies",
+        "day": 13,
+        "title": "Bedtime worry strategies",
+        "summary": "A few cognitive strategies to reduce perseverative thinking before sleep.",
+        "minutes": 10,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Cognitive strategies",
+            "content": "Use brief containment (postponement), defusion (name the thought), and problem-solve only during a scheduled time to limit night-time rumination."
+          },
+          {
+            "type": "exercise",
+            "title": "Containment practice",
+            "content": "If worry arises, write it down quickly and tell yourself you'll review it at a scheduled 'worry time'. Then return to your wind-down.",
+            "durationMinutes": 5
+          },
+          {
+            "type": "prompt",
+            "title": "Try and note",
+            "content": "Record whether containment reduced repeated thinking.",
+            "suggestedAction": "/thought"
+          }
+        ]
+      },
+      {
+        "id": "s2-day14-conclusion-maintenance",
+        "day": 14,
+        "title": "Conclusion & maintenance",
+        "summary": "Review changes, celebrate progress and set a simple maintenance plan to keep better sleep habits going.",
+        "minutes": 12,
+        "blocks": [
+          {
+            "type": "text",
+            "title": "Keep it simple",
+            "content": "Sustainable sleep improvements come from consistent small changes: stable schedule, wind-down, reduced evening stimulation, and brief relaxation when needed."
+          },
+          {
+            "type": "prompt",
+            "title": "Your maintenance plan",
+            "content": "Write a short two-week plan: one nightly wind-down habit and one daytime habit (eg: morning light or daily walk). Save it.",
+            "suggestedAction": "/thought"
+          },
+          {
+            "type": "action",
+            "title": "Use the tools",
+            "content": "When night-worry or sleeplessness recurs, use Relax, Thought Record or ABCD to track and respond.",
+            "extra": ["/relax", "/thought", "/abcd"]
+          }
+        ]
+      }
+    ]
+  }
+  

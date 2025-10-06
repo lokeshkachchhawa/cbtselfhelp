@@ -1,0 +1,236 @@
+{
+  "id": "7day_mood_boost",
+  "title": "7-Day Mood Boost",
+  "shortDescription": "A gentle, evidence-informed 7-day program based on CBT skills: notice automatic thoughts, gather evidence, generate balanced alternatives, and try small behavioural experiments to lift mood.",
+  "description": "Daily short lessons (5–15 minutes) that teach practical CBT techniques and guide you through exercises and reflections. Each lesson contains: a clear explanation, worked examples, a short practice (breathing or behavioural), and a journaling prompt that links to the Thought Record / ABCD tools when you'd like to capture what you learned.",
+  "version": "2.0",
+  "language": "en",
+  "days": 7,
+  "recommendedDailyMinutes": 8,
+  "notes": "Blocks of type 'action' map to in-app routes (for example: /thought, /abcd, /relax). 'exercise' blocks include a suggested duration. Use the prompts to practice journaling — these can be copied to Thought Record or ABCD.",
+  "lessons": [
+    {
+      "id": "day-1-intro",
+      "day": 1,
+      "title": "Intro — Notice what's happening",
+      "summary": "Understand CBT's core idea and learn the simple skill of noticing automatic thoughts as they arise.",
+      "minutes": 6,
+      "blocks": [
+        {
+          "type": "text",
+          "title": "CBT in one paragraph",
+          "content": "CBT (Cognitive Behavioural Therapy) teaches that thoughts, feelings and actions are connected. By noticing and testing unhelpful thoughts, we can reduce distress and choose actions that help us feel better. The program focuses on simple, repeatable skills rather than long explanations."
+        },
+        {
+          "type": "text",
+          "title": "Why notice thoughts?",
+          "content": "Automatic thoughts are the quick ideas that pop into your mind in response to events. They often feel true but can be incomplete. Noticing is the first step: you cannot test a thought you didn't notice. Example: you wave at a colleague and they don't wave back — your immediate thought might be 'They ignored me' which then changes your mood."
+        },
+        {
+          "type": "exercise",
+          "title": "Grounding + 1-minute breathing",
+          "content": "Sit comfortably. Breathe in for 4 seconds — hold 1 — breathe out for 6. Keep your attention on the breath and body for one minute. When your mind wanders, notice the thought without judging it and return to breathing.",
+          "durationMinutes": 1,
+          "suggestedAction": "/relax"
+        },
+        {
+          "type": "prompt",
+          "title": "Daily reflection (short)",
+          "content": "After the exercise, write one sentence: 'Right after the breathing I noticed the thought: ___'. If you'd like to expand, send this into the Thought Record or ABCD.",
+          "suggestedAction": "/thought"
+        },
+        {
+          "type": "text",
+          "title": "Practical tip",
+          "content": "Use a short label to capture thoughts (e.g., 'ignored', 'can't do it') — this makes them easier to test later."
+        }
+      ]
+    },
+    {
+      "id": "day-2-automatic-thoughts",
+      "day": 2,
+      "title": "Automatic thoughts — spotting them",
+      "summary": "Learn to catch the fast, automatic thoughts that often trigger strong feelings.",
+      "minutes": 8,
+      "blocks": [
+        {
+          "type": "text",
+          "title": "What are automatic thoughts?",
+          "content": "Automatic thoughts are immediate, often emotional interpretations of events (e.g., 'They didn't reply — they must be angry with me'). They are usually quick and unexamined. Recognising these is essential because they shape your mood and choices."
+        },
+        {
+          "type": "exercise",
+          "title": "Thought catch — short practice",
+          "content": "Over the next hour, whenever you notice a sudden mood change (irritation, anxiety, sadness), pause and ask: 'What just went through my mind?' Jot down the first short phrase you notice (3–6 words).",
+          "durationMinutes": 5
+        },
+        {
+          "type": "text",
+          "title": "Examples",
+          "content": "Scenario: You see a friend walk by without saying hi. Automatic thoughts might be: 'They ignored me', 'I am boring', 'Maybe I'm in trouble'. Each thought will produce different feelings — noticing which thought occurred helps you pick one to test."
+        },
+        {
+          "type": "prompt",
+          "title": "Journal",
+          "content": "Record one automatic thought you noticed and the feeling it triggered (e.g., 'Thought: They ignored me — Feeling: annoyed'). You can expand this in Thought Record.",
+          "suggestedAction": "/thought"
+        }
+      ]
+    },
+    {
+      "id": "day-3-evidence",
+      "day": 3,
+      "title": "Evidence — test the thought",
+      "summary": "Practice listing facts for and against a thought; this balances shaky assumptions.",
+      "minutes": 10,
+      "blocks": [
+        {
+          "type": "text",
+          "title": "Why gather evidence?",
+          "content": "Thoughts often omit context. Listing evidence 'for' and 'against' helps you move from an emotional reaction to a clearer, more balanced view. This reduces the automatic thought's power over your mood."
+        },
+        {
+          "type": "prompt",
+          "title": "Try it with a recorded thought",
+          "content": "Choose one automatic thought from yesterday. Write 2 quick facts that support it and 2 facts that contradict it. Example: Thought = 'My boss dislikes me'. Evidence FOR: (1) boss gave direct feedback yesterday; (2) boss didn't invite me to a meeting. Evidence AGAINST: (1) boss praised my work two weeks ago; (2) boss assigns me responsibility frequently.",
+          "suggestedAction": "/thought"
+        },
+        {
+          "type": "exercise",
+          "title": "Mini behavioural experiment",
+          "content": "If the thought predicts a negative outcome (e.g., 'If I try, I'll fail'), plan a small test: a 5–10 minute task that would disconfirm the prediction. Keep the experiment safe and simple (e.g., ask a colleague for quick feedback). Observe the result and note what changes.",
+          "durationMinutes": 5
+        },
+        {
+          "type": "text",
+          "title": "How to choose facts",
+          "content": "Prefer observable facts over opinions or labels. E.g., 'He didn't reply for 2 hours' (fact) vs 'He doesn't care about me' (interpretation)."
+        }
+      ]
+    },
+    {
+      "id": "day-4-alternative-thoughts",
+      "day": 4,
+      "title": "Alternative thoughts",
+      "summary": "Practice creating kinder, realistic alternative thoughts and using them in the moment.",
+      "minutes": 8,
+      "blocks": [
+        {
+          "type": "text",
+          "title": "What is an alternative thought?",
+          "content": "An alternative thought is realistic — it acknowledges facts but offers a fairer interpretation. It's not forced positivity; it's a balanced statement you could believe based on the evidence you listed."
+        },
+        {
+          "type": "prompt",
+          "title": "Write an alternative",
+          "content": "Pick one thought you tested yesterday. Using the evidence, write 1–2 sentences of an alternative thought (e.g., 'They might be busy; I can check in later'). Keep it believable and specific.",
+          "suggestedAction": "/abcd"
+        },
+        {
+          "type": "exercise",
+          "title": "Practice the alternative",
+          "content": "When the original thought returns, pause and silently repeat the alternative 2–3 times. Notice whether the emotional intensity reduces. Try this for small, manageable triggers.",
+          "durationMinutes": 3
+        },
+        {
+          "type": "text",
+          "title": "Examples of alternatives",
+          "content": "Automatic: 'I'm terrible at presentations.' Alternative: 'I felt nervous last time, but parts of it went well. I can practice one small section tonight.'"
+        }
+      ]
+    },
+    {
+      "id": "day-5-behavioural-experiments",
+      "day": 5,
+      "title": "Behavioural experiments",
+      "summary": "Plan and run small experiments to test unhelpful predictions — learning from results is the point.",
+      "minutes": 12,
+      "blocks": [
+        {
+          "type": "text",
+          "title": "Designing a good experiment",
+          "content": "A useful behavioural experiment is specific, observable and safe. It should test a clear prediction (e.g., 'If I speak up, people will ignore me'). Choose a short action that could disconfirm the prediction."
+        },
+        {
+          "type": "exercise",
+          "title": "Plan a tiny experiment",
+          "content": "Choose one experiment (5–10 minutes). Example: share a quick idea in a meeting or ask a coworker one question. Before: write the prediction. After: write what actually happened and what you learned.",
+          "durationMinutes": 10
+        },
+        {
+          "type": "prompt",
+          "title": "Reflect",
+          "content": "What happened? Did the outcome match your prediction? What surprised you? How does this change your view of the original thought?",
+          "suggestedAction": "/thought"
+        },
+        {
+          "type": "text",
+          "title": "Learning mindset",
+          "content": "Treat experiments as data collection, not pass/fail. Even partial support for your belief is useful — it tells you what to refine next."
+        }
+      ]
+    },
+    {
+      "id": "day-6-self-compassion",
+      "day": 6,
+      "title": "Self-compassion & setbacks",
+      "summary": "Respond kindly to setbacks and keep practising without harsh self-judgement.",
+      "minutes": 7,
+      "blocks": [
+        {
+          "type": "text",
+          "title": "Why self-compassion matters",
+          "content": "When experiments or changes don't go perfectly, harsh self-criticism can stop progress. A compassionate stance helps you learn and continue practising skills."
+        },
+        {
+          "type": "exercise",
+          "title": "Compassionate phrase",
+          "content": "Take 1 minute: breathe, then silently say a short compassionate phrase like: 'It's okay to struggle — I'm learning.' Repeat it slowly and notice how your body responds.",
+          "durationMinutes": 1
+        },
+        {
+          "type": "prompt",
+          "title": "Note for setbacks",
+          "content": "Write one kind, specific thing you can say to yourself the next time you notice a slip (e.g., 'I tried something hard today — that takes courage').",
+          "suggestedAction": "/thought"
+        },
+        {
+          "type": "text",
+          "title": "Example reframe",
+          "content": "Instead of: 'I failed, I'm useless.' Try: 'This didn't go as planned. I can use what I learned to try again differently.'"
+        }
+      ]
+    },
+    {
+      "id": "day-7-plan",
+      "day": 7,
+      "title": "Summary & maintenance plan",
+      "summary": "Review what you've learned and create a simple maintenance plan to keep practising.",
+      "minutes": 10,
+      "blocks": [
+        {
+          "type": "text",
+          "title": "Review of skills",
+          "content": "You learned to: (1) Notice automatic thoughts; (2) Gather evidence; (3) Generate balanced alternatives; (4) Run small experiments; (5) Respond with self-compassion. These are practical tools — not instant fixes — but they reduce the influence of unhelpful thinking over time."
+        },
+        {
+          "type": "prompt",
+          "title": "Your 1-week plan",
+          "content": "Pick 2 short habits to practise daily for the next week (e.g., 1 minute breathing each morning + 1 quick thought check in the evening). Write them down and set a small reminder.",
+          "suggestedAction": "/thought"
+        },
+        {
+          "type": "action",
+          "title": "Keep practising",
+          "content": "Use Thought Record or ABCD whenever you notice a strong thought. Revisit lessons anytime; repeat exercises that felt helpful.",
+          "extra": ["/thought", "/abcd"]
+        },
+        {
+          "type": "text",
+          "title": "Next steps",
+          "content": "If you found the program useful, consider repeating it or trying a related program (e.g., worry management or sleep skills). If you feel stuck or your mood is severe, reach out to a mental health professional or the app's Get Help resources."
+        }
+      ]
+    }
+  ]
+}
