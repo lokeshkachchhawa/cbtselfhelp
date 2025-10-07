@@ -5,6 +5,7 @@
 // - preview player separate from loop player
 // - bell player (short cue) played independently
 // - cross-fade helper using Timer
+// - NEW: guiding voice loop player with fade/preview/volume
 // Requires in pubspec.yaml:
 //   just_audio: ^0.9.35
 //   vibration: ^3.1.4
@@ -35,6 +36,7 @@ class _MiniMeditationTimerState extends State<MiniMeditationTimer>
   final AudioPlayer _bellPlayer = AudioPlayer();
   final AudioPlayer _bgPlayer = AudioPlayer(); // loop player
   final AudioPlayer _previewPlayer = AudioPlayer(); // temporary preview
+  final AudioPlayer _guidePlayer = AudioPlayer(); // main guiding voice loop
 
   // background track registry (displayName -> asset path)
   final Map<String, String> _bgTracks = {
@@ -44,10 +46,25 @@ class _MiniMeditationTimerState extends State<MiniMeditationTimer>
     'OM Chant': 'assets/sounds/om_chant_loop.mp3',
   };
 
+  // guiding voice loop registry
+  final Map<String, String> _guideTracks = {
+    'None': '',
+    'Circle of Calm (EN)': 'assets/sounds/circle_of_calm.mp3',
+    'शांति का वृत्त और श्वास (HI)': 'assets/sounds/circle_of_calm_hi.mp3',
+    'Ocean Wave Breath (EN)': 'assets/sounds/ocean_wave_breath_en.mp3',
+    'समुद्र की लहर और श्वास (HI)': 'assets/sounds/ocean_wave_breath_hi.mp3',
+    'Sky Expansion Breath (EN)': 'assets/sounds/sky_expansion_breath_en.mp3',
+    'आकाश विस्तार और श्वास (HI)': 'assets/sounds/sky_expansion_breath_hi.mp3',
+  };
+
   String _selectedBg = 'None';
   double _bgVolume = 0.6; // 0.0 .. 1.0
 
-  bool _applyBgImmediately = false; // live switching only if true
+  String _selectedGuide = 'None';
+  double _guideVolume = 1.0; // 0.0 .. 1.0 (guiding voice generally louder)
+
+  bool _applyBgImmediately =
+      false; // live switching only if true (applies to bg & guide)
 
   BgState _bgState = BgState.none;
   bool _isPreviewing = false;
@@ -69,6 +86,7 @@ class _MiniMeditationTimerState extends State<MiniMeditationTimer>
   Timer? _bgFadeTimer;
   Timer? _previewFadeTimer;
   Timer? _bellFadeTimer;
+  Timer? _guideFadeTimer;
 
   // NEW: tutorial language toggle (false = English, true = Hindi)
   bool _tutorialInHindi = false;
@@ -105,6 +123,9 @@ class _MiniMeditationTimerState extends State<MiniMeditationTimer>
         }
       });
     });
+
+    // Note: we don't need to listen to guidePlayer for an icon at the moment,
+    // but you can add one if desired.
   }
 
   Future<void> _setupAudioPlayers() async {
@@ -117,6 +138,9 @@ class _MiniMeditationTimerState extends State<MiniMeditationTimer>
       // preview player - no loop
       await _previewPlayer.setVolume(_bgVolume);
       await _previewPlayer.setLoopMode(LoopMode.off);
+      // guide player - looped guiding voice; volume managed by fades
+      await _guidePlayer.setVolume(0.0);
+      await _guidePlayer.setLoopMode(LoopMode.one);
     } catch (_) {}
   }
 
@@ -130,6 +154,7 @@ class _MiniMeditationTimerState extends State<MiniMeditationTimer>
     _bgFadeTimer?.cancel();
     _previewFadeTimer?.cancel();
     _bellFadeTimer?.cancel();
+    _guideFadeTimer?.cancel();
 
     try {
       _bellPlayer.dispose();
@@ -139,6 +164,9 @@ class _MiniMeditationTimerState extends State<MiniMeditationTimer>
     } catch (_) {}
     try {
       _previewPlayer.dispose();
+    } catch (_) {}
+    try {
+      _guidePlayer.dispose();
     } catch (_) {}
 
     super.dispose();
@@ -206,6 +234,42 @@ class _MiniMeditationTimerState extends State<MiniMeditationTimer>
         } catch (_) {}
       },
       registerTimer: (t) => _bgFadeTimer = t,
+    );
+  }
+
+  // guide fades
+  Future<void> _fadeInGuide(double target) async {
+    _guideFadeTimer?.cancel();
+    final current = await _guidePlayer.volume;
+    _guideFadeTimer = _startFade(
+      _guidePlayer,
+      current,
+      target,
+      steps: 14,
+      totalMs: 700,
+      onComplete: () {
+        _guideFadeTimer = null;
+      },
+      registerTimer: (t) => _guideFadeTimer = t,
+    );
+  }
+
+  Future<void> _fadeOutGuideAndPause() async {
+    _guideFadeTimer?.cancel();
+    final current = await _guidePlayer.volume;
+    _guideFadeTimer = _startFade(
+      _guidePlayer,
+      current,
+      0.0,
+      steps: 10,
+      totalMs: 500,
+      onComplete: () async {
+        _guideFadeTimer = null;
+        try {
+          await _guidePlayer.pause();
+        } catch (_) {}
+      },
+      registerTimer: (t) => _guideFadeTimer = t,
     );
   }
 
@@ -367,7 +431,68 @@ class _MiniMeditationTimerState extends State<MiniMeditationTimer>
     }
   }
 
-  // Called when user changes dropdown selection
+  // -------------------- guide --------------------
+  Future<void> _applySelectedGuide() async {
+    final asset = _guideTracks[_selectedGuide] ?? '';
+    if (asset.isEmpty) {
+      await _stopGuide();
+      return;
+    }
+
+    try {
+      await _guidePlayer.stop();
+      await _guidePlayer.setLoopMode(LoopMode.one);
+      await _guidePlayer.setAsset(asset);
+      await _guidePlayer.setVolume(0.0);
+      await _guidePlayer.play();
+      _fadeInGuide(_guideVolume);
+    } catch (e) {
+      debugPrint('[mini_timer] applySelectedGuide failed: $e');
+    }
+  }
+
+  Future<void> _stopGuide({bool fade = true}) async {
+    try {
+      if (fade && _guidePlayer.playing) {
+        await _fadeOutGuideAndPause();
+      } else {
+        await _guidePlayer.stop();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _previewGuide() async {
+    final asset = _guideTracks[_selectedGuide] ?? '';
+    if (asset.isEmpty) return;
+
+    try {
+      // if guide is playing as loop, fade it down temporarily
+      final wasGuidePlaying = _guidePlayer.playing;
+      if (wasGuidePlaying) {
+        await _fadeOutGuideAndPause();
+      }
+
+      await _previewPlayer.stop();
+      await _previewPlayer.setAsset(asset);
+      await _previewPlayer.setVolume(_guideVolume);
+      await _previewPlayer.play();
+
+      _previewTimer?.cancel();
+      _previewTimer = Timer(const Duration(seconds: 6), () {
+        _stopPreview(resumeBg: false);
+        if (wasGuidePlaying) {
+          // resume guide
+          _guidePlayer.setVolume(0.0);
+          _guidePlayer.play();
+          _fadeInGuide(_guideVolume);
+        }
+      });
+    } catch (e) {
+      debugPrint('[mini_timer] previewGuide failed: $e');
+    }
+  }
+
+  // Called when user changes dropdown selection for background
   void _onSelectedBgChanged(String? v) {
     if (v == null) return;
     setState(() => _selectedBg = v);
@@ -388,6 +513,28 @@ class _MiniMeditationTimerState extends State<MiniMeditationTimer>
     }
   }
 
+  // Called when user changes dropdown selection for guide
+  void _onSelectedGuideChanged(String? v) {
+    if (v == null) return;
+    setState(() => _selectedGuide = v);
+
+    if (_isPreviewing) {
+      _stopPreview(resumeBg: true);
+    }
+
+    if (_isRunning && _applyBgImmediately) {
+      // live switch the guide
+      _applySelectedGuide();
+    } else if (_isRunning && !_applyBgImmediately) {
+      ScaffoldMessenger.of(context).removeCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Guide will apply when session (re)starts'),
+        ),
+      );
+    }
+  }
+
   // ------------------ session control ------------------
   void _startSession() async {
     if (_isRunning) return;
@@ -402,6 +549,9 @@ class _MiniMeditationTimerState extends State<MiniMeditationTimer>
 
     // start background audio loop (if selected)
     await _applySelectedBackground();
+
+    // start guiding voice loop (if selected)
+    await _applySelectedGuide();
 
     // session timer to keep remainingSeconds in sync
     _sessionTimer?.cancel();
@@ -440,10 +590,13 @@ class _MiniMeditationTimerState extends State<MiniMeditationTimer>
     _cueTimer?.cancel();
     _sessionTimer?.cancel();
 
-    // gentle pause background player (keep state so resume can continue loop)
+    // gentle pause background & guide player (keep state so resume can continue loop)
     try {
       if (_bgPlayer.playing) {
         _fadeOutBgAndPause();
+      }
+      if (_guidePlayer.playing) {
+        _fadeOutGuideAndPause();
       }
     } catch (_) {}
 
@@ -482,7 +635,7 @@ class _MiniMeditationTimerState extends State<MiniMeditationTimer>
       });
     }
 
-    // gentle resume background if selected
+    // gentle resume background & guide if selected
     try {
       if ((_bgTracks[_selectedBg] ?? '').isNotEmpty) {
         if (_bgState == BgState.none) {
@@ -492,6 +645,17 @@ class _MiniMeditationTimerState extends State<MiniMeditationTimer>
           await _bgPlayer.setVolume(0.0);
           await _bgPlayer.play();
           _fadeInBg(_bgVolume);
+        }
+      }
+
+      if ((_guideTracks[_selectedGuide] ?? '').isNotEmpty) {
+        // if guide was not playing, start it; otherwise ensure fade-in
+        if (!_guidePlayer.playing) {
+          await _applySelectedGuide();
+        } else {
+          await _guidePlayer.setVolume(0.0);
+          await _guidePlayer.play();
+          _fadeInGuide(_guideVolume);
         }
       }
     } catch (_) {}
@@ -508,6 +672,7 @@ class _MiniMeditationTimerState extends State<MiniMeditationTimer>
     _sessionTimer?.cancel();
 
     await _stopBackground();
+    await _stopGuide();
 
     setState(() {
       _isRunning = false;
@@ -529,6 +694,7 @@ class _MiniMeditationTimerState extends State<MiniMeditationTimer>
     _sessionTimer?.cancel();
 
     await _stopBackground();
+    await _stopGuide();
 
     setState(() {
       _isRunning = false;
@@ -554,7 +720,7 @@ class _MiniMeditationTimerState extends State<MiniMeditationTimer>
 
   Widget _buildBackgroundSelector() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
       decoration: BoxDecoration(
         color: const Color(0xFF031818),
         borderRadius: BorderRadius.circular(12),
@@ -782,6 +948,226 @@ class _MiniMeditationTimerState extends State<MiniMeditationTimer>
                 children: const [
                   Icon(Icons.graphic_eq, color: teal2, size: 18),
                 ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGuideSelector() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF031818),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 12,
+        runSpacing: 8,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: teal3,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(color: teal3.withOpacity(0.25), blurRadius: 6),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Guide',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              minWidth: 160,
+              maxWidth: MediaQuery.of(context).size.width * 0.45,
+            ),
+            child: InputDecorator(
+              decoration: InputDecoration(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                filled: true,
+                fillColor: const Color(0xFF042A2A),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _selectedGuide,
+                  isExpanded: true,
+                  dropdownColor: const Color(0xFF042A2A),
+                  iconEnabledColor: Colors.white70,
+                  items: _guideTracks.keys.map((k) {
+                    return DropdownMenuItem(
+                      value: k,
+                      child: Row(
+                        children: [
+                          Icon(
+                            k.contains('HI')
+                                ? Icons.language
+                                : Icons.record_voice_over,
+                            size: 18,
+                            color: Colors.white70,
+                          ),
+                          const SizedBox(width: 8),
+                          // 🌟 FIX: Use Expanded to constrain the Text and prevent overflow
+                          Expanded(
+                            child: Text(
+                              k,
+                              style: const TextStyle(color: Colors.white),
+                              overflow:
+                                  TextOverflow.ellipsis, // Truncate with "..."
+                              maxLines: 1, // Keep it to a single line
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: _isRunning && !_applyBgImmediately
+                      ? null
+                      : (v) => _onSelectedGuideChanged(v),
+                ),
+              ),
+            ),
+          ),
+
+          Tooltip(
+            message: _selectedGuide == 'None' ? 'No guide' : 'Preview guide',
+            child: IconButton(
+              onPressed: (_selectedGuide == 'None' || _isRunning)
+                  ? null
+                  : () {
+                      _previewGuide();
+                    },
+              icon: const Icon(Icons.play_circle_fill),
+              color: teal3,
+              iconSize: 28,
+            ),
+          ),
+
+          GestureDetector(
+            onTap: _isRunning
+                ? null
+                : () {
+                    showModalBottomSheet(
+                      context: context,
+                      backgroundColor: const Color(0xFF021515),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(12),
+                        ),
+                      ),
+                      builder: (ctx) {
+                        return StatefulBuilder(
+                          builder: (ctx2, setSheetState) {
+                            return Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.volume_up,
+                                        color: Colors.white70,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      const Text(
+                                        'Guide volume',
+                                        style: TextStyle(color: Colors.white70),
+                                      ),
+                                      const Spacer(),
+                                      Text(
+                                        '${(_guideVolume * 100).round()}%',
+                                        style: const TextStyle(
+                                          color: Colors.white60,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Slider(
+                                    value: _guideVolume,
+                                    min: 0.0,
+                                    max: 1.0,
+                                    divisions: 20,
+                                    activeColor: teal3,
+                                    inactiveColor: Colors.white12,
+                                    onChanged: (v) {
+                                      setSheetState(() {
+                                        _guideVolume = v;
+                                      });
+                                      setState(() {
+                                        _guideVolume = v;
+                                      });
+                                      try {
+                                        _guidePlayer.setVolume(v);
+                                        if (_isPreviewing) {
+                                          _previewPlayer.setVolume(v);
+                                        }
+                                      } catch (_) {}
+                                    },
+                                  ),
+                                  const SizedBox(height: 8),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+            child: Chip(
+              backgroundColor: const Color(0xFF012A2A),
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+              label: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _guideVolume == 0
+                        ? Icons.volume_off
+                        : Icons.record_voice_over,
+                    size: 18,
+                    color: Colors.white70,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${(_guideVolume * 100).round()}%',
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          if (_isRunning && !_applyBgImmediately)
+            const Tooltip(
+              message:
+                  'Guide locked while session is running (applies on next start)',
+              child: Padding(
+                padding: EdgeInsets.only(left: 4.0),
+                child: Icon(Icons.lock, color: Colors.white54, size: 18),
               ),
             ),
         ],
@@ -1198,7 +1584,13 @@ class _MiniMeditationTimerState extends State<MiniMeditationTimer>
                   vertical: 6.0,
                   horizontal: 8.0,
                 ),
-                child: _buildBackgroundSelector(),
+                child: Column(
+                  children: [
+                    _buildBackgroundSelector(),
+                    const SizedBox(height: 10),
+                    _buildGuideSelector(), // <-- guide selector here
+                  ],
+                ),
               ),
             ),
 

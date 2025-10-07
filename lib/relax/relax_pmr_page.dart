@@ -1,8 +1,11 @@
 // lib/screens/relax_pmr_page.dart
 // Progressive Muscle Relaxation page (PMR) - DARK THEME (teal palette)
-// - step-by-step tense-hold-release exercises
-// - per-step timers, autoplay option, haptic/audio cues
-// Keep functionality identical to original; only styling adjusted for a dark, teal-themed UI.
+// Integrated flutter_tts for spoken guidance (EN/HI) + TTS on/off toggle.
+// Keep functionality identical to original; only added TTS and a small toggle.
+// Requires in pubspec.yaml:
+//   audioplayers: ^6.5.1
+//   vibration: ^3.1.4
+//   flutter_tts: ^3.6.0
 
 import 'dart:async';
 import 'dart:math';
@@ -10,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:vibration/vibration.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 
 // Teal palette (user preference) - darker teal primary tones
 const Color teal1 = Color(0xFF016C6C); // deep teal
@@ -96,10 +100,27 @@ class _RelaxPmrPageState extends State<RelaxPmrPage> {
   // NEW: tutorial language toggle (false = English, true = Hindi)
   bool _tutorialInHindi = false;
 
+  // TTS
+  late FlutterTts _tts;
+  bool _ttsEnabled = true;
+
   @override
   void initState() {
     super.initState();
     _steps = List<PmrStep>.from(_defaultSteps);
+
+    // init TTS
+    _tts = FlutterTts();
+    _configureTts();
+  }
+
+  Future<void> _configureTts() async {
+    try {
+      await _tts.setSpeechRate(0.46);
+      await _tts.setVolume(1.0);
+      await _tts.setPitch(1.0);
+      _tts.setCompletionHandler(() {});
+    } catch (_) {}
   }
 
   @override
@@ -107,6 +128,9 @@ class _RelaxPmrPageState extends State<RelaxPmrPage> {
     _tickTimer?.cancel();
     _phaseEndTimer?.cancel();
     _audio.dispose();
+    try {
+      _tts.stop();
+    } catch (_) {}
     super.dispose();
   }
 
@@ -157,8 +181,6 @@ class _RelaxPmrPageState extends State<RelaxPmrPage> {
   void _startSequence({bool restartCurrent = false}) {
     if (_isRunning) return;
 
-    // if we are mid-session and user didn't ask to restart current phase,
-    // resume the phase (restore timers based on remaining seconds)
     if (!restartCurrent &&
         _phase != _PmrPhase.ready &&
         _phase != _PmrPhase.finished) {
@@ -166,13 +188,12 @@ class _RelaxPmrPageState extends State<RelaxPmrPage> {
       return;
     }
 
-    // otherwise start fresh from tension phase (or restart current if requested)
     setState(() {
       _isRunning = true;
     });
 
-    // start from the tension phase of the current step
-    _enterPhase(_PmrPhase.tension);
+    // announce step & start tension
+    _announceStepAndEnterTension();
   }
 
   void _pauseSequence() {
@@ -180,39 +201,31 @@ class _RelaxPmrPageState extends State<RelaxPmrPage> {
     _phaseEndTimer?.cancel();
     setState(() {
       _isRunning = false;
-      // _phaseSecondsRemaining intentionally kept so resume picks up the remaining time
     });
   }
 
   void _stopSequence() {
-    // cancel timers and audio/haptics
     _tickTimer?.cancel();
     _phaseEndTimer?.cancel();
     try {
       _audio.stop();
     } catch (_) {}
-    // reset to initial session state (step 0, ready)
     setState(() {
       _isRunning = false;
-      _index =
-          0; // reset to first step — change to keep current step if you prefer
+      _index = 0;
       _phase = _PmrPhase.ready;
       _phaseSecondsRemaining = 0;
     });
 
-    // optional feedback
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Session reset')));
   }
 
   void _resumePhase() {
-    // If we are already running, nothing to do
     if (_isRunning) return;
 
-    // If no remaining seconds (maybe paused right after completion), re-enter to reset durations
     if (_phaseSecondsRemaining <= 0) {
-      // Re-enter the current phase to set a proper duration (or transition if it's a terminal phase).
       _enterPhase(_phase == _PmrPhase.ready ? _PmrPhase.tension : _phase);
       return;
     }
@@ -221,13 +234,10 @@ class _RelaxPmrPageState extends State<RelaxPmrPage> {
       _isRunning = true;
     });
 
-    // restart visible tick
     _startTick();
 
-    // restart phase end timer using the remaining seconds and capture the phase at start
     final currentPhase = _phase;
     _phaseEndTimer = Timer(Duration(seconds: _phaseSecondsRemaining), () {
-      // cancel tick and call completion handler for the phase that was running
       _tickTimer?.cancel();
       _onPhaseComplete(currentPhase);
     });
@@ -260,7 +270,11 @@ class _RelaxPmrPageState extends State<RelaxPmrPage> {
       _phaseSecondsRemaining = dur;
     });
 
+    // play cues
     _playCue();
+
+    // speak phase if TTS enabled
+    if (_ttsEnabled) _speakPhase(p, currentStep);
 
     if (dur > 0) {
       _startTick();
@@ -310,7 +324,7 @@ class _RelaxPmrPageState extends State<RelaxPmrPage> {
             });
             Future.delayed(const Duration(milliseconds: 600), () {
               if (!mounted) return;
-              _enterPhase(_PmrPhase.tension);
+              _announceStepAndEnterTension();
             });
           }
         } else {
@@ -325,6 +339,16 @@ class _RelaxPmrPageState extends State<RelaxPmrPage> {
       case _PmrPhase.finished:
         break;
     }
+  }
+
+  void _announceStepAndEnterTension() {
+    final s = _steps[_index];
+    if (_ttsEnabled) _speakStepIntro(s);
+    // small delay so TTS can start before cue/animation
+    Future.delayed(const Duration(milliseconds: 350), () {
+      if (!mounted) return;
+      _enterPhase(_PmrPhase.tension);
+    });
   }
 
   void _showCompletedSnack() {
@@ -393,6 +417,52 @@ class _RelaxPmrPageState extends State<RelaxPmrPage> {
       case _PmrPhase.finished:
         return 'Done';
     }
+  }
+
+  // TTS helpers
+  Future<void> _speakStepIntro(PmrStep s) async {
+    if (!_ttsEnabled) return;
+    try {
+      final isHindi = _tutorialInHindi;
+      final title = isHindi ? _translateStepTitleToHindi(s.title) : s.title;
+      final instr = isHindi
+          ? _translateStepInstructionToHindi(s.instruction)
+          : s.instruction;
+      final text = isHindi ? 'अगला: $title। $instr' : 'Next: $title. ${instr}';
+      await _tts.setLanguage(isHindi ? 'hi-IN' : 'en-US');
+      await _tts.speak(text);
+    } catch (_) {}
+  }
+
+  Future<void> _speakPhase(_PmrPhase p, PmrStep step) async {
+    if (!_ttsEnabled) return;
+    try {
+      final isHindi = _tutorialInHindi;
+      String text;
+      switch (p) {
+        case _PmrPhase.tension:
+          text = isHindi
+              ? '${_translateStepTitleToHindi(step.title)}: तनें ${step.tensionSeconds} सेकंड के लिए'
+              : '${step.title}: Tense for ${step.tensionSeconds} seconds';
+          break;
+        case _PmrPhase.hold:
+          text = isHindi ? 'रोकें, 4 सेकंड' : 'Hold for 4 seconds';
+          break;
+        case _PmrPhase.relax:
+          text = isHindi
+              ? 'छोड़ें और आराम करें ${step.relaxSeconds} सेकंड'
+              : 'Release and relax for ${step.relaxSeconds} seconds';
+          break;
+        case _PmrPhase.ready:
+          text = isHindi ? 'तैयार' : 'Ready';
+          break;
+        case _PmrPhase.finished:
+          text = isHindi ? 'सत्र समाप्त' : 'Session finished';
+          break;
+      }
+      await _tts.setLanguage(isHindi ? 'hi-IN' : 'en-US');
+      await _tts.speak(text);
+    } catch (_) {}
   }
 
   /// UPDATED: show tutorial modal with English/Hindi toggle
@@ -683,10 +753,8 @@ class _RelaxPmrPageState extends State<RelaxPmrPage> {
                             Expanded(
                               child: ElevatedButton.icon(
                                 onPressed: () {
-                                  // Start guided session from step 0
                                   Navigator.of(ctx).pop();
                                   _jumpToStep(0);
-                                  // restartCurrent true to ensure we begin fresh
                                   _startSequence(restartCurrent: true);
                                 },
                                 icon: const Icon(Icons.play_arrow),
@@ -815,7 +883,6 @@ class _RelaxPmrPageState extends State<RelaxPmrPage> {
           ),
         ),
         actions: [
-          // NEW: Tutorial button (top-right)
           IconButton(
             onPressed: _showTutorial,
             icon: Icon(Icons.help_outline, color: mutedText),
@@ -832,6 +899,18 @@ class _RelaxPmrPageState extends State<RelaxPmrPage> {
               color: mutedText,
             ),
             tooltip: _autoAdvance ? 'Auto-advance on' : 'Auto-advance off',
+          ),
+
+          // NEW: TTS toggle
+          IconButton(
+            tooltip: _ttsEnabled ? 'TTS: On' : 'TTS: Off',
+            onPressed: () {
+              setState(() => _ttsEnabled = !_ttsEnabled);
+            },
+            icon: Icon(
+              _ttsEnabled ? Icons.volume_up : Icons.volume_off,
+              color: mutedText,
+            ),
           ),
         ],
       ),
@@ -1023,7 +1102,6 @@ class _RelaxPmrPageState extends State<RelaxPmrPage> {
 
                 Row(
                   children: [
-                    // Previous step
                     IconButton(
                       onPressed: _prevStep,
                       icon: const Icon(Icons.chevron_left),
@@ -1031,7 +1109,6 @@ class _RelaxPmrPageState extends State<RelaxPmrPage> {
                       tooltip: 'Previous',
                     ),
 
-                    // Play / Pause (expanded)
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () {
@@ -1064,8 +1141,6 @@ class _RelaxPmrPageState extends State<RelaxPmrPage> {
 
                     const SizedBox(width: 8),
 
-                    // Stop / Reset
-                    // Stop / Reset (with confirmation)
                     IconButton(
                       onPressed: () => _confirmAndStop(context),
                       icon: const Icon(Icons.stop),
@@ -1073,7 +1148,6 @@ class _RelaxPmrPageState extends State<RelaxPmrPage> {
                       tooltip: 'Stop / Reset',
                     ),
 
-                    // Next step
                     IconButton(
                       onPressed: _nextStep,
                       icon: const Icon(Icons.chevron_right),
@@ -1182,7 +1256,6 @@ class _SphereSurroundState extends State<_SphereSurround>
   @override
   Widget build(BuildContext context) {
     final base = widget.size;
-    // pulse scale depending on phase
     final pulseScale = widget.phase == _PmrPhase.tension
         ? 1.06
         : (widget.phase == _PmrPhase.relax ? 1.0 : 0.98);
@@ -1194,18 +1267,15 @@ class _SphereSurroundState extends State<_SphereSurround>
         animation: _ctrl,
         builder: (ctx, _) {
           final t = _ctrl.value;
-          // three rings with slight phase offsets
           final ring1Scale = pulseScale + 0.03 * sin(2 * pi * t);
           final ring2Scale = pulseScale + 0.06 * sin(2 * pi * (t + 0.25));
           final ring3Scale = pulseScale + 0.09 * sin(2 * pi * (t + 0.5));
 
-          // subtle orbiting dots
           final dots = 6;
 
           return Stack(
             alignment: Alignment.center,
             children: [
-              // soft ambient glow
               Container(
                 width: base * 1.02,
                 height: base * 1.02,
@@ -1218,7 +1288,6 @@ class _SphereSurroundState extends State<_SphereSurround>
                 ),
               ),
 
-              // ring 1
               Transform.scale(
                 scale: ring1Scale,
                 child: Container(
@@ -1241,7 +1310,6 @@ class _SphereSurroundState extends State<_SphereSurround>
                 ),
               ),
 
-              // ring 2
               Transform.scale(
                 scale: ring2Scale,
                 child: Container(
@@ -1257,7 +1325,6 @@ class _SphereSurroundState extends State<_SphereSurround>
                 ),
               ),
 
-              // ring 3 (subtle dotted ring)
               Transform.scale(
                 scale: ring3Scale,
                 child: CustomPaint(
@@ -1266,7 +1333,6 @@ class _SphereSurroundState extends State<_SphereSurround>
                 ),
               ),
 
-              // orbiting dots
               for (int i = 0; i < dots; i++)
                 Transform.translate(
                   offset: Offset(
@@ -1318,7 +1384,6 @@ class _DottedRingPainter extends CustomPainter {
     final cy = size.height / 2;
     final r = min(cx, cy) * 0.95;
 
-    // draw dotted ring by drawing many short arcs
     final segments = 40;
     final gap = (2 * pi) / segments;
     for (int i = 0; i < segments; i++) {

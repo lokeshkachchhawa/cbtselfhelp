@@ -2,6 +2,7 @@
 // Grounding 5-4-3-2-1 exercise (dark teal theme)
 // - Fixed keyboard / bottom overflow and chip deletion behavior
 // - Added draggable bottom-sheet tutorial with English/Hindi toggle
+// - Integrated flutter_tts for phase announcements
 
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:vibration/vibration.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:flutter_tts/flutter_tts.dart';
 
 // Reuse teal palette from project preferences
 const Color teal1 = Color(0xFF016C6C);
@@ -28,6 +30,10 @@ class RelaxGroundingPage extends StatefulWidget {
 
 class _RelaxGroundingPageState extends State<RelaxGroundingPage> {
   final AudioPlayer _audio = AudioPlayer();
+
+  // NEW: TTS
+  final FlutterTts _flutterTts = FlutterTts();
+  bool _ttsAvailable = true;
 
   _GroundPhase _phase = _GroundPhase.ready;
   bool _isRunning = false;
@@ -62,6 +68,82 @@ class _RelaxGroundingPageState extends State<RelaxGroundingPage> {
   void initState() {
     super.initState();
     _init();
+    _initTts();
+  }
+
+  Future<void> _initTts() async {
+    try {
+      // Set default TTS options
+      await _flutterTts.setSpeechRate(0.45); // slower for clarity
+      await _flutterTts.setPitch(1.0);
+      // Don't set language here; set per utterance depending on _tutorialInHindi
+      // handle completion / errors if you want
+    } catch (e) {
+      // If TTS fails to initialize on a platform, mark unavailable but continue gracefully
+      _ttsAvailable = false;
+    }
+  }
+
+  Future<void> _speak(String text, {String? lang}) async {
+    if (!_ttsAvailable) return;
+    try {
+      if (lang != null) {
+        await _flutterTts.setLanguage(lang);
+      }
+      await _flutterTts.speak(text);
+    } catch (_) {
+      // Do not crash if TTS fails
+    }
+  }
+
+  Future<void> _speakPhase(_GroundPhase p) async {
+    if (!_ttsAvailable) return;
+    final bool hi = _tutorialInHindi;
+    String utter;
+    String lang;
+
+    switch (p) {
+      case _GroundPhase.five:
+        utter = hi
+            ? 'पाँच — जो आप देख सकते हैं।'
+            : 'Five — things you can see.';
+        lang = hi ? 'hi-IN' : 'en-US';
+        break;
+      case _GroundPhase.four:
+        utter = hi
+            ? 'चार — जो आप महसूस कर सकते हैं।'
+            : 'Four — things you can feel.';
+        lang = hi ? 'hi-IN' : 'en-US';
+        break;
+      case _GroundPhase.three:
+        utter = hi
+            ? 'तीन — जो आप सुन सकते हैं।'
+            : 'Three — things you can hear.';
+        lang = hi ? 'hi-IN' : 'en-US';
+        break;
+      case _GroundPhase.two:
+        utter = hi
+            ? 'दो — जो आप सूँघ सकते हैं।'
+            : 'Two — things you can smell.';
+        lang = hi ? 'hi-IN' : 'en-US';
+        break;
+      case _GroundPhase.one:
+        utter = hi
+            ? 'एक — जो आप स्वाद ले सकते हैं, या एक गहरी साँस लें।'
+            : 'One — something you can taste, or take one deep breath.';
+        lang = hi ? 'hi-IN' : 'en-US';
+        break;
+      case _GroundPhase.ready:
+        utter = hi ? 'तैयार हों।' : 'Get ready.';
+        lang = hi ? 'hi-IN' : 'en-US';
+        break;
+      case _GroundPhase.finished:
+        utter = hi ? 'पूरा हुआ।' : 'Finished.';
+        lang = hi ? 'hi-IN' : 'en-US';
+        break;
+    }
+
+    await _speak(utter, lang: lang);
   }
 
   Future<void> _init() async {
@@ -147,6 +229,9 @@ class _RelaxGroundingPageState extends State<RelaxGroundingPage> {
     _phaseEndTimer?.cancel();
     _audio.dispose();
     _entryController.dispose();
+    try {
+      _flutterTts.stop();
+    } catch (_) {}
     super.dispose();
   }
 
@@ -237,6 +322,9 @@ class _RelaxGroundingPageState extends State<RelaxGroundingPage> {
       _phase = p;
       _phaseSecondsRemaining = _perPhaseSeconds;
     });
+
+    // Speak the phase instruction (respects _tutorialInHindi)
+    _speakPhase(p);
 
     _playCue();
 

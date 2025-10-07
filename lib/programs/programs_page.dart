@@ -8,7 +8,6 @@
 // added to assets/programs and registered in pubspec.yaml.
 
 import 'dart:convert';
-import 'package:cbt_drktv/screens/thought_record_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1118,7 +1117,6 @@ class _LessonPageState extends State<LessonPage> {
   // TTS
   late FlutterTts _flutterTts;
   bool _isSpeaking = false;
-  String? _currentUtteranceId;
 
   @override
   void initState() {

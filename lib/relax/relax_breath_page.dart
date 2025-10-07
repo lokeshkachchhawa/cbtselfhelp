@@ -1,8 +1,10 @@
 // lib/screens/relax_breath_page.dart
 // Guided breathing exercise page — improved sphere animation synchronized with phases.
-// Requires:
+// Integrated flutter_tts for spoken guidance (EN/HI) + small TTS on/off toggle.
+// Requires in pubspec.yaml:
 //   audioplayers: ^6.5.1
 //   vibration: ^3.1.4
+//   flutter_tts: ^3.6.0
 // And an asset registered in pubspec.yaml:
 // flutter:
 //   assets:
@@ -13,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:vibration/vibration.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 
 // Primary teal palette (kept from original)
 const Color teal1 = Color(0xFFC6EDED);
@@ -41,6 +44,10 @@ class _RelaxBreathPageState extends State<RelaxBreathPage>
 
   // Audio & haptics
   final AudioPlayer _audioPlayer = AudioPlayer();
+
+  // TTS
+  late FlutterTts _tts;
+  bool _ttsEnabled = true; // small toggle in appbar
 
   // Configurable durations
   int _inhaleSec = 5;
@@ -95,6 +102,27 @@ class _RelaxBreathPageState extends State<RelaxBreathPage>
     try {
       _audioPlayer.setPlayerMode(PlayerMode.lowLatency);
     } catch (_) {}
+
+    // Initialize TTS
+    _tts = FlutterTts();
+    _configureTts();
+  }
+
+  Future<void> _configureTts() async {
+    try {
+      // Default settings — adjust if you like
+      await _tts.setSpeechRate(0.48); // slower, calm guidance
+      await _tts.setVolume(1.0);
+      await _tts.setPitch(1.0);
+
+      // Optionally set a fallback language; we'll change language before each speak
+      // await _tts.setLanguage('en-US');
+
+      // Some platforms require this call to avoid multiple overlapping utterances
+      _tts.setCompletionHandler(() {
+        // Nothing for now; kept so we don't leave dangling listeners
+      });
+    } catch (_) {}
   }
 
   @override
@@ -103,6 +131,9 @@ class _RelaxBreathPageState extends State<RelaxBreathPage>
     _phaseController.dispose();
     _breathPulseController.dispose();
     _audioPlayer.dispose();
+    try {
+      _tts.stop();
+    } catch (_) {}
     super.dispose();
   }
 
@@ -177,6 +208,9 @@ class _RelaxBreathPageState extends State<RelaxBreathPage>
       _phaseController.stop();
       _phaseController.reset();
     } catch (_) {}
+    try {
+      _tts.stop();
+    } catch (_) {}
   }
 
   void _endSession() {
@@ -189,7 +223,7 @@ class _RelaxBreathPageState extends State<RelaxBreathPage>
     }
   }
 
-  void _enterPhase(BreathPhase p) {
+  Future<void> _enterPhase(BreathPhase p) async {
     // cancel previous timers
     _phaseTickTimer?.cancel();
     _phaseEndTimer?.cancel();
@@ -198,6 +232,11 @@ class _RelaxBreathPageState extends State<RelaxBreathPage>
       _phase = p;
       _phaseSecondsRemaining = _phaseDuration(p);
     });
+
+    // speak the phase if enabled
+    if (_ttsEnabled) {
+      _speakPhase(p);
+    }
 
     // Configure animation depending on phase:
     if (p == BreathPhase.inhale) {
@@ -300,6 +339,43 @@ class _RelaxBreathPageState extends State<RelaxBreathPage>
     // returns 0..1 alpha for glow; larger when scale near peak
     final normal = (scale - 0.68) / (1.35 - 0.68);
     return (0.25 + normal * 0.65).clamp(0.0, 1.0);
+  }
+
+  /// Speak helper that sets language depending on _tutorialInHindi and uses
+  /// a calm phrase for the user. Uses short phrases (avoid long TTS utterances).
+  Future<void> _speakPhase(BreathPhase p) async {
+    if (!_ttsEnabled) return;
+    try {
+      final isHindi = _tutorialInHindi;
+      String text;
+      switch (p) {
+        case BreathPhase.inhale:
+          text = isHindi
+              ? 'साँस अंदर लें, ${_inhaleSec} सेकंड'
+              : 'Inhale for ${_inhaleSec} seconds';
+          break;
+        case BreathPhase.hold:
+          text = isHindi
+              ? 'रोकें, ${_holdSec} सेकंड'
+              : 'Hold for ${_holdSec} seconds';
+          break;
+        case BreathPhase.exhale:
+          text = isHindi
+              ? 'साँस छोड़ें, ${_exhaleSec} सेकंड'
+              : 'Exhale for ${_exhaleSec} seconds';
+          break;
+        case BreathPhase.finished:
+        default:
+          text = isHindi ? 'सत्र समाप्त' : 'Session finished';
+          break;
+      }
+
+      // set language before speaking
+      await _tts.setLanguage(isHindi ? 'hi-IN' : 'en-US');
+
+      // short speak. do not await long operations to avoid blocking UI updates
+      await _tts.speak(text);
+    } catch (_) {}
   }
 
   /// Draggable tutorial bottom sheet with English/Hindi toggle
@@ -630,6 +706,17 @@ class _RelaxBreathPageState extends State<RelaxBreathPage>
             tooltip: 'Tutorial',
             onPressed: _showTutorial,
             icon: const Icon(Icons.help_outline, color: Colors.white70),
+          ),
+          // small TTS enable/disable toggle
+          IconButton(
+            tooltip: _ttsEnabled ? 'TTS: On' : 'TTS: Off',
+            onPressed: () {
+              setState(() => _ttsEnabled = !_ttsEnabled);
+            },
+            icon: Icon(
+              _ttsEnabled ? Icons.volume_up : Icons.volume_off,
+              color: Colors.white70,
+            ),
           ),
         ],
       ),
