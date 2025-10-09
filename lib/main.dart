@@ -7,6 +7,7 @@ import 'package:cbt_drktv/relax/relax_breath_page.dart';
 import 'package:cbt_drktv/relax/relax_pmr_page.dart';
 import 'package:cbt_drktv/screens/abcd_worksheet.dart';
 import 'package:cbt_drktv/screens/activities_page.dart';
+import 'package:cbt_drktv/screens/drktv_chat_screen.dart';
 import 'package:cbt_drktv/screens/home_page.dart';
 import 'package:cbt_drktv/screens/relax_page.dart';
 import 'package:cbt_drktv/screens/thought_record_page.dart';
@@ -14,6 +15,7 @@ import 'package:cbt_drktv/screens/safety_page.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:provider/provider.dart';
 
@@ -29,6 +31,19 @@ import 'theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await dotenv.load(fileName: '.env');
+    debugPrint('dotenv loaded from project root');
+  } catch (e) {
+    debugPrint('dotenv root load failed: $e — trying assets/.env');
+    try {
+      await dotenv.load(fileName: 'assets/.env');
+      debugPrint('dotenv loaded from assets/.env');
+    } catch (e2) {
+      debugPrint('dotenv load from assets failed: $e2');
+      // Continue without dotenv — _queryOpenAI will throw a clear error if API key missing.
+    }
+  }
   await Firebase.initializeApp();
 
   runApp(MyApp());
@@ -76,6 +91,7 @@ class MyApp extends StatelessWidget {
           '/minimeditation': (_) => const MiniMeditationTimer(),
           '/sounds': (_) => const RelaxSoundsPage(),
           '/programs': (_) => const ProgramsPage(),
+          '/drktv_chat': (ctx) => const DrKtvChatScreen(),
         },
       ),
     );

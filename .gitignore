@@ -58,3 +58,6 @@ lib/firebase_options.dart
 .env.* 
 *.secret.json
 service-account-*.json
+
+.env
+assets/.env

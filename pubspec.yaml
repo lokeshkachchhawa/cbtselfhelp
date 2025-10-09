@@ -60,6 +60,10 @@ dependencies:
   just_audio: ^0.10.5
   just_audio_background: ^0.0.1-beta.17
   flutter_tts: ^3.8.0
+  flutter_dotenv: ^5.0.2
+  http: ^0.13.6
+  google_fonts: ^4.0.4
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:
@@ -87,6 +91,7 @@ flutter:
     - images/
     - assets/sounds/
     - assets/programs/
+    - assets/.env
 flutter_icons:
   android: true
   ios: true

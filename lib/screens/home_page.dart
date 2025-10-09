@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -98,6 +99,626 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _progressFuture = _loadProgressSummary();
+  }
+  // Add this method inside _HomePageState (near other _build* methods)
+
+  Widget _buildDrKanhaiyaChatCard() {
+    return Card(
+      elevation: 3,
+      color: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          gradient: LinearGradient(
+            colors: [Colors.white.withOpacity(0.05), teal4.withOpacity(0.15)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          border: Border.all(color: Colors.white.withOpacity(0.08), width: 1.2),
+        ),
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // ---- Dr. Kanhaiya Circular Photo ----
+            Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: teal3.withOpacity(0.35),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ClipOval(
+                child: Image.asset('images/drkanhaiya.png', fit: BoxFit.cover),
+              ),
+            ),
+
+            const SizedBox(width: 14),
+
+            // ---- Text content ----
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Dr. Kanhaiya (AI)',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    'AI CBT Companion • Mind & Mood Coach',
+                    style: TextStyle(
+                      color: Colors.tealAccent.shade100,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Ask about mood, anxiety, or coping skills. Responses use Cognitive Behavioral Therapy (CBT) tools — informational only, not clinical advice.',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.78),
+                      fontSize: 13,
+                      height: 1.3,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 12),
+
+                  // ---- Buttons ----
+                  Row(
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: _onOpenDrKanhaiyaChat,
+                        icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                        label: const Text('Start Chat'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: teal3,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          textStyle: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      OutlinedButton.icon(
+                        onPressed: _showDrKanhaiyaInfoSheet,
+                        icon: const Icon(Icons.info_outline, size: 18),
+                        label: const Text('Info'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: BorderSide(
+                            color: Colors.white.withOpacity(0.15),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          textStyle: const TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Consent + navigation handler (add below the widget)
+  void _onOpenDrKanhaiyaChat() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hideConsent = prefs.getBool('hide_drkanhaiya_consent') ?? false;
+
+    // if user already accepted once and checked "don't show again"
+    if (hideConsent) {
+      Navigator.pushNamed(context, '/drktv_chat');
+      return;
+    }
+
+    bool dontShowAgain = false;
+
+    final accept = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: StatefulBuilder(
+          builder: (ctx, setState) => Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFF004E4D).withOpacity(0.95),
+                  const Color(0xFF016C6C).withOpacity(0.9),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.4),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.fromLTRB(18, 22, 18, 14),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // --- Circular avatar ---
+                CircleAvatar(
+                  radius: 42,
+                  backgroundColor: Colors.white12,
+                  child: ClipOval(
+                    child: Image.asset(
+                      'images/drkanhaiya.png',
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // --- Title ---
+                const Text(
+                  'About this AI Chat',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // --- Description ---
+                Text(
+                  'The digital avatar of Dr. Kanhaiya provides informational guidance using CBT principles to support emotional wellbeing.\n\n'
+                  '⚠️ This chat is not a replacement for professional diagnosis or emergency care.\n'
+                  'If you are in crisis, please use the “Get Help” option or contact local services.',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.88),
+                    fontSize: 14,
+                    height: 1.45,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 18),
+
+                // --- Checkbox: Don't show again ---
+                GestureDetector(
+                  onTap: () => setState(() => dontShowAgain = !dontShowAgain),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Checkbox(
+                        value: dontShowAgain,
+                        onChanged: (val) =>
+                            setState(() => dontShowAgain = val ?? false),
+                        activeColor: const Color(0xFF008F89),
+                        checkColor: Colors.white,
+                      ),
+                      Text(
+                        "Don't show this again",
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // --- Buttons ---
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white70,
+                          side: BorderSide(
+                            color: Colors.white.withOpacity(0.3),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          if (dontShowAgain) {
+                            prefs.setBool('hide_drkanhaiya_consent', true);
+                          }
+                          Navigator.of(ctx).pop(true);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: teal3,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          elevation: 3,
+                          shadowColor: teal3.withOpacity(0.5),
+                        ),
+                        child: const Text(
+                          'Continue',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (accept == true) {
+      Navigator.pushNamed(context, '/drktv_chat');
+    }
+  }
+
+  // Info sheet for more details (optional)
+  // Add this import at top of the file if missing
+
+  void _showDrKanhaiyaInfoSheet() {
+    String lang = 'English'; // <-- move it OUTSIDE StatefulBuilder
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setState) {
+            final Map<String, Map<String, String>> L = {
+              'English': {
+                'title': 'Dr. Kanhaiya — AI Avatar (DrKtv)',
+                'desc':
+                    'An AI assistant trained to provide CBT-informed guidance and practical coping tools. It does not replace clinical care or crisis help.',
+                'how': 'How to use',
+                'step1':
+                    '1️⃣  Ask a short question about your mood, thought, or worry.',
+                'step2':
+                    '2️⃣  Use clear, everyday words or choose your language.',
+                'step3': '3️⃣  Try a CBT tip or exercise suggested by DrKtv.',
+                'examples': 'Examples (tap to copy)',
+                'ex1': 'I feel anxious before meetings — what can I do?',
+                'ex2': 'I keep thinking “I will fail” — help me challenge it.',
+                'safetyTitle': 'Safety first',
+                'safety':
+                    '⚠️ If you are in crisis or feel unsafe, please use the “Get Help” button below or call local emergency services. This chat provides educational guidance only.',
+                'start': 'Start chat',
+                'close': 'Close',
+                'copied': 'Copied to clipboard',
+              },
+              'हिन्दी': {
+                'title': 'डॉ. कन्हैया — एआई अवतार (DrKtv)',
+                'desc':
+                    'यह एक एआई सहायक है जो CBT-आधारित मार्गदर्शन और व्यावहारिक सहयोग रणनीतियाँ देता है। यह चिकित्सकीय सलाह या आपातकालीन सहायता का विकल्प नहीं है।',
+                'how': 'कैसे उपयोग करें',
+                'step1':
+                    '1️⃣  अपने मूड, विचार या चिंता से जुड़ा छोटा प्रश्न पूछें।',
+                'step2': '2️⃣  सरल शब्दों में लिखें या अपनी भाषा चुनें।',
+                'step3':
+                    '3️⃣  DrKtv द्वारा सुझाए गए CBT सुझावों या अभ्यासों को आज़माएँ।',
+                'examples': 'उदाहरण (कॉपी करने के लिए टैप करें)',
+                'ex1': 'मुझे मीटिंग से पहले चिंता होती है — मैं क्या करूं?',
+                'ex2':
+                    'मैं सोचता/सोचती हूँ “मैं असफल हो जाऊँगा/गी” — इसे कैसे चुनौती दूँ?',
+                'safetyTitle': 'सुरक्षा',
+                'safety':
+                    '⚠️ यदि आप संकट में हैं या खुद को असुरक्षित महसूस करते हैं, तो कृपया “Get Help” बटन दबाएँ या स्थानीय आपातकालीन सेवाओं से संपर्क करें। यह चैट केवल शैक्षणिक सहायता प्रदान करती है।',
+                'start': 'चैट शुरू करें',
+                'close': 'बंद करें',
+                'copied': 'कॉपी किया गया',
+              },
+            };
+
+            final t = L[lang]!;
+
+            Future<void> _copy(String text) async {
+              await Clipboard.setData(ClipboardData(text: text));
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(t['copied']!)));
+            }
+
+            return SafeArea(
+              child: Container(
+                margin: const EdgeInsets.only(top: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF021515),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20),
+                  ),
+                  border: Border.all(color: Colors.white.withOpacity(0.05)),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 18,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header: image, title, lang toggle, close
+                      Row(
+                        children: [
+                          ClipOval(
+                            child: Image.asset(
+                              'images/drkanhaiya.png',
+                              width: 64,
+                              height: 64,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              t['title']!,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 17,
+                              ),
+                            ),
+                          ),
+                          // Toggle Buttons
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white12,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                GestureDetector(
+                                  onTap: () => setState(() {
+                                    lang = 'English';
+                                  }),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: lang == 'English'
+                                          ? teal3
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      'EN',
+                                      style: TextStyle(
+                                        color: lang == 'English'
+                                            ? Colors.white
+                                            : Colors.white70,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => setState(() {
+                                    lang = 'हिन्दी';
+                                  }),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: lang == 'हिन्दी'
+                                          ? teal3
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      'हि',
+                                      style: TextStyle(
+                                        color: lang == 'हिन्दी'
+                                            ? Colors.white
+                                            : Colors.white70,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            icon: const Icon(Icons.close, color: Colors.white),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        t['desc']!,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          height: 1.4,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        t['how']!,
+                        style: const TextStyle(
+                          color: Colors.tealAccent,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        t['step1']!,
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      Text(
+                        t['step2']!,
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      Text(
+                        t['step3']!,
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        t['examples']!,
+                        style: const TextStyle(
+                          color: Colors.tealAccent,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: () => _copy(t['ex1']!),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white12,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            t['ex1']!,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: () => _copy(t['ex2']!),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white12,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            t['ex2']!,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        t['safetyTitle']!,
+                        style: const TextStyle(
+                          color: Colors.redAccent,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        t['safety']!,
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(
+                                  color: Colors.white.withOpacity(0.12),
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              child: Text(
+                                t['close']!,
+                                style: const TextStyle(color: Colors.white70),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                _onOpenDrKanhaiyaChat();
+                              },
+                              icon: const Icon(Icons.chat_bubble_outline),
+                              label: Text(t['start']!),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: teal3,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12.0,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   // Load per-program progress summary from SharedPreferences and compute avg mood from local entries
@@ -379,6 +1000,8 @@ class _HomePageState extends State<HomePage> {
                       // Quick tools row (includes ABCD)
                       _buildQuickTools(),
 
+                      const SizedBox(height: 12),
+                      _buildDrKanhaiyaChatCard(),
                       const SizedBox(height: 16),
 
                       // Programs carousel (simple horizontal list)
