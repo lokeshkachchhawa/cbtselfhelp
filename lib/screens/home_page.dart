@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -2162,40 +2163,83 @@ For more, tap "View full page".''';
 
   // Confirm then sign out
   Future<void> _confirmAndSignOut() async {
-    final ok = await showDialog<bool>(
+    final theme = Theme.of(context);
+
+    final bool? confirm = await showDialog<bool>(
       context: context,
+      barrierDismissible: true,
       builder: (ctx) => AlertDialog(
-        title: const Text('Sign out'),
-        content: const Text('Are you sure you want to sign out?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: const [
+            Icon(Icons.logout, color: Colors.teal),
+            SizedBox(width: 8),
+            Text('Sign out'),
+          ],
+        ),
+        content: const Text(
+          'Are you sure you want to sign out of your account?',
+          style: TextStyle(fontSize: 15),
+        ),
+        actionsPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            style: TextButton.styleFrom(foregroundColor: Colors.teal.shade700),
+            child: const Text('Stay signed in'),
           ),
-          ElevatedButton(
+          ElevatedButton.icon(
+            icon: const Icon(Icons.exit_to_app, size: 18),
+            label: const Text('Sign out'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade600,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Sign out'),
           ),
         ],
       ),
     );
 
-    if (ok != true) return;
+    if (confirm != true) return;
 
     try {
+      // Sign out from both Firebase & Google (if used)
+      final googleSignIn = GoogleSignIn();
+      if (await googleSignIn.isSignedIn()) {
+        await googleSignIn.signOut();
+      }
+
       await FirebaseAuth.instance.signOut();
+
       if (!mounted) return;
-      ScaffoldMessenger.of(
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Signed out successfully'),
+          backgroundColor: Colors.teal.shade600,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+
+      // Navigate to sign-in page and clear previous routes
+      Navigator.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Signed out')));
-      setState(() {
-        _progressFuture = _loadProgressSummary();
-      });
+      ).pushNamedAndRemoveUntil('/signin', (route) => false);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to sign out: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to sign out: $e'),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 

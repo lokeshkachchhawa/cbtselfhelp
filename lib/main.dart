@@ -7,6 +7,7 @@ import 'package:cbt_drktv/relax/relax_breath_page.dart';
 import 'package:cbt_drktv/relax/relax_pmr_page.dart';
 import 'package:cbt_drktv/screens/abcd_worksheet.dart';
 import 'package:cbt_drktv/screens/activities_page.dart';
+import 'package:cbt_drktv/screens/doctor_home.dart';
 import 'package:cbt_drktv/screens/drktv_chat_screen.dart';
 import 'package:cbt_drktv/screens/home_page.dart';
 import 'package:cbt_drktv/screens/relax_page.dart';
@@ -45,7 +46,8 @@ void main() async {
     }
   }
   await Firebase.initializeApp();
-
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(MyApp());
 }
 
@@ -92,6 +94,7 @@ class MyApp extends StatelessWidget {
           '/sounds': (_) => const RelaxSoundsPage(),
           '/programs': (_) => const ProgramsPage(),
           '/drktv_chat': (ctx) => const DrKtvChatScreen(),
+          '/doctor/home': (ctx) => const DoctorHome(),
         },
       ),
     );

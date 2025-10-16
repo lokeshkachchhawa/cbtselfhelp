@@ -18,13 +18,13 @@ class _SignUpPageState extends State<SignUpPage> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
-  bool _isLoading = false;
-  String? _errorMessage;
-  bool _obscurePassword = true;
-  bool _obscureConfirm = true;
-
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirm = true;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -83,6 +83,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
+    FocusScope.of(context).unfocus();
 
     final email = _emailController.text.trim();
     final password = _passwordController.text;
@@ -97,7 +98,6 @@ class _SignUpPageState extends State<SignUpPage> {
         email: email,
         password: password,
       );
-
       final user = userCred.user;
       if (user == null) throw Exception('User creation failed unexpectedly.');
 
@@ -116,14 +116,14 @@ class _SignUpPageState extends State<SignUpPage> {
       } catch (_) {}
 
       if (!mounted) return;
-      // Use shared router to navigate appropriately
       await navigateAfterSignIn(context, user: user);
     } on FirebaseAuthException catch (e) {
-      setState(() => _errorMessage = _friendlyAuthMessage(e));
+      if (mounted) setState(() => _errorMessage = _friendlyAuthMessage(e));
     } on FirebaseException catch (e) {
-      setState(() => _errorMessage = e.message ?? 'Database error: $e');
+      if (mounted)
+        setState(() => _errorMessage = e.message ?? 'Database error: $e');
     } catch (e) {
-      setState(() => _errorMessage = e.toString());
+      if (mounted) setState(() => _errorMessage = e.toString());
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -131,7 +131,6 @@ class _SignUpPageState extends State<SignUpPage> {
 
   Future<void> _signInWithGoogle() async {
     FocusScope.of(context).unfocus();
-
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -140,8 +139,7 @@ class _SignUpPageState extends State<SignUpPage> {
     try {
       final googleUser = await GoogleSignIn().signIn();
       if (googleUser == null) {
-        if (mounted) setState(() => _isLoading = false);
-        return;
+        return; // cancelled
       }
 
       final googleAuth = await googleUser.authentication;
@@ -154,30 +152,26 @@ class _SignUpPageState extends State<SignUpPage> {
       final user = userCred.user;
       if (user == null) throw Exception('Google sign-in failed.');
 
-      if ((user.displayName == null || user.displayName!.isEmpty) &&
-          googleUser.displayName != null) {
-        try {
-          await user.updateDisplayName(googleUser.displayName);
-        } catch (_) {}
-      }
-      if ((user.photoURL == null || user.photoURL!.isEmpty) &&
-          googleUser.photoUrl != null) {
-        try {
-          await user.updatePhotoURL(googleUser.photoUrl);
-        } catch (_) {}
-      }
-
+      // write user doc
       await _createOrUpdateFirestoreUser(user);
 
       if (!mounted) return;
       await navigateAfterSignIn(context, user: user);
     } on FirebaseAuthException catch (e) {
-      setState(() => _errorMessage = _friendlyAuthMessage(e));
+      if (mounted) setState(() => _errorMessage = _friendlyAuthMessage(e));
     } catch (e) {
-      setState(() => _errorMessage = 'Google sign-in failed: ${e.toString()}');
+      if (mounted)
+        setState(
+          () => _errorMessage = 'Google sign-in failed: ${e.toString()}',
+        );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _goToSignIn() {
+    if (!mounted) return;
+    Navigator.of(context).pushReplacementNamed('/signin');
   }
 
   @override
@@ -263,10 +257,6 @@ class _SignUpPageState extends State<SignUpPage> {
                                 padding: const EdgeInsets.all(4),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 1.2,
-                                  ),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Image.asset(
@@ -463,12 +453,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           style: TextStyle(color: Colors.black54),
                         ),
                         TextButton(
-                          onPressed: _isLoading
-                              ? null
-                              : () => Navigator.pushReplacementNamed(
-                                  context,
-                                  '/signin',
-                                ),
+                          onPressed: _isLoading ? null : _goToSignIn,
                           child: const Text(
                             'Log In',
                             style: TextStyle(color: Colors.teal),

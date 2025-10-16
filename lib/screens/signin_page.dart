@@ -14,20 +14,18 @@ class SignInScreen extends StatefulWidget {
 
 class _SignInScreenState extends State<SignInScreen> {
   final _formKey = GlobalKey<FormState>();
-
-  // Controllers & focus nodes
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _emailFocus = FocusNode();
   final _passwordFocus = FocusNode();
 
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
   bool _isLoading = false;
   bool _isResetting = false;
-  String? _errorMessage;
   bool _obscurePassword = true;
-
-  final _auth = FirebaseAuth.instance;
-  final _firestore = FirebaseFirestore.instance;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -71,7 +69,6 @@ class _SignInScreenState extends State<SignInScreen> {
       final uid = user.uid;
       final docRef = _firestore.collection('users').doc(uid);
       final docSnap = await docRef.get();
-
       if (!docSnap.exists) {
         final derivedName =
             user.displayName ?? (user.email?.split('@').first ?? 'User');
@@ -86,22 +83,75 @@ class _SignInScreenState extends State<SignInScreen> {
           'baselineCompleted': false,
         }, SetOptions(merge: true));
       } else {
-        try {
-          await docRef.update({'lastLogin': FieldValue.serverTimestamp()});
-        } catch (_) {}
+        await docRef.update({'lastLogin': FieldValue.serverTimestamp()});
       }
     } catch (e) {
       debugPrint('ensureUserDoc failed: $e');
     }
   }
 
+  /// Post-sign-in navigation.
+  /// - If user doc has role == 'doctor' -> /doctor/home
+  /// - Otherwise call shared navigateAfterSignIn(context, user: user)
   Future<void> _postSignInNavigation(User? user) async {
     if (!mounted) return;
 
+    // Ensure basic user doc exists / update lastLogin
     await _ensureUserDoc(user);
 
-    // Use shared router
-    await navigateAfterSignIn(context, user: user);
+    // If we don't have a firebase user for some reason, delegate to shared router
+    if (user == null) {
+      try {
+        await navigateAfterSignIn(context, user: null);
+        return;
+      } catch (e, st) {
+        debugPrint('navigateAfterSignIn(null) failed: $e\n$st');
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/');
+        return;
+      }
+    }
+
+    final uid = user.uid;
+
+    try {
+      // Read the user's Firestore document to look for role field
+      final docRef = _firestore.collection('users').doc(uid);
+      final snap = await docRef.get();
+
+      if (snap.exists) {
+        final data = snap.data() ?? <String, dynamic>{};
+        final roleField = data['role'];
+        if (roleField != null) {
+          final role = roleField is String ? roleField : roleField.toString();
+          debugPrint('User $uid role from Firestore: $role');
+          // route doctor explicitly if role indicates doctor
+          if (role.toLowerCase() == 'doctor') {
+            if (!mounted) return;
+            Navigator.pushReplacementNamed(context, '/doctor/home');
+            return;
+          }
+        }
+      } else {
+        debugPrint(
+          'User doc for $uid does not exist (unexpected at this point).',
+        );
+      }
+    } catch (e, st) {
+      debugPrint('Failed to read user doc role: $e\n$st');
+      // We'll fall through to the shared router if reading role fails
+    }
+
+    // Default: use shared router which contains onboarding/baseline logic
+    try {
+      await navigateAfterSignIn(context, user: user);
+    } catch (e, st) {
+      debugPrint(
+        'navigateAfterSignIn failed when called with Firebase User: $e\n$st',
+      );
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/');
+    }
   }
 
   Future<void> _signInWithEmail() async {
@@ -134,7 +184,6 @@ class _SignInScreenState extends State<SignInScreen> {
 
   Future<void> _signInWithGoogle() async {
     FocusScope.of(context).unfocus();
-
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -143,10 +192,9 @@ class _SignInScreenState extends State<SignInScreen> {
     try {
       final googleUser = await GoogleSignIn().signIn();
       if (googleUser == null) {
-        if (mounted) setState(() => _isLoading = false);
+        // user cancelled
         return;
       }
-
       final googleAuth = await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
@@ -154,8 +202,12 @@ class _SignInScreenState extends State<SignInScreen> {
       );
 
       final userCred = await _auth.signInWithCredential(credential);
+      final user = userCred.user;
 
-      await _postSignInNavigation(userCred.user ?? _auth.currentUser);
+      // best-effort: update firestore / profile if missing
+      await _ensureUserDoc(user);
+
+      await _postSignInNavigation(user ?? _auth.currentUser);
     } on FirebaseAuthException catch (e) {
       await _showError(_friendlyFirebaseMessage(e));
     } catch (e) {
@@ -163,10 +215,6 @@ class _SignInScreenState extends State<SignInScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
-  }
-
-  void _navigateToSignup() {
-    Navigator.pushNamed(context, '/signup');
   }
 
   Future<void> _sendPasswordResetEmail(String email) async {
@@ -264,6 +312,11 @@ class _SignInScreenState extends State<SignInScreen> {
     }
   }
 
+  void _navigateToSignup() {
+    if (!mounted) return;
+    Navigator.of(context).pushNamed('/signup');
+  }
+
   @override
   Widget build(BuildContext context) {
     final inputDecoration = InputDecoration(
@@ -352,10 +405,6 @@ class _SignInScreenState extends State<SignInScreen> {
                                 padding: const EdgeInsets.all(4),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 1.2,
-                                  ),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Image.asset(
@@ -461,9 +510,6 @@ class _SignInScreenState extends State<SignInScreen> {
                                       () =>
                                           _obscurePassword = !_obscurePassword,
                                     ),
-                                    tooltip: _obscurePassword
-                                        ? 'Show password'
-                                        : 'Hide password',
                                   ),
                                 ),
                                 obscureText: _obscurePassword,

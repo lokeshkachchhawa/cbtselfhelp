@@ -1,6 +1,16 @@
 // lib/screens/drktv_chat_screen.dart
+// Updated DrKtv chat screen with doctor-approval flow backed by Firestore.
+// - User sends message -> AI generates reply (written to Firestore as approved:false).
+// - Doctor UI (separate) can edit/approve assistant reply -> when approved:true, user sees message.
+// - Uses FirebaseAuth.currentUser.uid as chatId and displayName.
+// UI mostly unchanged from original; Firestore + listeners added.
+
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -17,24 +27,183 @@ class DrKtvChatScreen extends StatefulWidget {
   State<DrKtvChatScreen> createState() => _DrktvChatScreenState();
 }
 
-class _DrktvChatScreenState extends State<DrKtvChatScreen> {
+enum _AiProvider { openai, gemini }
+
+class _DrktvChatScreenState extends State<DrKtvChatScreen>
+    with SingleTickerProviderStateMixin {
   final List<_ChatMessage> _messages = [];
   final TextEditingController _ctrl = TextEditingController();
   final ScrollController _scrollCtrl = ScrollController();
+  final List<TapGestureRecognizer> _linkRecognizers = [];
+  late final AnimationController _ringController;
+
   bool _loading = false; // AI is generating
   bool _consentAccepted = false;
   SharedPreferences? _prefs;
-  final _uuid = const Uuid();
 
   static const _prefsKey = 'drktv_chat_history';
   static const _prefsConsentKey = 'drktv_consent';
 
-  // UI state
+  // Provider state (OpenAI by default)
+  _AiProvider _provider = _AiProvider.openai;
+
+  // Firestore & Auth
+  final _firestore = FirebaseFirestore.instance;
+  final _auth = FirebaseAuth.instance;
+
+  // Chat identifiers
+  String? _chatId; // will be currentUser.uid
+  String? _userName;
+
+  // track message ids we've already added locally (avoid duplicates)
+  final Set<String> _localMessageIds = {};
+
+  // Firestore listener subscription
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _approvedMessagesSub;
 
   @override
   void initState() {
     super.initState();
+    _ringController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    );
     _initPrefsAndHistory();
+    _initChatIdentifiersAndListeners();
+  }
+
+  Future<void> _initChatIdentifiersAndListeners() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      // If no logged-in user, we'll fall back to local mode only.
+      debugPrint('DrKtvChat: no signed-in user, chat will be local-only.');
+      return;
+    }
+    _chatId = user.uid;
+    _userName = user.displayName ?? (user.email?.split('@').first ?? 'User');
+
+    // Start listening for assistant messages with approved == true
+    // We only need assistant approved messages after user's last local timestamp.
+    // We'll subscribe to all approved assistant messages and check duplicates via local id set.
+    try {
+      final ref = _firestore
+          .collection('chats')
+          .doc(_chatId)
+          .collection('messages')
+          .where('sender', isEqualTo: 'assistant')
+          .where('approved', isEqualTo: true)
+          .orderBy('timestamp', descending: false)
+          .withConverter<Map<String, dynamic>>(
+            fromFirestore: (snap, _) =>
+                Map<String, dynamic>.from(snap.data() ?? {}),
+            toFirestore: (map, _) => map,
+          );
+
+      _approvedMessagesSub = ref.snapshots().listen(
+        (snap) {
+          for (final doc in snap.docs) {
+            final data = doc.data();
+            final id = doc.id;
+            if (_localMessageIds.contains(id)) continue;
+
+            final text = (data['text'] ?? '') as String;
+            final ts = data['timestamp'] is int
+                ? data['timestamp'] as int
+                : DateTime.now().millisecondsSinceEpoch;
+            final edited = data['editedByDoctor'] != null;
+
+            final msg = _ChatMessage._(
+              id: id,
+              text: text,
+              isUser: false,
+              isSystem: false,
+              timestamp: ts,
+            );
+
+            // Add to local messages and persist
+            _localMessageIds.add(id);
+            setState(() {
+              _messages.add(msg);
+            });
+            _saveMessagesToPrefs(); // persist the newly approved message
+            _scrollToBottom();
+          }
+        },
+        onError: (e) {
+          debugPrint('Approved messages listener error: $e');
+        },
+      );
+    } catch (e) {
+      debugPrint('Failed to start approved messages listener: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final r in _linkRecognizers) {
+      try {
+        r.dispose();
+      } catch (_) {}
+    }
+    _ringController.dispose();
+    _ctrl.dispose();
+    _scrollCtrl.dispose();
+    _approvedMessagesSub?.cancel();
+    super.dispose();
+  }
+
+  /// Defensive extractor for Gemini generateContent responses.
+  String _extractGeminiText(Map<String, dynamic> data) {
+    try {
+      // 1) candidates -> content -> parts -> text
+      if (data.containsKey('candidates')) {
+        final candidates = data['candidates'] as List<dynamic>;
+        if (candidates.isNotEmpty) {
+          final first = candidates.first;
+          if (first is Map<String, dynamic>) {
+            final content = first['content'];
+            if (content is Map<String, dynamic>) {
+              final parts = content['parts'];
+              if (parts is List && parts.isNotEmpty) {
+                final p0 = parts.first;
+                if (p0 is Map<String, dynamic> && p0['text'] is String) {
+                  return (p0['text'] as String).trim();
+                }
+              }
+              if (content['text'] is String)
+                return (content['text'] as String).trim();
+              if (content['output'] is String)
+                return (content['output'] as String).trim();
+            }
+          }
+          // fallback older shapes
+          if (first is Map<String, dynamic>) {
+            if (first['output'] is String)
+              return (first['output'] as String).trim();
+            if (first['content'] is String)
+              return (first['content'] as String).trim();
+            if (first['text'] is String)
+              return (first['text'] as String).trim();
+          }
+        }
+      }
+
+      // 2) top-level 'output' object
+      if (data.containsKey('output')) {
+        final out = data['output'];
+        if (out is Map<String, dynamic>) {
+          if (out['text'] is String) return (out['text'] as String).trim();
+          if (out['content'] is String)
+            return (out['content'] as String).trim();
+        }
+      }
+
+      // 3) fallback: stringify something useful
+      if (data['candidates'] != null) return jsonEncode(data['candidates']);
+      return jsonEncode(data);
+    } catch (e) {
+      return 'Error extracting Gemini text: $e';
+    }
   }
 
   Future<void> _initPrefsAndHistory() async {
@@ -44,14 +213,255 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen> {
     await _loadMessagesFromPrefs();
   }
 
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    _scrollCtrl.dispose();
-    super.dispose();
+  void _setLoading(bool on) {
+    if (!mounted) return;
+    setState(() => _loading = on);
+    if (on) {
+      _ringController.repeat();
+    } else {
+      _ringController.stop();
+      _ringController.reset();
+    }
   }
 
-  // ---------------- Persistence helpers ----------------
+  Widget buildProfileAvatar() {
+    const neonColors = [
+      Color(0xFF00F5D4),
+      Color(0xFF00E5FF),
+      Color(0xFF8A2BE2),
+      Color(0xFF00F5D4),
+    ];
+
+    return SizedBox(
+      width: 48,
+      height: 48,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          if (_loading)
+            RotationTransition(
+              turns: _ringController,
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const SweepGradient(
+                    startAngle: 0.0,
+                    endAngle: 3.14 * 2,
+                    colors: neonColors,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.tealAccent.withOpacity(0.18),
+                      blurRadius: 14,
+                      spreadRadius: 4,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          if (_loading)
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.18),
+                shape: BoxShape.circle,
+              ),
+            ),
+
+          CircleAvatar(
+            radius: 18,
+            backgroundImage: const AssetImage('images/drkanhaiya.png'),
+            backgroundColor: Colors.teal.shade200,
+          ),
+        ],
+      ),
+    );
+  }
+
+  TextSpan _parseMarkdownToTextSpan(String text) {
+    final lines = text.split('\n');
+    final children = <InlineSpan>[];
+
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i].trimRight();
+
+      if (line.isEmpty) {
+        children.add(TextSpan(text: '\n'));
+        continue;
+      }
+
+      if (line.startsWith('>')) {
+        final content = line.substring(1).trim();
+        final span = TextSpan(
+          text: '❝ ',
+          style: _textStyle(
+            weight: FontWeight.w600,
+          ).copyWith(color: Colors.tealAccent.shade100),
+          children: _parseInline(content),
+        );
+        children.add(
+          TextSpan(
+            children: [span],
+            style: _textStyle().copyWith(
+              fontStyle: FontStyle.italic,
+              color: Colors.white70,
+            ),
+          ),
+        );
+        children.add(const TextSpan(text: '\n'));
+        continue;
+      }
+
+      final olMatch = RegExp(r'^\s*(\d+)\.\s+(.*)\$').firstMatch(line);
+      if (olMatch != null) {
+        final idx = olMatch.group(1)!;
+        final content = olMatch.group(2)!;
+        children.add(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: '$idx. ',
+                style: _textStyle(
+                  weight: FontWeight.w600,
+                ).copyWith(color: Colors.tealAccent.shade100),
+              ),
+              ..._parseInline(content),
+            ],
+          ),
+        );
+        children.add(const TextSpan(text: '\n'));
+        continue;
+      }
+
+      final bulletMatch = RegExp(r'^\s*[-*]\s+(.*)\$').firstMatch(line);
+      if (bulletMatch != null) {
+        final content = bulletMatch.group(1)!;
+        children.add(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: '• ',
+                style: _textStyle(
+                  weight: FontWeight.w600,
+                ).copyWith(color: Colors.tealAccent.shade100),
+              ),
+              ..._parseInline(content),
+            ],
+          ),
+        );
+        children.add(const TextSpan(text: '\n'));
+        continue;
+      }
+
+      children.addAll(_parseInline(line));
+      children.add(const TextSpan(text: '\n'));
+    }
+
+    if (children.isNotEmpty && children.last is TextSpan) {
+      final last = children.removeLast() as TextSpan;
+      if (last.text == '\n') {
+      } else {
+        children.add(last);
+      }
+    }
+
+    return TextSpan(children: children, style: _textStyle());
+  }
+
+  List<TextSpan> _parseInline(String input) {
+    final spans = <TextSpan>[];
+    var s = input;
+
+    final linkReg = RegExp(r'\[([^\]]+)\]\(([^)]+)\)');
+    final boldReg = RegExp(r'\*\*([^*]+)\*\*');
+    final italicReg = RegExp(r'_(.+?)_');
+
+    while (s.isNotEmpty) {
+      final linkMatch = linkReg.firstMatch(s);
+      final boldMatch = boldReg.firstMatch(s);
+      final italicMatch = italicReg.firstMatch(s);
+
+      Match? earliest;
+      String type = '';
+      if (linkMatch != null) {
+        earliest = linkMatch;
+        type = 'link';
+      }
+      if (boldMatch != null &&
+          (earliest == null || boldMatch.start < earliest.start)) {
+        earliest = boldMatch;
+        type = 'bold';
+      }
+      if (italicMatch != null &&
+          (earliest == null || italicMatch.start < earliest.start)) {
+        earliest = italicMatch;
+        type = 'italic';
+      }
+
+      if (earliest == null) {
+        spans.add(TextSpan(text: s));
+        break;
+      }
+
+      if (earliest.start > 0) {
+        spans.add(TextSpan(text: s.substring(0, earliest.start)));
+      }
+
+      final matchedText = earliest.group(0)!;
+      if (type == 'link') {
+        final label = earliest.group(1)!;
+        final url = earliest.group(2)!;
+        final recognizer = TapGestureRecognizer()
+          ..onTap = () {
+            if (url.startsWith('/')) {
+              Navigator.pushNamed(context, url);
+            }
+          };
+        _linkRecognizers.add(recognizer);
+        spans.add(
+          TextSpan(
+            text: label,
+            style: _textStyle().copyWith(
+              color: Colors.tealAccent.shade100,
+              decoration: TextDecoration.underline,
+            ),
+            recognizer: recognizer,
+          ),
+        );
+      } else if (type == 'bold') {
+        final inner = earliest.group(1)!;
+        spans.add(
+          TextSpan(
+            text: inner,
+            style: _textStyle(
+              weight: FontWeight.w700,
+            ).copyWith(color: Colors.tealAccent.shade100),
+          ),
+        );
+      } else if (type == 'italic') {
+        final inner = earliest.group(1)!;
+        spans.add(
+          TextSpan(
+            text: inner,
+            style: _textStyle(
+              weight: FontWeight.w500,
+            ).copyWith(fontStyle: FontStyle.italic, color: Colors.white70),
+          ),
+        );
+      } else {
+        spans.add(TextSpan(text: matchedText));
+      }
+
+      s = s.substring(earliest.end);
+    }
+
+    return spans;
+  }
+
   Future<void> _saveMessagesToPrefs() async {
     try {
       final list = _messages.map((m) => m.toMap()).toList();
@@ -68,9 +478,12 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen> {
       if (jsonStr == null || jsonStr.isEmpty) return;
       final data = jsonDecode(jsonStr) as List<dynamic>;
       _messages.clear();
+      _localMessageIds.clear();
       for (final item in data) {
         if (item is Map) {
-          _messages.add(_ChatMessage.fromMap(Map<String, dynamic>.from(item)));
+          final m = _ChatMessage.fromMap(Map<String, dynamic>.from(item));
+          _messages.add(m);
+          _localMessageIds.add(m.id);
         }
       }
       if (mounted) setState(() {});
@@ -93,38 +506,53 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen> {
   }
 
   // --- API key resolution (dart-define first, then dotenv) ---
-  Future<String?> _getApiKey() async {
-    // 1) compile-time define (recommended)
-    const compileTimeApiKey = String.fromEnvironment(
-      'OPENAI_API_KEY',
-      defaultValue: '',
-    );
-    if (compileTimeApiKey.isNotEmpty) return compileTimeApiKey;
+  Future<String?> _getApiKey(_AiProvider forProvider) async {
+    if (forProvider == _AiProvider.openai) {
+      const compileTimeApiKey = String.fromEnvironment(
+        'OPENAI_API_KEY',
+        defaultValue: '',
+      );
+      if (compileTimeApiKey.isNotEmpty) return compileTimeApiKey;
 
-    // 2) runtime dotenv (if loaded)
-    try {
-      final dot = dotenv.env['OPENAI_API_KEY'];
-      if (dot != null && dot.trim().isNotEmpty) return dot.trim();
-    } catch (e) {
-      debugPrint('dotenv lookup failed: $e');
+      try {
+        final dot = dotenv.env['OPENAI_API_KEY'];
+        if (dot != null && dot.trim().isNotEmpty) return dot.trim();
+      } catch (e) {
+        debugPrint('dotenv lookup failed: $e');
+      }
+      return null;
+    } else {
+      // GEMINI
+      const compileTimeApiKey = String.fromEnvironment(
+        'GEMINI_API_KEY',
+        defaultValue: '',
+      );
+      if (compileTimeApiKey.isNotEmpty) return compileTimeApiKey;
+
+      try {
+        final dot = dotenv.env['GEMINI_API_KEY'];
+        if (dot != null && dot.trim().isNotEmpty) return dot.trim();
+      } catch (e) {
+        debugPrint('dotenv lookup failed: $e');
+      }
+      return null;
     }
-
-    // not found
-    return null;
   }
 
-  // --- Build the system instruction (not shown in UI) ---
   String _systemPromptForCBT() {
     return '''
-You are Dr. Kanhaiya (DrKtv), an empathetic AI psychiatrist specializing in Cognitive Behavioral Therapy (CBT). 
-Respond to patient questions using CBT fundamentals: 
-- Identify automatic thoughts and cognitive distortions (e.g., all-or-nothing thinking, catastrophizing).
-- Help challenge unhelpful beliefs with evidence-based questioning.
-- Suggest behavioral activation, relaxation techniques, or homework like thought records.
-- Be supportive, non-judgmental, and culturally sensitive for Indian contexts.
-- Always remind that you provide informational support, not diagnosis or treatment—advise seeking professional help for serious issues.
-- Keep responses concise (2-4 paragraphs), warm, and actionable.
-- Use the same language the user used for their question. If you cannot, ask politely before switching.
+You are Dr. Kanhaiya (DrKtv) — an empathetic AI psychiatrist who replies in a concise, 
+warm, supportive, and practical tone based on CBT principles when helpful.  
+If the user writes in Hindi or Hinglish, reply mainly in Hindi (Devanagari) and 
+add English words in brackets for clarity — e.g., विचार(thought), चिंता(anxiety), 
+गतिविधि(activity).  
+Use natural language with emojis 🌸🧠🌱💡✅🙏🌻👉.  
+
+Adapt your style:
+- For emotional or factual questions → give brief empathetic and clear answers.  
+- For anxiety/overthinking issues → include short CBT-style steps.  
+
+End each reply with an encouraging or reflective question inviting follow-up.
 ''';
   }
 
@@ -132,12 +560,10 @@ Respond to patient questions using CBT fundamentals:
   Future<String> _queryOpenAI(
     String prompt,
     List<Map<String, String>> history,
+    String apiKey,
   ) async {
-    final apiKey = await _getApiKey();
-    if (apiKey == null || apiKey.trim().isEmpty) {
-      throw Exception(
-        'OpenAI API key not set. Provide via --dart-define=OPENAI_API_KEY=sk-... or set dotenv in main().',
-      );
+    if (apiKey.trim().isEmpty) {
+      throw Exception('OpenAI API key not set.');
     }
 
     final systemInstruction = _systemPromptForCBT();
@@ -157,7 +583,7 @@ Respond to patient questions using CBT fundamentals:
     final body = jsonEncode({
       'model': 'gpt-4o-mini',
       'messages': messages,
-      'temperature': 0.2,
+      'temperature': 1,
       'max_tokens': 800,
     });
 
@@ -175,7 +601,6 @@ Respond to patient questions using CBT fundamentals:
       throw Exception('OpenAI error ${resp.statusCode}: $safe');
     }
 
-    // decode bytes as UTF-8 to avoid mojibake for non-ASCII languages
     final utf8Body = utf8.decode(resp.bodyBytes);
     final data = jsonDecode(utf8Body) as Map<String, dynamic>;
 
@@ -184,13 +609,160 @@ Respond to patient questions using CBT fundamentals:
     return text.trim();
   }
 
-  // Build history for OpenAI: convert our _messages to [{role:, content:},...]
+  // --- Gemini call (Generative Language HTTP REST) ---
+  Future<String> _queryGemini(String prompt, String apiKey) async {
+    if (apiKey.trim().isEmpty) {
+      throw Exception('Gemini API key not set.');
+    }
+
+    final model = dotenv.env['GEMINI_MODEL'] ?? 'gemini-2.5-flash-lite';
+    final base =
+        'https://generativelanguage.googleapis.com/v1/models/$model:generateContent';
+
+    final body = jsonEncode({
+      'contents': [
+        {
+          'role': 'user',
+          'parts': [
+            {'text': '${_systemPromptForCBT()}\n\nUser: $prompt\nAssistant:'},
+          ],
+        },
+      ],
+      'generation_config': {'temperature': 0.8, 'maxOutputTokens': 800},
+    });
+
+    // 1) Try API key in query param first (common for API keys)
+    try {
+      final keyUrl = Uri.parse('$base?key=$apiKey');
+      final resp = await http.post(
+        keyUrl,
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+
+      debugPrint('Gemini (key param) status: ${resp.statusCode}');
+      debugPrint('Gemini (key param) headers: ${resp.headers}');
+      debugPrint('Gemini (key param) body: ${utf8.decode(resp.bodyBytes)}');
+
+      if (resp.statusCode < 400) {
+        final utf8Body = utf8.decode(resp.bodyBytes);
+        final data = jsonDecode(utf8Body) as Map<String, dynamic>;
+        return _extractGeminiText(data);
+      }
+    } catch (e) {
+      debugPrint('Gemini key-param attempt failed: $e');
+    }
+
+    // 2) Try Bearer auth (useful if apiKey is an OAuth access token)
+    try {
+      final bearerUrl = Uri.parse(base);
+      final resp = await http.post(
+        bearerUrl,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $apiKey',
+        },
+        body: body,
+      );
+
+      debugPrint('Gemini (bearer) status: ${resp.statusCode}');
+      debugPrint('Gemini (bearer) headers: ${resp.headers}');
+      debugPrint('Gemini (bearer) body: ${utf8.decode(resp.bodyBytes)}');
+
+      if (resp.statusCode < 400) {
+        final utf8Body = utf8.decode(resp.bodyBytes);
+        final data = jsonDecode(utf8Body) as Map<String, dynamic>;
+        return _extractGeminiText(data);
+      } else {
+        final safe = utf8.decode(resp.bodyBytes);
+        throw Exception('Gemini error ${resp.statusCode}: $safe');
+      }
+    } catch (e) {
+      throw Exception('Gemini request failed: $e');
+    }
+  }
+
   List<Map<String, String>> _buildHistoryForOpenAI() {
     final out = <Map<String, String>>[];
     for (final m in _messages) {
       out.add({'role': m.isUser ? 'user' : 'assistant', 'content': m.text});
     }
     return out;
+  }
+
+  // New helper: ensure chatIndex doc exists and update pending count/lastMessage
+  Future<void> _updateChatIndexForPending(String lastMessageText) async {
+    if (_chatId == null) return;
+    final chatIndexRef = _firestore.collection('chatIndex').doc(_chatId);
+    try {
+      await chatIndexRef.set({
+        'userId': _chatId,
+        'userName': _userName ?? '',
+        'lastMessage': lastMessageText,
+        'lastUpdated': FieldValue.serverTimestamp(),
+        'pendingCount': FieldValue.increment(1),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Failed to update chatIndex: $e');
+    }
+  }
+
+  // New: write user message doc to Firestore (for doctor's view)
+  Future<void> _writeUserMessageToFirestore(
+    String messageId,
+    String text,
+    int ts,
+  ) async {
+    if (_chatId == null) return;
+    final messagesRef = _firestore
+        .collection('chats')
+        .doc(_chatId)
+        .collection('messages');
+    try {
+      await messagesRef.doc(messageId).set({
+        'sender': 'user',
+        'text': text,
+        'timestamp': ts,
+        'approved': true, // user messages are visible immediately
+      }, SetOptions(merge: true));
+      // Also update chatIndex (non-pending update)
+      await _firestore.collection('chatIndex').doc(_chatId).set({
+        'userId': _chatId,
+        'userName': _userName ?? '',
+        'lastMessage': text,
+        'lastUpdated': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Failed to write user message to Firestore: $e');
+    }
+  }
+
+  // New: write AI-suggested assistant reply to Firestore with approved:false
+  Future<void> _writeAiReplyToFirestore(String text, int ts) async {
+    if (_chatId == null) return;
+    final messagesRef = _firestore
+        .collection('chats')
+        .doc(_chatId)
+        .collection('messages');
+    try {
+      final docRef = messagesRef.doc(); // generated id
+      await docRef.set({
+        'sender': 'assistant',
+        'text': text,
+        'timestamp': ts,
+        'approved': false,
+        'suggestedBy': 'ai',
+      }, SetOptions(merge: true));
+
+      // update chatIndex so doctor can see a pending reply
+      await _updateChatIndexForPending('AI response pending approval');
+
+      debugPrint(
+        'AI reply written to Firestore (awaiting approval): ${docRef.id}',
+      );
+    } catch (e) {
+      debugPrint('Failed to write AI reply to Firestore: $e');
+    }
   }
 
   Future<void> _sendMessage() async {
@@ -236,42 +808,68 @@ Respond to patient questions using CBT fundamentals:
       await _prefs?.setBool(_prefsConsentKey, true);
     }
 
-    // Add user message locally and save
+    // Create local user message and persist
     final userMsg = _ChatMessage.user(text);
     setState(() {
       _messages.add(userMsg);
+      _localMessageIds.add(userMsg.id);
       _ctrl.clear();
-      _loading = true; // show typing indicator & disable send
     });
     await _saveMessagesToPrefs();
     _scrollToBottom();
 
-    try {
-      final history = _buildHistoryForOpenAI();
-      final reply = await _queryOpenAI(text, history);
+    // Write the user message to Firestore (immediately visible to doctor)
+    await _writeUserMessageToFirestore(userMsg.id, text, userMsg.timestamp);
 
-      final assistantMsg = _ChatMessage.assistant(reply);
-      setState(() {
-        _messages.add(assistantMsg);
-      });
-      await _saveMessagesToPrefs();
-      _scrollToBottom();
-    } catch (e) {
-      debugPrint('Chat send error: $e');
+    _setLoading(true);
+
+    try {
+      // Query AI provider
+      String reply;
+      if (_provider == _AiProvider.openai) {
+        final apiKey = await _getApiKey(_AiProvider.openai);
+        if (apiKey == null) throw Exception('OpenAI API key not found.');
+        final history = _buildHistoryForOpenAI();
+        reply = await _queryOpenAI(text, history, apiKey);
+      } else {
+        final apiKey = await _getApiKey(_AiProvider.gemini);
+        if (apiKey == null) throw Exception('Gemini API key not found.');
+        reply = await _queryGemini(text, apiKey);
+      }
+
+      // Write AI reply to Firestore as approved:false so doctor can review/edit/approve
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      await _writeAiReplyToFirestore(reply, ts);
+
+      // Do NOT add AI reply to _messages (user should not see it until doctor approves).
+      // Show a short acknowledgement
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Response generated and sent to your reviewer for approval.',
+            ),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } on Exception catch (e) {
+      debugPrint('Chat send error (AI): $e');
+      // If AI fails, show assistant error message locally (so user isn't left hanging).
       final errMsg = _ChatMessage.assistant(
         'Sorry — failed to get a reply. (${e})',
       );
       setState(() {
         _messages.add(errMsg);
+        _localMessageIds.add(errMsg.id);
       });
       await _saveMessagesToPrefs();
       _scrollToBottom();
     } finally {
-      if (mounted) setState(() => _loading = false);
+      _setLoading(false);
     }
   }
 
-  // Build a consistent text style using Noto (good Indic coverage)
   TextStyle _textStyle({
     double size = 15,
     FontWeight weight = FontWeight.w400,
@@ -293,7 +891,6 @@ Respond to patient questions using CBT fundamentals:
     );
   }
 
-  // ---------------- UI pieces ----------------
   Widget _buildDisclaimerCard() {
     return Container(
       margin: const EdgeInsets.only(top: 4),
@@ -318,7 +915,6 @@ Respond to patient questions using CBT fundamentals:
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Circular icon badge
               Container(
                 height: 34,
                 width: 34,
@@ -333,8 +929,6 @@ Respond to patient questions using CBT fundamentals:
                 ),
               ),
               const SizedBox(width: 12),
-
-              // Text
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -358,25 +952,6 @@ Respond to patient questions using CBT fundamentals:
                   ],
                 ),
               ),
-
-              // More button
-              TextButton(
-                style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFF79C2BF),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                ),
-                onPressed: _showMoreInfo,
-                child: Text(
-                  'More',
-                  style: _textStyle(
-                    size: 13,
-                    weight: FontWeight.w600,
-                  ).copyWith(color: Colors.tealAccent.shade100),
-                ),
-              ),
             ],
           ),
         ),
@@ -384,23 +959,44 @@ Respond to patient questions using CBT fundamentals:
     );
   }
 
-  void _showMoreInfo() {
-    showDialog<void>(
+  void _openDisclaimerSheet() {
+    showModalBottomSheet<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF021515),
-        title: Text('About DrKtv', style: _textStyle(weight: FontWeight.w700)),
-        content: Text(
-          'This AI provides CBT-informed suggestions. It is not a substitute for professional medical, psychiatric or emergency care. If you are at risk, call local emergency services.',
-          style: _textStyle(size: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('Close', style: _textStyle()),
-          ),
-        ],
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                _buildDisclaimerCard(),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: Text('Close', style: _textStyle()),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -433,7 +1029,6 @@ Respond to patient questions using CBT fundamentals:
     );
   }
 
-  // ---------------- build ----------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -444,206 +1039,306 @@ Respond to patient questions using CBT fundamentals:
         titleSpacing: 8,
         title: Row(
           children: [
-            // Circular Dr. Kanhaiya photo
-            CircleAvatar(
-              radius: 18,
-              backgroundImage: const AssetImage('images/drkanhaiya.png'),
-              backgroundColor:
-                  Colors.teal.shade200, // fallback tint if image fails
-            ),
+            buildProfileAvatar(),
             const SizedBox(width: 10),
-            // Title text
-            Text(
-              'Dr. Kanhaiya (AI)',
-              style: _textStyle(weight: FontWeight.w700, size: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Dr. Kanhaiya (AI)',
+                    overflow: TextOverflow.ellipsis,
+                    softWrap: false,
+                    maxLines: 1,
+                    style: _textStyle(weight: FontWeight.w700, size: 15),
+                  ),
+                  if (!_consentAccepted)
+                    Text(
+                      'Tap the info for disclaimer',
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: false,
+                      maxLines: 1,
+                      style: _textStyle(
+                        size: 11,
+                      ).copyWith(color: Colors.white54),
+                    ),
+                ],
+              ),
             ),
           ],
         ),
         actions: [
           IconButton(
-            tooltip: 'Clear chat',
-            icon: const Icon(Icons.delete_outline, color: Colors.white),
-            onPressed: _confirmClear,
+            tooltip: 'Disclaimer',
+            icon: const Icon(Icons.info_outline, color: Colors.white),
+            onPressed: _openDisclaimerSheet,
           ),
-          IconButton(
-            tooltip: 'Save chat (local)',
-            icon: const Icon(Icons.save_outlined, color: Colors.white),
-            onPressed: () async {
-              await _saveMessagesToPrefs();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Chat saved locally')),
-              );
+          PopupMenuButton<String>(
+            color: const Color(0xFF021515),
+            icon: const Icon(Icons.more_vert, color: Colors.white),
+            onSelected: (value) async {
+              if (value == 'clear') {
+                _confirmClear();
+              } else if (value == 'save') {
+                await _saveMessagesToPrefs();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Chat saved locally')),
+                  );
+                }
+              }
             },
+            itemBuilder: (ctx) => [
+              const PopupMenuItem(
+                value: 'save',
+                child: Text(
+                  'Save chat locally',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'clear',
+                child: Text(
+                  'Clear chat',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
           ),
         ],
       ),
 
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            // header with language & speak toggle
-
-            // disclaimer
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0),
-              child: _buildDisclaimerCard(),
-            ),
-
-            const SizedBox(height: 8),
-
-            // messages
-            Expanded(
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 6),
-                child: ListView.builder(
-                  controller: _scrollCtrl,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 12,
+            // --- existing chat column (unchanged) ---
+            Column(
+              children: [
+                const SizedBox(height: 8),
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    child: ListView.builder(
+                      controller: _scrollCtrl,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 12,
+                      ),
+                      itemCount: _messages.length,
+                      itemBuilder: (context, i) {
+                        final m = _messages[i];
+                        return _buildMessageTile(m);
+                      },
+                    ),
                   ),
-                  itemCount: _messages.length,
-                  itemBuilder: (context, i) {
-                    final m = _messages[i];
-                    return _buildMessageTile(m);
-                  },
                 ),
-              ),
+                if (_loading) _buildTypingIndicator(),
+                SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12.0,
+                      vertical: 10,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.03),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: IconButton(
+                            tooltip: 'Quick templates',
+                            icon: const Icon(
+                              Icons.bolt_outlined,
+                              color: Colors.white,
+                            ),
+                            onPressed: _showTemplatesMenu,
+                          ),
+                        ),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.03),
+                              borderRadius: BorderRadius.circular(28),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _ctrl,
+                                    textInputAction: TextInputAction.send,
+                                    minLines: 1,
+                                    maxLines: 6,
+                                    style: _textStyle(),
+                                    cursorColor: const Color(0xFF008F89),
+                                    decoration: InputDecoration(
+                                      hintText:
+                                          'Ask Dr. Kanhaiya a question...',
+                                      hintStyle: _textStyle(
+                                        size: 14,
+                                      ).copyWith(color: Colors.white54),
+                                      border: InputBorder.none,
+                                      isDense: true,
+                                      filled: false,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            vertical: 6,
+                                          ),
+                                    ),
+                                    onSubmitted: (_) {
+                                      if (!_loading) _sendMessage();
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  height: 44,
+                                  width: 44,
+                                  decoration: BoxDecoration(
+                                    color: _loading
+                                        ? Colors.grey
+                                        : const Color(0xFF008F89),
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.25),
+                                        blurRadius: 6,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(22),
+                                      onTap: _loading ? null : _sendMessage,
+                                      child: Center(
+                                        child: _loading
+                                            ? const SizedBox(
+                                                width: 18,
+                                                height: 18,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  valueColor:
+                                                      AlwaysStoppedAnimation<
+                                                        Color
+                                                      >(Colors.white),
+                                                ),
+                                              )
+                                            : const Icon(
+                                                Icons.send,
+                                                color: Colors.white,
+                                              ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
 
-            // typing
-            if (_loading) _buildTypingIndicator(),
-
-            // input bar
-            // --- Replace your existing "input bar" SafeArea/Padding/Row block with this ---
-            // Input bar (clean, single background; no stray white boxes)
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12.0,
-                  vertical: 10,
+            // --- FAB positioned under AppBar (top-right) ---
+            Positioned(
+              top:
+                  8, // small gap below AppBar (Scaffold places body under AppBar already)
+              right: 12,
+              child: FloatingActionButton.extended(
+                onPressed: _showProviderPicker,
+                label: Text(
+                  _provider == _AiProvider.openai ? 'OpenAI' : 'Gemini',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-                child: Row(
-                  children: [
-                    // Quick templates / actions
-                    Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.03),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: IconButton(
-                        tooltip: 'Quick templates',
-                        icon: const Icon(
-                          Icons.bolt_outlined,
-                          color: Colors.white,
-                        ),
-                        onPressed: _showTemplatesMenu,
-                      ),
-                    ),
-
-                    // Main input container (single background surface)
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(
-                            0.03,
-                          ), // single subtle background
-                          borderRadius: BorderRadius.circular(28),
-                        ),
-                        child: Row(
-                          children: [
-                            // Text field - transparent, no filled box
-                            Expanded(
-                              child: TextField(
-                                controller: _ctrl,
-                                textInputAction: TextInputAction.send,
-                                minLines: 1,
-                                maxLines: 6,
-                                style: _textStyle(),
-                                cursorColor: const Color(0xFF008F89),
-                                decoration: InputDecoration(
-                                  hintText: 'Ask Dr. Kanhaiya a question...',
-                                  hintStyle: _textStyle(
-                                    size: 14,
-                                  ).copyWith(color: Colors.white54),
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                  // ensure there is no filled box
-                                  filled: false,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    vertical: 6,
-                                  ),
-                                ),
-                                onSubmitted: (_) {
-                                  if (!_loading) _sendMessage();
-                                },
-                              ),
-                            ),
-
-                            // Send button - circular, no extra white Material surface
-                            const SizedBox(width: 8),
-                            Container(
-                              height: 44,
-                              width: 44,
-                              decoration: BoxDecoration(
-                                color: _loading
-                                    ? Colors.grey
-                                    : const Color(0xFF008F89),
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.25),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Material(
-                                color:
-                                    Colors.transparent, // avoid white material
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(22),
-                                  onTap: _loading ? null : _sendMessage,
-                                  child: Center(
-                                    child: _loading
-                                        ? const SizedBox(
-                                            width: 18,
-                                            height: 18,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              valueColor:
-                                                  AlwaysStoppedAnimation<Color>(
-                                                    Colors.white,
-                                                  ),
-                                            ),
-                                          )
-                                        : const Icon(
-                                            Icons.send,
-                                            color: Colors.white,
-                                          ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+                icon: Icon(
+                  _provider == _AiProvider.openai
+                      ? Icons.open_in_new
+                      : Icons.flash_on,
                 ),
+                backgroundColor: const Color(0xFF008F89),
+                elevation: 4,
               ),
             ),
           ],
         ),
       ),
+
+      // Floating action button to choose provider
     );
   }
 
-  // Quick templates menu (pre-fill input)
+  void _showProviderPicker() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF021515),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Choose AI provider',
+                  style: _textStyle(weight: FontWeight.w700),
+                ),
+                const SizedBox(height: 12),
+                ListTile(
+                  leading: const Icon(Icons.open_in_new),
+                  title: Text('OpenAI', style: _textStyle()),
+                  subtitle: Text(
+                    'Uses your OpenAI key',
+                    style: _textStyle(size: 12),
+                  ),
+                  trailing: _provider == _AiProvider.openai
+                      ? const Icon(Icons.check)
+                      : null,
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    setState(() => _provider = _AiProvider.openai);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.flash_on),
+                  title: Text('Gemini (Flash 2.5 Lite)', style: _textStyle()),
+                  subtitle: Text(
+                    'Uses your GEMINI_API_KEY',
+                    style: _textStyle(size: 12),
+                  ),
+                  trailing: _provider == _AiProvider.gemini
+                      ? const Icon(Icons.check)
+                      : null,
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    setState(() => _provider = _AiProvider.gemini);
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _showTemplatesMenu() {
     showModalBottomSheet<void>(
       context: context,
@@ -714,23 +1409,136 @@ Respond to patient questions using CBT fundamentals:
     );
   }
 
-  void _openGetHelp() {
-    // simple dialog — replace with a route to your safety page if you have one
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF021515),
-        title: Text('Get Help', style: _textStyle(weight: FontWeight.w700)),
-        content: Text(
-          'If you are in immediate danger or experiencing a crisis, please contact local emergency services or your nearest helpline.',
-          style: _textStyle(),
+  Widget _buildActionButtonsForMessage(String text) {
+    final lower = text.toLowerCase();
+    final actions = <_ActionItem>[];
+    void add(String label, String route, IconData icon) {
+      actions.add(_ActionItem(label: label, route: route, icon: icon));
+    }
+
+    if (lower.contains('abcd')) {
+      add('ABCD Worksheet', '/abcd', Icons.description_outlined);
+    }
+    if (lower.contains('grounding')) {
+      add('Grounding', '/grounding', Icons.grass_outlined);
+    }
+    if (lower.contains('breath') || lower.contains('relax')) {
+      add('Relax Breathing', '/relax/breath', Icons.air_outlined);
+    }
+    if (lower.contains('pmr') ||
+        lower.contains('progressive muscle') ||
+        lower.contains('muscle relaxation')) {
+      add(
+        'PMR — Muscle Relaxation',
+        '/relax_pmr',
+        Icons.self_improvement_outlined,
+      );
+    }
+    if (lower.contains('thought record') || lower.contains('thought')) {
+      add('Thought Record', '/thought', Icons.menu_book_outlined);
+    }
+    if (lower.contains('meditation')) {
+      add(
+        'Mini Meditation',
+        '/minimeditation',
+        Icons.self_improvement_outlined,
+      );
+    }
+    if (lower.contains('safety') ||
+        lower.contains('help') ||
+        lower.contains('crisis') ||
+        lower.contains('danger')) {
+      add('Get Help', '/safety', Icons.warning_amber_outlined);
+    }
+
+    if (actions.isEmpty) return const SizedBox.shrink();
+
+    const Color tealLight = Color(0xFF79C2BF);
+    const Color tealMid = Color(0xFF008F89);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8.0),
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: actions.map((a) {
+            return Semantics(
+              button: true,
+              label: a.label,
+              child: Tooltip(
+                message: a.label,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(18),
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      Navigator.pushNamed(context, a.route);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      constraints: const BoxConstraints(minHeight: 40),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.white.withOpacity(0.02),
+                            Colors.white.withOpacity(0.01),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: tealMid.withOpacity(0.9),
+                          width: 0.8,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.18),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            height: 28,
+                            width: 28,
+                            decoration: BoxDecoration(
+                              color: tealLight.withOpacity(0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(a.icon, size: 16, color: tealLight),
+                          ),
+                          const SizedBox(width: 10),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 160),
+                            child: Text(
+                              a.label,
+                              overflow: TextOverflow.ellipsis,
+                              style: _textStyle(
+                                size: 13,
+                                weight: FontWeight.w600,
+                              ).copyWith(color: Colors.tealAccent.shade100),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('Close', style: _textStyle()),
-          ),
-        ],
       ),
     );
   }
@@ -765,11 +1573,11 @@ Respond to patient questions using CBT fundamentals:
           _messages.clear();
         });
         _prefs?.remove(_prefsKey);
+        _localMessageIds.clear();
       }
     });
   }
 
-  // Message bubble builder
   Widget _buildMessageTile(_ChatMessage m) {
     final isUser = m.isUser;
     final alignment = isUser ? Alignment.centerRight : Alignment.centerLeft;
@@ -814,8 +1622,13 @@ Respond to patient questions using CBT fundamentals:
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SelectableText(m.text, style: _textStyle()),
+                  SelectableText.rich(
+                    _parseMarkdownToTextSpan(m.text),
+                    showCursor: false,
+                    cursorWidth: 0,
+                  ),
                   const SizedBox(height: 8),
+                  if (!m.isUser) _buildActionButtonsForMessage(m.text),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
@@ -844,7 +1657,7 @@ Respond to patient questions using CBT fundamentals:
   }
 }
 
-// ---------------- Local message model ----------------
+/// Internal message model (keeps your existing constructors)
 class _ChatMessage {
   final String id;
   final String text;
@@ -866,8 +1679,13 @@ class _ChatMessage {
   factory _ChatMessage.assistant(String t) =>
       _ChatMessage._(id: const Uuid().v4(), text: t, isUser: false);
 
-  factory _ChatMessage.system(String t) =>
-      _ChatMessage._(id: const Uuid().v4(), text: t, isSystem: true);
+  // Exposed private ctor to create message with explicit id (used for incoming firestore messages)
+  factory _ChatMessage._withId(
+    String id,
+    String t, {
+    bool isUser = false,
+    int? timestamp,
+  }) => _ChatMessage._(id: id, text: t, isUser: isUser, timestamp: timestamp);
 
   Map<String, dynamic> toMap() => {
     'id': id,
@@ -884,4 +1702,11 @@ class _ChatMessage {
     isSystem: m['isSystem'] as bool? ?? false,
     timestamp: m['timestamp'] is int ? m['timestamp'] as int : null,
   );
+}
+
+class _ActionItem {
+  final String label;
+  final String route;
+  final IconData icon;
+  _ActionItem({required this.label, required this.route, required this.icon});
 }
