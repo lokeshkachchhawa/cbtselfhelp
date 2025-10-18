@@ -127,10 +127,10 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
           _ChatMessage._withId(id, text, isUser: true, timestamp: ts),
         );
       } else if (sender == 'assistant') {
-        // Only show assistant messages if approved == true
         final approved = data['approved'] == true;
         final parentId = data['parentId'] as String?;
         final editedByDoctor = data['editedByDoctor'] == true;
+
         if (approved) {
           assistantMsgs.add(
             _ChatMessageWithMeta(
@@ -141,12 +141,37 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
               editedByDoctor: editedByDoctor,
             ),
           );
+        } else {
+          // pending assistant — include preview for user display
+          final preview =
+              (data['preview'] as String?) ??
+              // fallback to a trimmed substring (do not leak full text)
+              (text.length > 240 ? text.substring(0, 240).trim() + '…' : text);
+
+          assistantMsgs.add(
+            _ChatMessageWithMeta(
+              id: id,
+              text: '', // keep full text empty on user side until approved
+              timestamp: ts,
+              parentId: parentId,
+              editedByDoctor: editedByDoctor,
+              // We will use the preview when building the final list below
+            ),
+          );
+
+          // also add a lightweight local representation so threading keeps position:
+          // We'll create a pending _ChatMessage later when composing finalList.
+          // To keep code simple, we'll encode a map of preview refs: (handled below)
         }
-      } else {
-        // ignore other senders
       }
     }
-
+    final Map<String, Map<String, dynamic>> assistantDocData = {};
+    for (final ddoc in snap.docs) {
+      final ddata = ddoc.data();
+      if ((ddata['sender'] ?? '') == 'assistant') {
+        assistantDocData[ddoc.id] = ddata;
+      }
+    }
     // Sort both lists (should already be sorted by timestamp but ensure)
     userMsgs.sort((a, b) => a.timestamp.compareTo(b.timestamp));
     assistantMsgs.sort((a, b) => a.timestamp.compareTo(b.timestamp));
@@ -179,14 +204,44 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
         assistants.sort((x, y) => x.timestamp.compareTo(y.timestamp));
         for (final a in assistants) {
           if (added.contains(a.id)) continue;
-          finalList.add(
-            _ChatMessage._withId(
-              a.id,
-              a.text,
-              isUser: false,
-              timestamp: a.timestamp,
-            ),
-          );
+
+          // Check doc data to see if approved or pending
+          final docData = assistantDocData[a.id];
+          final approved = docData != null && (docData['approved'] == true);
+          if (approved) {
+            finalList.add(
+              _ChatMessage._withId(
+                a.id,
+                a.text,
+                isUser: false,
+                timestamp: a.timestamp,
+                isPending: false,
+                preview: null,
+                isApproved: true,
+              ),
+            );
+          } else {
+            // pending: show preview text (doc.preview if present)
+            final preview = docData != null
+                ? (docData['preview'] as String?) ??
+                      (a.text.isNotEmpty
+                          ? (a.text.length > 240
+                                ? a.text.substring(0, 240) + '…'
+                                : a.text)
+                          : '')
+                : '';
+            finalList.add(
+              _ChatMessage._withId(
+                a.id,
+                '', // hide full text until approved
+                isUser: false,
+                timestamp: a.timestamp,
+                isPending: true,
+                preview: preview,
+                isApproved: false,
+              ),
+            );
+          }
           added.add(a.id);
         }
       }
@@ -773,6 +828,9 @@ End each reply with an encouraging or reflective question inviting follow-up.
   }
 
   // New: write AI-suggested assistant reply to Firestore with approved:false and parentId
+  /// Write AI-suggested assistant reply to Firestore.
+  /// - If reply is short (<=3 non-empty lines) -> auto-approve and publish immediately.
+  /// - Otherwise -> save with approved:false and include a small 'preview' field for user-side preview.
   Future<void> _writeAiReplyToFirestore(
     String text,
     int ts,
@@ -784,22 +842,64 @@ End each reply with an encouraging or reflective question inviting follow-up.
         .doc(_chatId)
         .collection('messages');
     try {
+      // Count non-empty lines
+      final lines = text
+          .split('\n')
+          .map((l) => l.trim())
+          .where((l) => l.isNotEmpty)
+          .toList();
+      final isShort = lines.length <= 3;
+
       final docRef = messagesRef.doc(); // generated id
-      await docRef.set({
-        'sender': 'assistant',
-        'text': text,
-        'timestamp': ts,
-        'approved': false,
-        'suggestedBy': 'ai',
-        'parentId': parentMessageId,
-      }, SetOptions(merge: true));
 
-      // update chatIndex so doctor can see a pending reply
-      await _updateChatIndexForPending('AI response pending approval');
+      if (isShort) {
+        // Auto-approve short greetings/messages
+        await docRef.set({
+          'sender': 'assistant',
+          'text': text,
+          'timestamp': ts,
+          'approved': true,
+          'approvedBy': 'auto',
+          'approvedAt': FieldValue.serverTimestamp(),
+          'suggestedBy': 'ai',
+          'parentId': parentMessageId,
+          'editedByDoctor': false,
+        }, SetOptions(merge: true));
 
-      debugPrint(
-        'AI reply written to Firestore (awaiting approval): ${docRef.id}',
-      );
+        // Optionally update chatIndex for lastMessage (no pending increment)
+        await _firestore.collection('chatIndex').doc(_chatId).set({
+          'lastMessage': text,
+          'lastUpdated': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+
+        debugPrint('AI reply auto-approved and published: ${docRef.id}');
+      } else {
+        // Prepare a short preview: first 2 non-empty lines joined, truncated to ~240 chars
+        final previewLines = lines.take(2).toList();
+        var preview = previewLines.join(' ');
+        if (preview.length > 240)
+          preview = preview.substring(0, 240).trim() + '…';
+
+        await docRef.set({
+          'sender': 'assistant',
+          'text': text,
+          'timestamp': ts,
+          'approved': false,
+          'suggestedBy': 'ai',
+          'parentId': parentMessageId,
+          // preview is what users will see until a doctor approves (keeps full text private)
+          'preview': preview,
+          'previewLen': preview.length,
+          'editedByDoctor': false,
+        }, SetOptions(merge: true));
+
+        // increment pending count for doctor to review
+        await _updateChatIndexForPending('AI response pending approval');
+
+        debugPrint(
+          'AI reply written to Firestore (awaiting approval): ${docRef.id}',
+        );
+      }
     } catch (e) {
       debugPrint('Failed to write AI reply to Firestore: $e');
     }
@@ -1435,73 +1535,299 @@ End each reply with an encouraging or reflective question inviting follow-up.
     );
   }
 
-  void _showTemplatesMenu() {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: const Color(0xFF021515),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Quick templates',
-                  style: _textStyle(weight: FontWeight.w700),
-                ),
-                const SizedBox(height: 12),
-                ListTile(
-                  leading: const Icon(Icons.nights_stay),
-                  title: Text(
-                    'I feel low and can’t sleep',
-                    style: _textStyle(),
+  // Replace your existing _showTemplatesMenu() with this async, safer version.
+  Future<void> _showTemplatesMenu() async {
+    // 1) Defocus any focused TextField / stop the IME before opening the sheet
+    try {
+      FocusScope.of(context).unfocus();
+    } catch (_) {}
+
+    // 2) Give the platform a short moment to close the keyboard and settle.
+    //    120-200ms is usually enough on most devices.
+    await Future.delayed(const Duration(milliseconds: 150));
+
+    // 3) If the widget was disposed while waiting, bail out.
+    if (!mounted) return;
+
+    // 4) Open the sheet (isScrollControlled and viewInsets handled in builder)
+    try {
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: const Color(0xFF021515),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        builder: (ctx) {
+          final mq = MediaQuery.of(ctx);
+          final maxHeight = mq.size.height * 0.30;
+          final bottomInset = mq.viewInsets.bottom;
+
+          return SafeArea(
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 18,
+                bottom: 18 + bottomInset,
+              ),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: maxHeight - bottomInset),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'त्वरित प्रश्न (Quick Questions)',
+                        style: _textStyle(weight: FontWeight.w700, size: 16),
+                      ),
+                      const SizedBox(height: 12),
+
+                      ListTile(
+                        leading: const Icon(
+                          Icons.nights_stay,
+                          color: Colors.white,
+                        ),
+                        title: Text(
+                          'मुझे नींद नहीं आती है, क्या करूँ?',
+                          style: _textStyle(),
+                        ),
+                        onTap: () {
+                          Navigator.of(ctx).pop();
+                          if (!mounted) return;
+                          setState(
+                            () => _ctrl.text =
+                                'मुझे नींद नहीं आती है, क्या करूँ? कोई सरल उपाय बताइए।',
+                          );
+                        },
+                      ),
+
+                      ListTile(
+                        leading: const Icon(
+                          Icons.psychology,
+                          color: Colors.white,
+                        ),
+                        title: Text(
+                          'बार-बार चिंता होती है, मन शांत नहीं रहता।',
+                          style: _textStyle(),
+                        ),
+                        onTap: () {
+                          Navigator.of(ctx).pop();
+                          if (!mounted) return;
+                          setState(
+                            () => _ctrl.text =
+                                'मुझे बार-बार चिंता होती है और मन शांत नहीं रहता। मैं इसे कैसे नियंत्रित करूँ?',
+                          );
+                        },
+                      ),
+
+                      ListTile(
+                        leading: const Icon(
+                          Icons.sentiment_dissatisfied,
+                          color: Colors.white,
+                        ),
+                        title: Text(
+                          'मुझे किसी काम में मन नहीं लगता।',
+                          style: _textStyle(),
+                        ),
+                        onTap: () {
+                          Navigator.of(ctx).pop();
+                          if (!mounted) return;
+                          setState(
+                            () => _ctrl.text =
+                                'मुझे किसी काम में मन नहीं लगता, सब कुछ थकान जैसा लगता है। इसका क्या कारण हो सकता है?',
+                          );
+                        },
+                      ),
+
+                      ListTile(
+                        leading: const Icon(
+                          Icons.people_outline,
+                          color: Colors.white,
+                        ),
+                        title: Text(
+                          'लोगों से बात करने में डर लगता है।',
+                          style: _textStyle(),
+                        ),
+                        onTap: () {
+                          Navigator.of(ctx).pop();
+                          if (!mounted) return;
+                          setState(
+                            () => _ctrl.text =
+                                'मुझे लोगों से बात करने या भीड़ में जाने में डर लगता है। इसे कैसे कम करूँ?',
+                          );
+                        },
+                      ),
+
+                      ListTile(
+                        leading: const Icon(
+                          Icons.lightbulb_outline,
+                          color: Colors.white,
+                        ),
+                        title: Text(
+                          'मैं नकारात्मक सोच को कैसे बदलूँ?',
+                          style: _textStyle(),
+                        ),
+                        onTap: () {
+                          Navigator.of(ctx).pop();
+                          if (!mounted) return;
+                          setState(
+                            () => _ctrl.text =
+                                'मैं हमेशा नकारात्मक सोच में फँस जाता हूँ। मैं इसे कैसे बदलूँ?',
+                          );
+                        },
+                      ),
+
+                      ListTile(
+                        leading: const Icon(
+                          Icons.favorite_border,
+                          color: Colors.white,
+                        ),
+                        title: Text(
+                          'दिल बहुत भारी लगता है, कुछ अच्छा नहीं लगता।',
+                          style: _textStyle(),
+                        ),
+                        onTap: () {
+                          Navigator.of(ctx).pop();
+                          if (!mounted) return;
+                          setState(
+                            () => _ctrl.text =
+                                'मेरा मन बहुत भारी रहता है, कुछ अच्छा नहीं लगता। मुझे क्या करना चाहिए?',
+                          );
+                        },
+                      ),
+
+                      ListTile(
+                        leading: const Icon(
+                          Icons.self_improvement,
+                          color: Colors.white,
+                        ),
+                        title: Text(
+                          'मैं अपने मन को कैसे शांत रखूँ?',
+                          style: _textStyle(),
+                        ),
+                        onTap: () {
+                          Navigator.of(ctx).pop();
+                          if (!mounted) return;
+                          setState(
+                            () => _ctrl.text =
+                                'जब मैं तनाव में होता हूँ, मेरा मन बहुत बेचैन हो जाता है। मैं अपने मन को कैसे शांत रख सकता हूँ?',
+                          );
+                        },
+                      ),
+
+                      ListTile(
+                        leading: const Icon(
+                          Icons.fitness_center,
+                          color: Colors.white,
+                        ),
+                        title: Text(
+                          'मुझे दिनभर थकान और आलस रहता है।',
+                          style: _textStyle(),
+                        ),
+                        onTap: () {
+                          Navigator.of(ctx).pop();
+                          if (!mounted) return;
+                          setState(
+                            () => _ctrl.text =
+                                'मुझे दिनभर थकान और आलस रहता है, काम करने की ऊर्जा नहीं रहती। क्या करूँ?',
+                          );
+                        },
+                      ),
+
+                      ListTile(
+                        leading: const Icon(
+                          Icons.help_outline,
+                          color: Colors.white,
+                        ),
+                        title: Text(
+                          'मुझे बार-बार डर या घबराहट होती है।',
+                          style: _textStyle(),
+                        ),
+                        onTap: () {
+                          Navigator.of(ctx).pop();
+                          if (!mounted) return;
+                          setState(
+                            () => _ctrl.text =
+                                'मुझे बार-बार डर या घबराहट होती है। क्या यह चिंता का लक्षण है?',
+                          );
+                        },
+                      ),
+
+                      ListTile(
+                        leading: const Icon(
+                          Icons.question_answer,
+                          color: Colors.white,
+                        ),
+                        title: Text(
+                          'मैं अपनी सोच को कैसे नियंत्रित कर सकता हूँ?',
+                          style: _textStyle(),
+                        ),
+                        onTap: () {
+                          Navigator.of(ctx).pop();
+                          if (!mounted) return;
+                          setState(
+                            () => _ctrl.text =
+                                'मैं अपनी सोच को नियंत्रित नहीं कर पाता। मन में बहुत विचार चलते रहते हैं। क्या करूँ?',
+                          );
+                        },
+                      ),
+
+                      const SizedBox(height: 8),
+                    ],
                   ),
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    setState(
-                      () => _ctrl.text =
-                          'I feel low and I can’t sleep. What can I try tonight?',
-                    );
-                  },
                 ),
-                ListTile(
-                  leading: const Icon(Icons.psychology),
-                  title: Text(
-                    'I keep worrying about the future',
-                    style: _textStyle(),
-                  ),
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    setState(
-                      () => _ctrl.text =
-                          'I keep worrying about the future and it stops me from concentrating. What can I do?',
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.lightbulb_outline),
-                  title: Text(
-                    'Help me challenge a thought',
-                    style: _textStyle(),
-                  ),
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    setState(
-                      () => _ctrl.text =
-                          'I think "I will fail at everything." Help me challenge this thought.',
-                    );
-                  },
-                ),
-                const SizedBox(height: 8),
-              ],
+              ),
             ),
-          ),
-        );
+          );
+        },
+      );
+    } catch (e, st) {
+      // swallow any transient error so the app doesn't flash red — log for diagnostics
+      debugPrint('Failed to open templates menu: $e\n$st');
+    }
+  }
+
+  Widget _buildFadingPendingText(
+    BuildContext context,
+    String text, {
+    required int maxLines,
+  }) {
+    // We need to use a TextStyle reference to use in the ShaderMask
+    final textStyle = DefaultTextStyle.of(context).style;
+
+    return ShaderMask(
+      // 🎨 Define the gradient for the fade effect
+      shaderCallback: (Rect bounds) {
+        // The fade should start just before the bottom edge
+        // and fade out entirely at the edge.
+        return LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: const <Color>[
+            Colors.grey, // 0.0: Fully visible
+            Color.fromARGB(255, 63, 61, 61), // Start of fade
+            Colors.transparent, // 1.0: Fully transparent
+          ],
+          // The stop values control where the fade transition happens:
+          // 0.85: Visible up to this point.
+          // 1.0: Fully faded out at the bottom edge.
+          // Adjust 0.85 to control how much of the last line fades.
+          stops: const <double>[0.0, 0.85, 1.0],
+        ).createShader(bounds);
       },
+      // Blend mode is typically BlendMode.dstIn or BlendMode.srcIn for a mask
+      // Since your background is dark, srcIn usually works well with black colors.
+      blendMode: BlendMode.srcIn,
+      child: SelectableText.rich(
+        _parseMarkdownToTextSpan(text),
+        // Keep maxLines to constrain the text layout
+        maxLines: maxLines,
+        // REMOVE: overflow: TextOverflow.ellipsis,
+        // The ShaderMask will handle the visual "clipping" with transparency.
+        showCursor: false,
+        cursorWidth: 0,
+      ),
     );
   }
 
@@ -1717,11 +2043,102 @@ End each reply with an encouraging or reflective question inviting follow-up.
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SelectableText.rich(
-                    _parseMarkdownToTextSpan(m.text),
-                    showCursor: false,
-                    cursorWidth: 0,
-                  ),
+                  // If this is a pending assistant message, show preview + lock UI
+                  // If this is a pending assistant message, show preview + lock UI
+                  if (!m.isUser && m.isPending) ...[
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _buildFadingPendingText(
+                            context,
+                            m.preview ?? '[Preview not available]',
+                            maxLines:
+                                6, // Define how many lines you want to be visible
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // ... (Rest of the lock/pending UI) ...
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.lock_outline,
+                              size: 18,
+                              color: Colors.white54,
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade700,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                'Pending',
+                                style: _textStyle(
+                                  size: 11,
+                                  weight: FontWeight.w700,
+                                ).copyWith(color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Full response locked until doctor 👨‍⚕️ approves.',
+                      style: _textStyle(
+                        size: 12,
+                      ).copyWith(color: Colors.white54),
+                    ),
+                  ] else ...[
+                    // normal message rendering (approved assistant or user)
+                    SelectableText.rich(
+                      _parseMarkdownToTextSpan(m.text),
+                      showCursor: false,
+                      cursorWidth: 0,
+                    ),
+                    // If assistant and approved but not auto, show a small "Approved by Doctor" badge.
+                    if (!m.isUser && !m.isPending)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6.0),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade700,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                'Approved',
+                                style: _textStyle(
+                                  size: 11,
+                                  weight: FontWeight.w700,
+                                ).copyWith(color: Colors.white),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+
+                            Text(
+                              'by doctor',
+                              style: _textStyle(
+                                size: 11,
+                              ).copyWith(color: Colors.white54),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+
                   const SizedBox(height: 8),
                   if (!m.isUser) _buildActionButtonsForMessage(m.text),
                   Row(
@@ -1776,19 +2193,31 @@ class _ChatMessage {
   final bool isSystem;
   final int timestamp;
 
+  // New fields
+  final bool isPending; // true when assistant msg is awaiting doctor approval
+  final String? preview; // short preview to show user while pending
+  final bool isApproved; // convenience
+
   _ChatMessage._({
     required this.id,
     required this.text,
     this.isUser = false,
     this.isSystem = false,
     int? timestamp,
+    this.isPending = false,
+    this.preview,
+    this.isApproved = true,
   }) : timestamp = timestamp ?? DateTime.now().millisecondsSinceEpoch;
 
   factory _ChatMessage.user(String t) =>
       _ChatMessage._(id: const Uuid().v4(), text: t, isUser: true);
 
-  factory _ChatMessage.assistant(String t) =>
-      _ChatMessage._(id: const Uuid().v4(), text: t, isUser: false);
+  factory _ChatMessage.assistant(String t) => _ChatMessage._(
+    id: const Uuid().v4(),
+    text: t,
+    isUser: false,
+    isApproved: true,
+  );
 
   // Exposed private ctor to create message with explicit id (used for incoming firestore messages)
   factory _ChatMessage._withId(
@@ -1796,7 +2225,18 @@ class _ChatMessage {
     String t, {
     bool isUser = false,
     int? timestamp,
-  }) => _ChatMessage._(id: id, text: t, isUser: isUser, timestamp: timestamp);
+    bool isPending = false,
+    String? preview,
+    bool isApproved = true,
+  }) => _ChatMessage._(
+    id: id,
+    text: t,
+    isUser: isUser,
+    timestamp: timestamp,
+    isPending: isPending,
+    preview: preview,
+    isApproved: isApproved,
+  );
 
   Map<String, dynamic> toMap() => {
     'id': id,
@@ -1804,6 +2244,9 @@ class _ChatMessage {
     'isUser': isUser,
     'isSystem': isSystem,
     'timestamp': timestamp,
+    'isPending': isPending,
+    'preview': preview,
+    'isApproved': isApproved,
   };
 
   factory _ChatMessage.fromMap(Map<String, dynamic> m) => _ChatMessage._(
@@ -1812,6 +2255,9 @@ class _ChatMessage {
     isUser: m['isUser'] as bool? ?? false,
     isSystem: m['isSystem'] as bool? ?? false,
     timestamp: m['timestamp'] is int ? m['timestamp'] as int : null,
+    isPending: m['isPending'] as bool? ?? false,
+    preview: m['preview'] as String?,
+    isApproved: m['isApproved'] as bool? ?? true,
   );
 }
 
