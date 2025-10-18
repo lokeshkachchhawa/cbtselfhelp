@@ -3,7 +3,7 @@
 // - User sends message -> AI generates reply (written to Firestore as approved:false).
 // - Doctor UI (separate) can edit/approve assistant reply -> when approved:true, user sees message.
 // - Uses FirebaseAuth.currentUser.uid as chatId and displayName.
-// UI mostly unchanged from original; Firestore + listeners added.
+// UI kept the same as your original; message threading added.
 
 import 'dart:async';
 import 'dart:convert';
@@ -55,11 +55,8 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
   String? _chatId; // will be currentUser.uid
   String? _userName;
 
-  // track message ids we've already added locally (avoid duplicates)
-  final Set<String> _localMessageIds = {};
-
   // Firestore listener subscription
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _approvedMessagesSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _messagesSub;
 
   @override
   void initState() {
@@ -75,23 +72,18 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
   Future<void> _initChatIdentifiersAndListeners() async {
     final user = _auth.currentUser;
     if (user == null) {
-      // If no logged-in user, we'll fall back to local mode only.
       debugPrint('DrKtvChat: no signed-in user, chat will be local-only.');
       return;
     }
     _chatId = user.uid;
     _userName = user.displayName ?? (user.email?.split('@').first ?? 'User');
 
-    // Start listening for assistant messages with approved == true
-    // We only need assistant approved messages after user's last local timestamp.
-    // We'll subscribe to all approved assistant messages and check duplicates via local id set.
+    // Subscribe to all messages for this chat. We'll filter and thread client-side.
     try {
       final ref = _firestore
           .collection('chats')
           .doc(_chatId)
           .collection('messages')
-          .where('sender', isEqualTo: 'assistant')
-          .where('approved', isEqualTo: true)
           .orderBy('timestamp', descending: false)
           .withConverter<Map<String, dynamic>>(
             fromFirestore: (snap, _) =>
@@ -99,43 +91,145 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
             toFirestore: (map, _) => map,
           );
 
-      _approvedMessagesSub = ref.snapshots().listen(
+      _messagesSub = ref.snapshots().listen(
         (snap) {
-          for (final doc in snap.docs) {
-            final data = doc.data();
-            final id = doc.id;
-            if (_localMessageIds.contains(id)) continue;
-
-            final text = (data['text'] ?? '') as String;
-            final ts = data['timestamp'] is int
-                ? data['timestamp'] as int
-                : DateTime.now().millisecondsSinceEpoch;
-            final edited = data['editedByDoctor'] != null;
-
-            final msg = _ChatMessage._(
-              id: id,
-              text: text,
-              isUser: false,
-              isSystem: false,
-              timestamp: ts,
-            );
-
-            // Add to local messages and persist
-            _localMessageIds.add(id);
-            setState(() {
-              _messages.add(msg);
-            });
-            _saveMessagesToPrefs(); // persist the newly approved message
-            _scrollToBottom();
-          }
+          _processMessagesSnapshot(snap);
         },
         onError: (e) {
-          debugPrint('Approved messages listener error: $e');
+          debugPrint('Messages listener error: $e');
         },
       );
     } catch (e) {
-      debugPrint('Failed to start approved messages listener: $e');
+      debugPrint('Failed to start messages listener: $e');
     }
+  }
+
+  Future<void> _processMessagesSnapshot(
+    QuerySnapshot<Map<String, dynamic>> snap,
+  ) async {
+    // Build separate lists for user messages and approved assistant messages
+    final List<_ChatMessage> userMsgs = [];
+    final List<_ChatMessageWithMeta> assistantMsgs = [];
+
+    for (final doc in snap.docs) {
+      final data = doc.data();
+      final id = doc.id;
+      final sender = (data['sender'] ?? '') as String;
+      final text = (data['text'] ?? '') as String;
+      final ts = data['timestamp'] is int
+          ? data['timestamp'] as int
+          : (data['timestamp'] is Timestamp
+                ? (data['timestamp'] as Timestamp).millisecondsSinceEpoch
+                : DateTime.now().millisecondsSinceEpoch);
+
+      if (sender == 'user') {
+        userMsgs.add(
+          _ChatMessage._withId(id, text, isUser: true, timestamp: ts),
+        );
+      } else if (sender == 'assistant') {
+        // Only show assistant messages if approved == true
+        final approved = data['approved'] == true;
+        final parentId = data['parentId'] as String?;
+        final editedByDoctor = data['editedByDoctor'] == true;
+        if (approved) {
+          assistantMsgs.add(
+            _ChatMessageWithMeta(
+              id: id,
+              text: text,
+              timestamp: ts,
+              parentId: parentId,
+              editedByDoctor: editedByDoctor,
+            ),
+          );
+        }
+      } else {
+        // ignore other senders
+      }
+    }
+
+    // Sort both lists (should already be sorted by timestamp but ensure)
+    userMsgs.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+    assistantMsgs.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+    // Map parentId -> list of assistant messages
+    final Map<String, List<_ChatMessageWithMeta>> assistantByParent = {};
+    final List<_ChatMessageWithMeta> orphanAssistant = [];
+
+    for (final a in assistantMsgs) {
+      if (a.parentId != null && a.parentId!.isNotEmpty) {
+        assistantByParent.putIfAbsent(a.parentId!, () => []).add(a);
+      } else {
+        orphanAssistant.add(a);
+      }
+    }
+
+    // Build final threaded list:
+    final List<_ChatMessage> finalList = [];
+
+    // Keep track of IDs added to avoid duplicates
+    final Set<String> added = {};
+
+    for (final u in userMsgs) {
+      if (added.contains(u.id)) continue;
+      finalList.add(u);
+      added.add(u.id);
+
+      final assistants = assistantByParent[u.id];
+      if (assistants != null && assistants.isNotEmpty) {
+        assistants.sort((x, y) => x.timestamp.compareTo(y.timestamp));
+        for (final a in assistants) {
+          if (added.contains(a.id)) continue;
+          finalList.add(
+            _ChatMessage._withId(
+              a.id,
+              a.text,
+              isUser: false,
+              timestamp: a.timestamp,
+            ),
+          );
+          added.add(a.id);
+        }
+      }
+    }
+
+    // Now append orphan assistant messages (those without parent or parent missing)
+    for (final a in orphanAssistant) {
+      if (added.contains(a.id)) continue;
+      finalList.add(
+        _ChatMessage._withId(
+          a.id,
+          a.text,
+          isUser: false,
+          timestamp: a.timestamp,
+        ),
+      );
+      added.add(a.id);
+    }
+
+    // In case there are assistant messages whose parent existed but user list didn't
+    // (e.g., if doctor created assistant without parent), ensure no missed messages by also checking
+    // any assistant messages that are not yet added (edge-case):
+    for (final a in assistantMsgs) {
+      if (added.contains(a.id)) continue;
+      finalList.add(
+        _ChatMessage._withId(
+          a.id,
+          a.text,
+          isUser: false,
+          timestamp: a.timestamp,
+        ),
+      );
+      added.add(a.id);
+    }
+
+    // Update local messages and persist
+    setState(() {
+      _messages
+        ..clear()
+        ..addAll(finalList);
+    });
+    await _saveMessagesToPrefs();
+    _scrollToBottom();
   }
 
   @override
@@ -148,7 +242,7 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
     _ringController.dispose();
     _ctrl.dispose();
     _scrollCtrl.dispose();
-    _approvedMessagesSub?.cancel();
+    _messagesSub?.cancel();
     super.dispose();
   }
 
@@ -213,6 +307,35 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
     await _loadMessagesFromPrefs();
   }
 
+  Future<void> _loadMessagesFromPrefs() async {
+    try {
+      final jsonStr = _prefs?.getString(_prefsKey);
+      if (jsonStr == null || jsonStr.isEmpty) return;
+      final data = jsonDecode(jsonStr) as List<dynamic>;
+      _messages.clear();
+      for (final item in data) {
+        if (item is Map) {
+          _messages.add(_ChatMessage.fromMap(Map<String, dynamic>.from(item)));
+        }
+      }
+      if (mounted) setState(() {});
+      await Future.delayed(const Duration(milliseconds: 150));
+      _scrollToBottom();
+    } catch (e) {
+      debugPrint('Failed to load saved chat history: $e');
+    }
+  }
+
+  Future<void> _saveMessagesToPrefs() async {
+    try {
+      final list = _messages.map((m) => m.toMap()).toList();
+      final jsonStr = jsonEncode(list);
+      await _prefs?.setString(_prefsKey, jsonStr);
+    } catch (e) {
+      debugPrint('Failed to save chat history: $e');
+    }
+  }
+
   void _setLoading(bool on) {
     if (!mounted) return;
     setState(() => _loading = on);
@@ -224,60 +347,13 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
     }
   }
 
-  Widget buildProfileAvatar() {
-    const neonColors = [
-      Color(0xFF00F5D4),
-      Color(0xFF00E5FF),
-      Color(0xFF8A2BE2),
-      Color(0xFF00F5D4),
-    ];
-
-    return SizedBox(
-      width: 48,
-      height: 48,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          if (_loading)
-            RotationTransition(
-              turns: _ringController,
-              child: Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const SweepGradient(
-                    startAngle: 0.0,
-                    endAngle: 3.14 * 2,
-                    colors: neonColors,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.tealAccent.withOpacity(0.18),
-                      blurRadius: 14,
-                      spreadRadius: 4,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          if (_loading)
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.18),
-                shape: BoxShape.circle,
-              ),
-            ),
-
-          CircleAvatar(
-            radius: 18,
-            backgroundImage: const AssetImage('images/drkanhaiya.png'),
-            backgroundColor: Colors.teal.shade200,
-          ),
-        ],
+  void _scrollToBottom() {
+    if (!_scrollCtrl.hasClients) return;
+    Future.microtask(
+      () => _scrollCtrl.animateTo(
+        _scrollCtrl.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
       ),
     );
   }
@@ -290,7 +366,7 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
       final line = lines[i].trimRight();
 
       if (line.isEmpty) {
-        children.add(TextSpan(text: '\n'));
+        children.add(const TextSpan(text: '\n'));
         continue;
       }
 
@@ -364,6 +440,7 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
     if (children.isNotEmpty && children.last is TextSpan) {
       final last = children.removeLast() as TextSpan;
       if (last.text == '\n') {
+        // removed trailing single newline
       } else {
         children.add(last);
       }
@@ -411,7 +488,6 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
         spans.add(TextSpan(text: s.substring(0, earliest.start)));
       }
 
-      final matchedText = earliest.group(0)!;
       if (type == 'link') {
         final label = earliest.group(1)!;
         final url = earliest.group(2)!;
@@ -419,6 +495,8 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
           ..onTap = () {
             if (url.startsWith('/')) {
               Navigator.pushNamed(context, url);
+            } else {
+              // non-app links: you may want to launch URL with url_launcher
             }
           };
         _linkRecognizers.add(recognizer);
@@ -453,56 +531,13 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
           ),
         );
       } else {
-        spans.add(TextSpan(text: matchedText));
+        spans.add(TextSpan(text: earliest.group(0)));
       }
 
       s = s.substring(earliest.end);
     }
 
     return spans;
-  }
-
-  Future<void> _saveMessagesToPrefs() async {
-    try {
-      final list = _messages.map((m) => m.toMap()).toList();
-      final jsonStr = jsonEncode(list);
-      await _prefs?.setString(_prefsKey, jsonStr);
-    } catch (e) {
-      debugPrint('Failed to save chat history: $e');
-    }
-  }
-
-  Future<void> _loadMessagesFromPrefs() async {
-    try {
-      final jsonStr = _prefs?.getString(_prefsKey);
-      if (jsonStr == null || jsonStr.isEmpty) return;
-      final data = jsonDecode(jsonStr) as List<dynamic>;
-      _messages.clear();
-      _localMessageIds.clear();
-      for (final item in data) {
-        if (item is Map) {
-          final m = _ChatMessage.fromMap(Map<String, dynamic>.from(item));
-          _messages.add(m);
-          _localMessageIds.add(m.id);
-        }
-      }
-      if (mounted) setState(() {});
-      await Future.delayed(const Duration(milliseconds: 150));
-      _scrollToBottom();
-    } catch (e) {
-      debugPrint('Failed to load saved chat history: $e');
-    }
-  }
-
-  void _scrollToBottom() {
-    if (!_scrollCtrl.hasClients) return;
-    Future.microtask(
-      () => _scrollCtrl.animateTo(
-        _scrollCtrl.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-      ),
-    );
   }
 
   // --- API key resolution (dart-define first, then dotenv) ---
@@ -737,8 +772,12 @@ End each reply with an encouraging or reflective question inviting follow-up.
     }
   }
 
-  // New: write AI-suggested assistant reply to Firestore with approved:false
-  Future<void> _writeAiReplyToFirestore(String text, int ts) async {
+  // New: write AI-suggested assistant reply to Firestore with approved:false and parentId
+  Future<void> _writeAiReplyToFirestore(
+    String text,
+    int ts,
+    String parentMessageId,
+  ) async {
     if (_chatId == null) return;
     final messagesRef = _firestore
         .collection('chats')
@@ -752,6 +791,7 @@ End each reply with an encouraging or reflective question inviting follow-up.
         'timestamp': ts,
         'approved': false,
         'suggestedBy': 'ai',
+        'parentId': parentMessageId,
       }, SetOptions(merge: true));
 
       // update chatIndex so doctor can see a pending reply
@@ -812,7 +852,6 @@ End each reply with an encouraging or reflective question inviting follow-up.
     final userMsg = _ChatMessage.user(text);
     setState(() {
       _messages.add(userMsg);
-      _localMessageIds.add(userMsg.id);
       _ctrl.clear();
     });
     await _saveMessagesToPrefs();
@@ -839,7 +878,7 @@ End each reply with an encouraging or reflective question inviting follow-up.
 
       // Write AI reply to Firestore as approved:false so doctor can review/edit/approve
       final ts = DateTime.now().millisecondsSinceEpoch;
-      await _writeAiReplyToFirestore(reply, ts);
+      await _writeAiReplyToFirestore(reply, ts, userMsg.id);
 
       // Do NOT add AI reply to _messages (user should not see it until doctor approves).
       // Show a short acknowledgement
@@ -861,7 +900,6 @@ End each reply with an encouraging or reflective question inviting follow-up.
       );
       setState(() {
         _messages.add(errMsg);
-        _localMessageIds.add(errMsg.id);
       });
       await _saveMessagesToPrefs();
       _scrollToBottom();
@@ -888,6 +926,64 @@ End each reply with an encouraging or reflective question inviting follow-up.
         'Roboto',
         'sans-serif',
       ],
+    );
+  }
+
+  Widget buildProfileAvatar() {
+    const neonColors = [
+      Color(0xFF00F5D4),
+      Color(0xFF00E5FF),
+      Color(0xFF8A2BE2),
+      Color(0xFF00F5D4),
+    ];
+
+    return SizedBox(
+      width: 48,
+      height: 48,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          if (_loading)
+            RotationTransition(
+              turns: _ringController,
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const SweepGradient(
+                    startAngle: 0.0,
+                    endAngle: 3.14 * 2,
+                    colors: neonColors,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.tealAccent.withOpacity(0.18),
+                      blurRadius: 14,
+                      spreadRadius: 4,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          if (_loading)
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.18),
+                shape: BoxShape.circle,
+              ),
+            ),
+
+          CircleAvatar(
+            radius: 18,
+            backgroundImage: const AssetImage('images/drkanhaiya.png'),
+            backgroundColor: Colors.teal.shade200,
+          ),
+        ],
+      ),
     );
   }
 
@@ -1573,7 +1669,6 @@ End each reply with an encouraging or reflective question inviting follow-up.
           _messages.clear();
         });
         _prefs?.remove(_prefsKey);
-        _localMessageIds.clear();
       }
     });
   }
@@ -1655,6 +1750,22 @@ End each reply with an encouraging or reflective question inviting follow-up.
     final mm = dt.minute.toString().padLeft(2, '0');
     return '$hh:$mm';
   }
+}
+
+/// Small helper to hold assistant messages with parentId metadata
+class _ChatMessageWithMeta {
+  final String id;
+  final String text;
+  final int timestamp;
+  final String? parentId;
+  final bool editedByDoctor;
+  _ChatMessageWithMeta({
+    required this.id,
+    required this.text,
+    required this.timestamp,
+    this.parentId,
+    this.editedByDoctor = false,
+  });
 }
 
 /// Internal message model (keeps your existing constructors)

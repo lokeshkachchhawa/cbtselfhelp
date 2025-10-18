@@ -1,9 +1,10 @@
+// lib/screens/doctor_home.dart
+import 'package:cbt_drktv/screens/doctor_chat_screen.dart';
 import 'package:cbt_drktv/screens/thought_record_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../theme.dart'; // your teal color constants
-import 'doctor_chat_screen.dart'; // for chat thread navigation
+// your teal color constants (teal3, teal4 etc)
 
 class DoctorHome extends StatefulWidget {
   const DoctorHome({super.key});
@@ -33,6 +34,12 @@ class _DoctorHomeState extends State<DoctorHome> {
   }
 
   @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF021515),
@@ -49,7 +56,7 @@ class _DoctorHomeState extends State<DoctorHome> {
       ),
       body: Column(
         children: [
-          // 🔍 Search bar
+          // Search bar
           Padding(
             padding: const EdgeInsets.all(10),
             child: TextField(
@@ -74,7 +81,7 @@ class _DoctorHomeState extends State<DoctorHome> {
             ),
           ),
 
-          // 🧾 Chat list
+          // Chat list
           Expanded(
             child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
               stream: _chatStream(),
@@ -111,6 +118,7 @@ class _DoctorHomeState extends State<DoctorHome> {
                       .toString()
                       .toLowerCase();
                   final query = _searchQuery.toLowerCase();
+                  if (query.isEmpty) return true;
                   return name.contains(query) || email.contains(query);
                 }).toList();
 
@@ -130,9 +138,10 @@ class _DoctorHomeState extends State<DoctorHome> {
                     final doc = filtered[i];
                     final data = doc.data();
                     final chatId = doc.id;
-                    final userName = data['userName'] ?? 'User';
-                    final lastMessage = data['lastMessage'] ?? '';
+                    final userName = (data['userName'] ?? 'User').toString();
+                    final lastMessage = (data['lastMessage'] ?? '').toString();
                     final unread = (data['unreadCount'] ?? 0) as int;
+                    final pending = (data['pendingCount'] ?? 0) as int;
                     final ts = (data['lastUpdated'] as Timestamp?)?.toDate();
                     final time = ts != null
                         ? '${ts.hour.toString().padLeft(2, '0')}:${ts.minute.toString().padLeft(2, '0')}'
@@ -161,14 +170,39 @@ class _DoctorHomeState extends State<DoctorHome> {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        subtitle: Text(
-                          lastMessage,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 13,
-                          ),
+                        subtitle: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                lastMessage,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                            if (pending > 0)
+                              Container(
+                                margin: const EdgeInsets.only(left: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.orangeAccent.shade200,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  'Pending $pending',
+                                  style: const TextStyle(
+                                    color: Colors.black87,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                         trailing: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -205,11 +239,15 @@ class _DoctorHomeState extends State<DoctorHome> {
                           ],
                         ),
                         onTap: () async {
-                          // ✅ reset unreadCount on open
-                          await _firestore
-                              .collection('chatIndex')
-                              .doc(chatId)
-                              .update({'unreadCount': 0});
+                          // reset unreadCount on open (best-effort)
+                          try {
+                            await _firestore
+                                .collection('chatIndex')
+                                .doc(chatId)
+                                .update({'unreadCount': 0});
+                          } catch (e) {
+                            debugPrint('Failed to reset unread: $e');
+                          }
 
                           if (!mounted) return;
                           Navigator.push(
@@ -217,7 +255,7 @@ class _DoctorHomeState extends State<DoctorHome> {
                             MaterialPageRoute(
                               builder: (_) => DoctorChatThread(
                                 chatId: chatId,
-                                userName: userName, // ✅ renamed parameter
+                                userName: userName,
                               ),
                             ),
                           );
