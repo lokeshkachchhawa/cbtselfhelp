@@ -101,7 +101,33 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _progressFuture = _loadProgressSummary();
   }
+
   // Add this method inside _HomePageState (near other _build* methods)
+  Widget _buildThoughtDetectiveCard() {
+    return Card(
+      color: Colors.white.withOpacity(0.08),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: teal4,
+          child: const Icon(Icons.psychology, color: Colors.white),
+        ),
+        title: const Text(
+          'Thought Detective',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        subtitle: const Text(
+          'Play a CBT learning game — identify thinking traps!',
+          style: TextStyle(color: Colors.white70),
+        ),
+        trailing: ElevatedButton(
+          onPressed: () => Navigator.pushNamed(context, '/thought_game'),
+          style: ElevatedButton.styleFrom(backgroundColor: teal3),
+          child: const Text('Play'),
+        ),
+      ),
+    );
+  }
 
   Widget _buildDrKanhaiyaChatCard() {
     return Card(
@@ -1004,6 +1030,7 @@ class _HomePageState extends State<HomePage> {
                       const SizedBox(height: 12),
                       _buildDrKanhaiyaChatCard(),
                       const SizedBox(height: 16),
+                      _buildThoughtDetectiveCard(),
 
                       // Programs carousel (simple horizontal list)
                       const Text(
@@ -1502,6 +1529,7 @@ class _HomePageState extends State<HomePage> {
         'route': '/activities',
       },
       {'icon': Icons.self_improvement, 'label': 'Relax', 'route': '/relax'},
+      {'icon': Icons.psychology, 'label': 'CBT Game', 'route': '/thought_game'},
     ];
 
     return Row(
