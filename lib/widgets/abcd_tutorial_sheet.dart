@@ -1,11 +1,12 @@
 // lib/widgets/abcd_tutorial_sheet.dart
-// Extracted ABCD tutorial sheet (modal) from the main page.
+// Extracted ABCDE tutorial sheet (modal) from the main page.
 // Usage: import this file and call `showAbcdTutorialSheet(context, ...);`
 
+import 'package:cbt_drktv/widgets/tutorial_video_player.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 
-// Local copy of palette (keeps the widget self-contained).
+// Local palette (keeps the widget self-contained)
 const Color teal1 = Color(0xFFC6EDED);
 const Color teal2 = Color(0xFF79C2BF);
 const Color teal3 = Color(0xFF008F89);
@@ -18,6 +19,13 @@ const Color surfaceDark = Color(0xFF071617);
 const Color cardDark = Color(0xFF072726);
 const Color mutedText = Color(0xFFBFDCDC);
 const Color dimText = Color(0xFFA3CFCB);
+
+// Section colors (ABCDE)
+const Color colorA = Color(0xFFE57373); // coral/red
+const Color colorB = Color(0xFFFDD835); // amber/yellow
+const Color colorC = Color(0xFF64B5F6); // light blue
+const Color colorD = Color(0xFF81C784); // light green
+const Color colorE = Color(0xFFFFB74D); // orange
 
 /// Show the extracted tutorial as a draggable bottom sheet.
 ///
@@ -32,7 +40,7 @@ Future<void> showAbcdTutorialSheet(
 }) {
   bool _tutorialInHindi = initialHindi;
 
-  String t(String en, String hi) => _tutorialInHindi ? hi : en;
+  String tLocal(String en, String hi) => _tutorialInHindi ? hi : en;
 
   return showModalBottomSheet<void>(
     context: context,
@@ -53,9 +61,6 @@ Future<void> showAbcdTutorialSheet(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             child: StatefulBuilder(
               builder: (sheetCtx, sheetSetState) {
-                String tLocal(String en, String hi) =>
-                    _tutorialInHindi ? hi : en;
-
                 void _setLang(bool v) {
                   sheetSetState(() => _tutorialInHindi = v);
                   if (onLanguageChanged != null) onLanguageChanged(v);
@@ -66,6 +71,7 @@ Future<void> showAbcdTutorialSheet(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      // drag handle
                       Container(
                         height: 6,
                         width: 60,
@@ -75,18 +81,60 @@ Future<void> showAbcdTutorialSheet(
                           borderRadius: BorderRadius.circular(6),
                         ),
                       ),
+
+                      // Title row with colored ABCDE
+                      const SizedBox(height: 10),
+                      TutorialYoutubePlayer(
+                        videoUrl: 'https://youtu.be/BKBBTY44UU8',
+                        height: 230,
+                        autoPlay: false,
+                        startMuted: false,
+                        showControls: true,
+                      ),
+                      const SizedBox(height: 16),
                       Row(
                         children: [
                           Expanded(
-                            child: Text(
-                              tLocal(
-                                'ABCD Worksheet — Detailed CBT Tutorial',
-                                'ABCD वर्कशीट — विस्तृत CBT मार्गदर्शिका',
-                              ),
-                              style: TextStyle(
-                                color: mutedText,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                            child: RichText(
+                              text: TextSpan(
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: mutedText,
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: _tutorialInHindi
+                                        ? 'ABCD वर्कशीट — '
+                                        : 'ABCD Worksheet — ',
+                                  ),
+                                  TextSpan(
+                                    text: 'A',
+                                    style: TextStyle(color: colorA),
+                                  ),
+                                  TextSpan(
+                                    text: 'B',
+                                    style: TextStyle(color: colorB),
+                                  ),
+                                  TextSpan(
+                                    text: 'C',
+                                    style: TextStyle(color: colorC),
+                                  ),
+                                  TextSpan(
+                                    text: 'D',
+                                    style: TextStyle(color: colorD),
+                                  ),
+                                  TextSpan(
+                                    text: 'E',
+                                    style: TextStyle(color: colorE),
+                                  ),
+                                  TextSpan(
+                                    text: _tutorialInHindi
+                                        ? ' — विस्तृत CBT मार्गदर्शिका'
+                                        : ' — Detailed CBT Tutorial',
+                                    style: const TextStyle(color: mutedText),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
@@ -99,8 +147,10 @@ Future<void> showAbcdTutorialSheet(
                           ),
                         ],
                       ),
+
                       const SizedBox(height: 8),
 
+                      // language toggle + copy checklist
                       Row(
                         children: [
                           Text(
@@ -123,11 +173,12 @@ Future<void> showAbcdTutorialSheet(
                             onPressed: () {
                               final enChecklist = [
                                 '1) Identify activating event (A).',
-                                '2) Notice automatic thought (B).',
+                                '2) Notice automatic thought(s) (B).',
                                 '3) Record consequences (C): feelings & actions.',
                                 '4) Examine evidence for/against (Socratic questions).',
                                 '5) Generate alternative balanced thought (D).',
-                                '6) Rate mood again and plan a behavioural experiment / reminder.',
+                                '6) Note E — Effects: emotional, psychological, physical, behavioural responses.',
+                                '7) Rate mood again and plan a behavioural experiment / reminder.',
                               ].join('\n');
                               final hiChecklist = [
                                 '1) घटना (A) पहचानें।',
@@ -135,8 +186,10 @@ Future<void> showAbcdTutorialSheet(
                                 '3) परिणाम (C): भावनाएँ और क्रियाएँ लिखें।',
                                 '4) प्रमाण के लिए/विरुद्ध जाँचें (सॉक्रेटिक प्रश्न)।',
                                 '5) वैकल्पिक संतुलित विचार (D) बनाएं।',
-                                '6) फिर से मूड रेट करें और व्यवहारिक प्रयोग/नोट तय करें।',
+                                '6) E — प्रभाव नोट करें: भावनात्मक, मनोवैज्ञानिक, शारीरिक, व्यवहारिक प्रतिक्रियाएँ।',
+                                '7) फिर से मूड रेट करें और व्यवहारिक प्रयोग/नोट तय करें।',
                               ].join('\n');
+
                               Clipboard.setData(
                                 ClipboardData(
                                   text: _tutorialInHindi
@@ -168,8 +221,9 @@ Future<void> showAbcdTutorialSheet(
                         ],
                       ),
 
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
 
+                      // Intro
                       Text(
                         tLocal(
                           'What is this and why CBT?',
@@ -184,15 +238,16 @@ Future<void> showAbcdTutorialSheet(
                       const SizedBox(height: 6),
                       Text(
                         tLocal(
-                          'The ABCD worksheet is a practical CBT (Cognitive Behavioural Therapy) tool. CBT helps us notice how our thoughts influence feelings and behaviour. By writing them down we can test and change unhelpful automatic thoughts and plan actions that reduce distress.',
-                          'ABCD वर्कशीट एक व्यवहारिक CBT (कॉग्निटिव बिहेवियरल थेरेपी) उपकरण है। CBT यह समझने में मदद करता है कि हमारे विचार हमारी भावनाओं और व्यवहार को कैसे प्रभावित करते हैं। लिखने से हम उन स्वचालित विचारों का परीक्षण कर सकते हैं और उन्हें बदलने के तरीके ढूंढ सकते हैं।',
+                          'The ABCDE worksheet is a practical CBT (Cognitive Behavioural Therapy) tool. CBT helps us notice how our thoughts influence feelings and behaviour. By writing them down we can test and change unhelpful automatic thoughts and plan actions that reduce distress. E — Effects is an explicit step to notice how thoughts and beliefs produce emotional, cognitive, physical and behavioural responses.',
+                          'ABCD वर्कशीट एक व्यवहारिक CBT (कॉग्निटिव बिहेवियरल थेरेपी) उपकरण है। CBT यह समझने में मदद करता है कि हमारे विचार हमारी भावनाओं और व्यवहार को कैसे प्रभावित करते हैं। लिखने से हम उन स्वचालित विचारों का परीक्षण कर सकते हैं और उन्हें बदलने के तरीके ढूंढ सकते हैं। E — प्रभाव एक स्पष्ट चरण है ताकि हम ध्यान दें कि विचार और विश्वास भावनात्मक, मनोवैज्ञानिक, शारीरिक और व्यवहारिक प्रतिक्रियाएँ कैसे पैदा करते हैं।',
                         ),
                         style: const TextStyle(color: Colors.white70),
                       ),
 
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 14),
 
-                      _sectionHeader(
+                      // Core ideas
+                      _sectionHeaderRow(
                         tLocal(
                           'Core CBT ideas (short)',
                           'CBT के मुख्य विचार (संक्षेप)',
@@ -228,9 +283,10 @@ Future<void> showAbcdTutorialSheet(
                         ),
                       ),
 
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 14),
 
-                      _sectionHeader(
+                      // How to use: numbered steps including E (colored badges)
+                      _sectionHeaderRow(
                         tLocal(
                           'How to use this worksheet (practical steps)',
                           'वर्कशीट कैसे प्रयोग करें (व्यवहारिक कदम)',
@@ -243,13 +299,15 @@ Future<void> showAbcdTutorialSheet(
                           'A — Activating event: briefly describe the situation (who, what, when, where). Be specific; avoid interpretations here — facts only.',
                           'A — घटना: संक्षेप में स्थिति बताएं (कौन, क्या, कब, कहाँ)। विशिष्ट रहें; यहाँ केवल तथ्य लिखें, व्याख्या नहीं।',
                         ),
+                        color: colorA,
                       ),
                       _numberedItem(
                         2,
                         tLocal(
-                          'B — Belief / Automatic thought: the immediate thought that came to mind (often short — e.g. "I messed up", "They don’t like me").',
-                          'B — विश्वास/स्वचालित विचार: तत्क्षण जो विचार आया (अक्सर छोटा — जैसे "मैंने गलती कर दी", "उसे मैं पसंद नहीं हूँ").',
+                          'B — Belief / Automatic thought: the immediate thought that came to mind (often short — e.g. "I messed up", "They don’t like me"). You can record beliefs in different domains (emotional, cognitive, physical sensations, action urges).',
+                          'B — विश्वास/स्वचालित विचार: तत्क्षण जो विचार आया (अक्सर छोटा — जैसे "मैंने गलती कर दी", "उसे मैं पसंद नहीं हूँ"). आप विभिन्न प्रकार के विश्वास लिख सकते हैं (भावनात्मक, संज्ञानात्मक, शारीरिक संवेदनाएँ, क्रियात्मक प्रेरणाएँ)।',
                         ),
+                        color: colorB,
                       ),
                       _numberedItem(
                         3,
@@ -257,6 +315,7 @@ Future<void> showAbcdTutorialSheet(
                           'C — Consequences: list emotional & behavioural outcomes (e.g. anxiety 8/10, avoided calling, felt tearful). Rate mood (before).',
                           'C — परिणाम: भावनात्मक और व्यवहारिक परिणाम लिखें (जैसे चिंता 8/10, कॉल करने से बचा, दुख हुआ)। पहले मूड रेट करें।',
                         ),
+                        color: colorC,
                       ),
                       _numberedItem(
                         4,
@@ -264,11 +323,29 @@ Future<void> showAbcdTutorialSheet(
                           'D — Dispute / Alternative thought: examine evidence for and against the belief using Socratic questions (below) and write a kinder, balanced alternative thought.',
                           'D — विवाद/वैकल्पिक विचार: सॉक्रेटिक प्रश्न का उपयोग करके विश्वास के पक्ष/विपक्ष के प्रमाण जांचें और एक दयालु/संतुलित वैकल्पिक विचार लिखें।',
                         ),
+                        color: colorD,
+                      ),
+                      _numberedItem(
+                        5,
+                        tLocal(
+                          'E — Effects: explicitly note how the belief produced responses across 4 domains — Emotional (how you felt), Psychological/Cognitive (thinking patterns), Physical (sensations: tension, heart-rate), Behavioural (what you did or felt like doing). Recording these helps target experiments.',
+                          'E — प्रभाव: स्पष्ट रूप से नोट करें कि विश्वास ने 4 क्षेत्रों में कैसे प्रतिक्रियाएँ उत्पन्न कीं — भावनात्मक (आपने कैसा महसूस किया), मनोवैज्ञानिक/संज्ञानात्मक (सोचना), शारीरिक (संवेदनाएँ: तनाव, हृदय की धड़कन), व्यवहारिक (आपने क्या किया या करने का मन था)। इन्हें रिकॉर्ड करना प्रयोगों को लक्षित करने में मदद करता है।',
+                        ),
+                        color: colorE,
+                      ),
+                      _numberedItem(
+                        6,
+                        tLocal(
+                          'Rate mood again and plan a behavioural experiment / reminder. Small actions test the alternative thought (e.g. one phone call, brief conversation).',
+                          'फिर से मूड रेट करें और व्यवहारिक प्रयोग / रिमाइंडर योजना बनाएं। छोटे कदम वैकल्पिक विचार का परीक्षण करते हैं (जैसे एक फोन कॉल, संक्षिप्त बातचीत)।',
+                        ),
+                        color: teal3,
                       ),
 
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
 
-                      _sectionHeader(
+                      // Socratic prompts
+                      _sectionHeaderRow(
                         tLocal(
                           'Socratic prompts (use these while filling D)',
                           'सॉक्रेटिक प्रश्न (D भरते समय उपयोग करें)',
@@ -313,7 +390,7 @@ Future<void> showAbcdTutorialSheet(
 
                       const SizedBox(height: 12),
 
-                      _sectionHeader(
+                      _sectionHeaderRow(
                         tLocal(
                           'Behavioural experiments and follow-up',
                           'व्यवहारिक प्रयोग और फॉलो-अप',
@@ -322,15 +399,15 @@ Future<void> showAbcdTutorialSheet(
                       const SizedBox(height: 8),
                       Text(
                         tLocal(
-                          'After you write a balanced alternative thought, consider a small experiment you can try this week to test the belief (e.g. make one phone call, speak briefly to a colleague). Note results and re-rate your mood.',
-                          'एक बार वैकल्पिक विचार लिखने के बाद, एक छोटा व्यवहारिक प्रयोग सोचें जिसे आप इस सप्ताह कर सकते हैं (जैसे एक फोन कॉल करना, सहकर्मी से संक्षेप में बात करना)। परिणाम नोट करें और मूड फिर से रेट करें।',
+                          'After you write a balanced alternative thought, consider a small experiment you can try this week to test the belief (e.g. make one phone call, speak briefly to a colleague). Record how the experiment affected your E — Effects and re-rate your mood.',
+                          'एक बार वैकल्पिक विचार लिखने के बाद, एक छोटा व्यवहारिक प्रयोग सोचें जिसे आप इस सप्ताह कर सकते हैं (जैसे एक फोन कॉल करना, सहकर्मी से संक्षेप में बात करना)। रिकॉर्ड करें कि प्रयोग ने आपके E — प्रभावों को कैसे बदला और फिर से मूड रेट करें।',
                         ),
                         style: const TextStyle(color: Colors.white70),
                       ),
 
                       const SizedBox(height: 12),
 
-                      _sectionHeader(
+                      _sectionHeaderRow(
                         tLocal(
                           'Common cognitive distortions (examples)',
                           'सामान्य संज्ञानात्मक विकृतियाँ (उदाहरण)',
@@ -368,10 +445,11 @@ Future<void> showAbcdTutorialSheet(
 
                       const SizedBox(height: 12),
 
-                      _sectionHeader(
+                      // Worked example (EN/HI depending on toggle)
+                      _sectionHeaderRow(
                         tLocal(
-                          'Worked example (short)',
-                          'व्यवहारिक उदाहरण (संक्षेप)',
+                          'Worked example (short) — includes E',
+                          'व्यवहारिक उदाहरण (संक्षेप) — E सहित',
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -382,6 +460,7 @@ Future<void> showAbcdTutorialSheet(
                         hiTitle: 'स्थिति',
                         hiBody:
                             'मीटिंग छोड़ी और दो सहयोगी फुसफुसाते हुए दिखे; सोचा "वे मेरे बारे में बात कर रहे थे — मैं बेवकूफ लगा।"',
+                        showHindi: _tutorialInHindi,
                       ),
                       const SizedBox(height: 8),
                       _exampleBlock(
@@ -389,6 +468,7 @@ Future<void> showAbcdTutorialSheet(
                         enBody: '"I sounded stupid; they don’t respect me."',
                         hiTitle: 'स्वचालित विचार (B)',
                         hiBody: '"मैं बेवकूफ लगा; वे मेरी इज्जत नहीं करते।"',
+                        showHindi: _tutorialInHindi,
                       ),
                       const SizedBox(height: 8),
                       _exampleBlock(
@@ -398,6 +478,7 @@ Future<void> showAbcdTutorialSheet(
                         hiTitle: 'समर्थक प्रमाण',
                         hiBody:
                             'मैंने फुसफुसाहट सुनी; मेरी आवाज थोड़ा कांपी थी।',
+                        showHindi: _tutorialInHindi,
                       ),
                       const SizedBox(height: 8),
                       _exampleBlock(
@@ -407,6 +488,7 @@ Future<void> showAbcdTutorialSheet(
                         hiTitle: 'विरोधी प्रमाण',
                         hiBody:
                             'वे अक्सर बातें करते हैं; बाद में एक ने मुस्कुराया और कुछ नकारात्मक नहीं कहा। किसी ने सीधे आलोचना नहीं की।',
+                        showHindi: _tutorialInHindi,
                       ),
                       const SizedBox(height: 8),
                       _exampleBlock(
@@ -416,11 +498,22 @@ Future<void> showAbcdTutorialSheet(
                         hiTitle: 'संतुलित वैकल्पिक विचार (D)',
                         hiBody:
                             'शायद वे योजनाओं के बारे में बात कर रहे थे; भले ही मैं थोड़ा असहज महसूस करूँ, इसका मतलब यह नहीं कि मैं बेवकूफ हूँ। ज़रूरत पड़ने पर मैं बाद में बात कर सकता/सकती हूँ।',
+                        showHindi: _tutorialInHindi,
+                      ),
+                      const SizedBox(height: 8),
+                      _exampleBlock(
+                        enTitle: 'E — Effects (sample entries)',
+                        enBody:
+                            'Emotional: anxious (7/10) → then slightly relieved after reframing.\nPsychological: replaying the whisper; "I\'m judged".\nPhysical: tension in neck, faster heartbeat.\nBehavioural: avoided speaking up and left early.',
+                        hiTitle: 'E — प्रभाव (उदाहरण)',
+                        hiBody:
+                            'भावनात्मक: चिंतित (7/10) → पुन: फ्रेमिंग के बाद थोड़ी राहत।\nमनोवैज्ञानिक: फुसफुसाहट दोहराना; "मैं जज किया जा रहा हूँ"।\nशारीरिक: गर्दन में तनाव, दिल की धड़कन तेज।\nव्यवहारिक: बोलने से बचा और जल्दी चला गया।',
+                        showHindi: _tutorialInHindi,
                       ),
 
                       const SizedBox(height: 12),
 
-                      _sectionHeader(
+                      _sectionHeaderRow(
                         tLocal('Safety & limits', 'सुरक्षा और सीमाएँ'),
                       ),
                       const SizedBox(height: 8),
@@ -492,13 +585,47 @@ Future<void> showAbcdTutorialSheet(
   );
 }
 
-Widget _sectionHeader(String text) {
-  return Text(
-    text,
-    style: const TextStyle(
-      color: Colors.white,
-      fontSize: 16,
-      fontWeight: FontWeight.w700,
+/// Small section header with subtle left color chip (uses white label text)
+Widget _sectionHeaderRow(String title) {
+  // attempt to detect which section this is and apply color chip for A/B/C/D/E
+  Color? chipColor;
+  final up = title.toUpperCase();
+  if (up.startsWith('A —') || up.contains('A —'))
+    chipColor = colorA;
+  else if (up.startsWith('B —') || up.contains('B —'))
+    chipColor = colorB;
+  else if (up.startsWith('C —') || up.contains('C —'))
+    chipColor = colorC;
+  else if (up.startsWith('D —') || up.contains('D —'))
+    chipColor = colorD;
+  else if (up.startsWith('E —') || up.contains('E —'))
+    chipColor = colorE;
+
+  return Padding(
+    padding: const EdgeInsets.only(top: 6.0, bottom: 6.0),
+    child: Row(
+      children: [
+        if (chipColor != null)
+          Container(
+            width: 10,
+            height: 10,
+            margin: const EdgeInsets.only(right: 10),
+            decoration: BoxDecoration(
+              color: chipColor,
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
     ),
   );
 }
@@ -519,7 +646,9 @@ Widget _bulletItem(IconData icon, String text) {
   );
 }
 
-Widget _numberedItem(int n, String text) {
+/// Numbered item with optional badge color (use ABCDE colors for steps where relevant)
+Widget _numberedItem(int n, String text, {Color? color}) {
+  final bg = color ?? teal3;
   return Padding(
     padding: const EdgeInsets.only(bottom: 8),
     child: Row(
@@ -527,10 +656,14 @@ Widget _numberedItem(int n, String text) {
       children: [
         CircleAvatar(
           radius: 12,
-          backgroundColor: teal3,
+          backgroundColor: bg,
           child: Text(
             '$n',
-            style: const TextStyle(color: Colors.white, fontSize: 12),
+            style: const TextStyle(
+              color: Colors.black,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         const SizedBox(width: 10),
@@ -542,16 +675,16 @@ Widget _numberedItem(int n, String text) {
   );
 }
 
+/// Example block that can show English or Hindi depending on `showHindi`.
 Widget _exampleBlock({
   required String enTitle,
   required String enBody,
   String? hiTitle,
   String? hiBody,
+  bool showHindi = false,
 }) {
-  // This helper expects to be used within the sheet where language toggle state is known.
-  // For simplicity here we show only English text; the caller uses language switching earlier.
-  final title = enTitle;
-  final body = enBody;
+  final title = (showHindi && hiTitle != null) ? hiTitle : enTitle;
+  final body = (showHindi && hiBody != null) ? hiBody : enBody;
   return Container(
     padding: const EdgeInsets.all(10),
     decoration: BoxDecoration(

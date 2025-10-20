@@ -597,14 +597,57 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
                         child: Row(
                           children: [
                             Expanded(
-                              child: Text(
-                                _editing != null
-                                    ? 'Edit worksheet'
-                                    : 'New ABCDE worksheet',
-                                style: const TextStyle(
-                                  color: Color.fromARGB(255, 86, 240, 225),
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w700,
+                              child: RichText(
+                                text: TextSpan(
+                                  style: const TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                  children: [
+                                    TextSpan(
+                                      text: _editing != null ? 'Edit ' : 'New ',
+                                      style: const TextStyle(
+                                        color: Color.fromARGB(
+                                          255,
+                                          86,
+                                          240,
+                                          225,
+                                        ),
+                                      ),
+                                    ),
+                                    TextSpan(
+                                      text: 'A',
+                                      style: TextStyle(color: colorA),
+                                    ),
+                                    TextSpan(
+                                      text: 'B',
+                                      style: TextStyle(color: colorB),
+                                    ),
+                                    TextSpan(
+                                      text: 'C',
+                                      style: TextStyle(color: colorC),
+                                    ),
+                                    TextSpan(
+                                      text: 'D',
+                                      style: TextStyle(color: colorD),
+                                    ),
+                                    TextSpan(
+                                      text: 'E',
+                                      style: TextStyle(color: colorE),
+                                    ),
+                                    const TextSpan(
+                                      text: ' worksheet',
+                                      style: TextStyle(
+                                        color: Color.fromARGB(
+                                          255,
+                                          86,
+                                          240,
+                                          225,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -673,7 +716,7 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
                                           TabBar(
                                             controller: _beliefTabController,
                                             indicator: BoxDecoration(
-                                              color: colorB.withOpacity(0.16),
+                                              color: colorB,
                                               borderRadius:
                                                   BorderRadius.circular(8),
                                             ),
@@ -687,7 +730,7 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
                                                   horizontal: 16,
                                                   vertical: 4,
                                                 ),
-                                            labelColor: Colors.white,
+                                            labelColor: Colors.black,
                                             unselectedLabelColor:
                                                 Colors.white70,
                                             tabs: const [
@@ -824,7 +867,7 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
                                           TabBar(
                                             controller: _effectsTabController,
                                             indicator: BoxDecoration(
-                                              color: colorE.withOpacity(0.16),
+                                              color: colorE,
                                               borderRadius:
                                                   BorderRadius.circular(8),
                                             ),
@@ -833,7 +876,7 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
                                                   horizontal: -4,
                                                   vertical: 4,
                                                 ),
-                                            labelColor: Colors.white,
+                                            labelColor: Colors.black,
                                             unselectedLabelColor:
                                                 Colors.white70,
                                             tabs: const [
@@ -987,7 +1030,7 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
             child: Text(
               letter,
               style: TextStyle(
-                fontSize: 34,
+                fontSize: 30,
                 fontWeight: FontWeight.w900,
                 color: accentColor,
                 height: 1.0,
@@ -999,7 +1042,7 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
           Text(
             labelText,
             style: const TextStyle(
-              fontSize: 18,
+              fontSize: 15,
               fontWeight: FontWeight.w700,
               color: Colors.white70,
             ),
