@@ -797,6 +797,79 @@ End each reply with an encouraging or reflective question inviting follow-up.
     }
   }
 
+  /// Share a structured ABCDE worksheet directly to the doctor chat.
+  /// Used when user taps "Share with Doctor" in worksheet page.
+  Future<void> sendAbcdeWorksheetToDoctor(
+    Map<String, dynamic> worksheetMap,
+  ) async {
+    try {
+      final auth = FirebaseAuth.instance;
+      final firestore = FirebaseFirestore.instance;
+      final user = auth.currentUser;
+      if (user == null) return;
+
+      final chatId = user.uid;
+      final messagesRef = firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages');
+
+      // Compose readable summary
+      final summary =
+          '''
+🧠 *ABCDE Worksheet Shared by User*
+
+*A — Activating Event:*
+${worksheetMap['activatingEvent'] ?? ''}
+
+*B — Belief:*
+${worksheetMap['belief'] ?? ''}
+
+*C — Consequences:*
+• Emotional: ${worksheetMap['consequencesEmotional'] ?? ''}
+• Psychological: ${worksheetMap['consequencesPsychological'] ?? ''}
+• Physical: ${worksheetMap['consequencesPhysical'] ?? ''}
+• Behavioural: ${worksheetMap['consequencesBehavioural'] ?? ''}
+
+*D — Dispute:*
+${worksheetMap['dispute'] ?? ''}
+
+*E — Effects:*
+• Emotional: ${worksheetMap['emotionalEffect'] ?? ''}
+• Psychological: ${worksheetMap['psychologicalEffect'] ?? ''}
+• Physical: ${worksheetMap['physicalEffect'] ?? ''}
+• Behavioural: ${worksheetMap['behaviouralEffect'] ?? ''}
+
+📝 *Note:* ${worksheetMap['note'] ?? ''}
+''';
+
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      final docId = const Uuid().v4();
+
+      await messagesRef.doc(docId).set({
+        'sender': 'user',
+        'text': summary,
+        'timestamp': ts,
+        'approved': true,
+        'type': 'worksheet',
+        'worksheetType': 'ABCDE',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // Also update chat index
+      await firestore.collection('chatIndex').doc(chatId).set({
+        'userId': chatId,
+        'userName': user.displayName ?? user.email ?? '',
+        'lastMessage': 'Shared an ABCDE worksheet',
+        'lastUpdated': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      debugPrint('✅ ABCDE worksheet shared with doctor.');
+    } catch (e) {
+      debugPrint('Error sharing ABCDE worksheet: $e');
+    }
+  }
+
   // New: write user message doc to Firestore (for doctor's view)
   Future<void> _writeUserMessageToFirestore(
     String messageId,

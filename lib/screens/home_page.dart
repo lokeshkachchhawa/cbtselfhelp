@@ -2191,7 +2191,7 @@ For more, tap "View full page".''';
 
   // Confirm then sign out
   Future<void> _confirmAndSignOut() async {
-    final theme = Theme.of(context);
+    Theme.of(context);
 
     final bool? confirm = await showDialog<bool>(
       context: context,

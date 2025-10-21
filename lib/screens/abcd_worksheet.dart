@@ -1,11 +1,13 @@
 import 'dart:convert';
+import 'package:cbt_drktv/services/chat_share.dart';
 import 'package:cbt_drktv/widgets/abcd_tutorial_sheet.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
-const _kStorageKey = 'abcd_worksheets_v1';
+const _kStorageKey = 'ABCDE_worksheets_v1';
 final _uuid = Uuid();
 
 // Teal palette (kept consistent)
@@ -62,7 +64,7 @@ class AppTextField extends StatelessWidget {
       isDense: true,
       counterText: showCounter ? null : '',
       counterStyle: const TextStyle(color: Colors.white),
-      hintStyle: TextStyle(color: Colors.white38),
+      hintStyle: const TextStyle(color: Colors.white38),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -96,17 +98,19 @@ class AppTextField extends StatelessWidget {
 
 // ---------------- Domain model & local storage ----------------
 
-class AbcdWorksheet {
+class ABCDEWorksheet {
   final String id;
   final String activatingEvent;
 
-  // B — Belief (four types)
-  final String beliefEmotional;
-  final String beliefPsychological;
-  final String beliefPhysical;
-  final String beliefBehavioural;
+  // B — Belief (single field now)
+  final String belief;
 
-  final String consequences;
+  // C — Consequences (four types)
+  final String consequencesEmotional;
+  final String consequencesPsychological;
+  final String consequencesPhysical;
+  final String consequencesBehavioural;
+
   final String dispute;
 
   // E — Effects (four types)
@@ -118,14 +122,14 @@ class AbcdWorksheet {
   final String note;
   final DateTime createdAt;
 
-  AbcdWorksheet({
+  ABCDEWorksheet({
     required this.id,
     required this.activatingEvent,
-    required this.beliefEmotional,
-    required this.beliefPsychological,
-    required this.beliefPhysical,
-    required this.beliefBehavioural,
-    required this.consequences,
+    required this.belief,
+    required this.consequencesEmotional,
+    required this.consequencesPsychological,
+    required this.consequencesPhysical,
+    required this.consequencesBehavioural,
     required this.dispute,
     required this.emotionalEffect,
     required this.psychologicalEffect,
@@ -135,13 +139,13 @@ class AbcdWorksheet {
     required this.createdAt,
   });
 
-  AbcdWorksheet copyWith({
+  ABCDEWorksheet copyWith({
     String? activatingEvent,
-    String? beliefEmotional,
-    String? beliefPsychological,
-    String? beliefPhysical,
-    String? beliefBehavioural,
-    String? consequences,
+    String? belief,
+    String? consequencesEmotional,
+    String? consequencesPsychological,
+    String? consequencesPhysical,
+    String? consequencesBehavioural,
     String? dispute,
     String? emotionalEffect,
     String? psychologicalEffect,
@@ -149,14 +153,17 @@ class AbcdWorksheet {
     String? behaviouralEffect,
     String? note,
   }) {
-    return AbcdWorksheet(
+    return ABCDEWorksheet(
       id: id,
       activatingEvent: activatingEvent ?? this.activatingEvent,
-      beliefEmotional: beliefEmotional ?? this.beliefEmotional,
-      beliefPsychological: beliefPsychological ?? this.beliefPsychological,
-      beliefPhysical: beliefPhysical ?? this.beliefPhysical,
-      beliefBehavioural: beliefBehavioural ?? this.beliefBehavioural,
-      consequences: consequences ?? this.consequences,
+      belief: belief ?? this.belief,
+      consequencesEmotional:
+          consequencesEmotional ?? this.consequencesEmotional,
+      consequencesPsychological:
+          consequencesPsychological ?? this.consequencesPsychological,
+      consequencesPhysical: consequencesPhysical ?? this.consequencesPhysical,
+      consequencesBehavioural:
+          consequencesBehavioural ?? this.consequencesBehavioural,
       dispute: dispute ?? this.dispute,
       emotionalEffect: emotionalEffect ?? this.emotionalEffect,
       psychologicalEffect: psychologicalEffect ?? this.psychologicalEffect,
@@ -170,11 +177,11 @@ class AbcdWorksheet {
   Map<String, dynamic> toMap() => {
     'id': id,
     'activatingEvent': activatingEvent,
-    'beliefEmotional': beliefEmotional,
-    'beliefPsychological': beliefPsychological,
-    'beliefPhysical': beliefPhysical,
-    'beliefBehavioural': beliefBehavioural,
-    'consequences': consequences,
+    'belief': belief,
+    'consequencesEmotional': consequencesEmotional,
+    'consequencesPsychological': consequencesPsychological,
+    'consequencesPhysical': consequencesPhysical,
+    'consequencesBehavioural': consequencesBehavioural,
     'dispute': dispute,
     'emotionalEffect': emotionalEffect,
     'psychologicalEffect': psychologicalEffect,
@@ -184,18 +191,42 @@ class AbcdWorksheet {
     'createdAt': createdAt.toIso8601String(),
   };
 
-  static AbcdWorksheet fromMap(Map<String, dynamic> m) {
-    // Support legacy single 'belief' field by mapping it to emotional belief
-    final legacyBelief = m['belief'] as String?;
+  static ABCDEWorksheet fromMap(Map<String, dynamic> m) {
+    // Support legacy fields:
+    // - older versions may have 'beliefEmotional', 'beliefPsychological', etc.
+    // - older versions may have a single 'consequences' string
+    final legacyBelEmo = m['beliefEmotional'] as String?;
+    final legacyBelPsy = m['beliefPsychological'] as String?;
+    final legacyBelPhy = m['beliefPhysical'] as String?;
+    final legacyBelBeh = m['beliefBehavioural'] as String?;
 
-    return AbcdWorksheet(
+    // Compose a single belief string from legacy belief parts if present.
+    String composedBelief =
+        (m['belief'] as String?) ??
+        ([
+          if ((legacyBelEmo ?? '').trim().isNotEmpty)
+            'Emo: ${legacyBelEmo!.trim()}',
+          if ((legacyBelPsy ?? '').trim().isNotEmpty)
+            'Psy: ${legacyBelPsy!.trim()}',
+          if ((legacyBelPhy ?? '').trim().isNotEmpty)
+            'Phy: ${legacyBelPhy!.trim()}',
+          if ((legacyBelBeh ?? '').trim().isNotEmpty)
+            'Beh: ${legacyBelBeh!.trim()}',
+        ].join(' | '));
+
+    // Support legacy single consequences => map into Emotional consequence slot
+    final legacyConsequences = m['consequences'] as String?;
+
+    return ABCDEWorksheet(
       id: m['id'] as String,
       activatingEvent: m['activatingEvent'] as String? ?? '',
-      beliefEmotional: m['beliefEmotional'] as String? ?? legacyBelief ?? '',
-      beliefPsychological: m['beliefPsychological'] as String? ?? '',
-      beliefPhysical: m['beliefPhysical'] as String? ?? '',
-      beliefBehavioural: m['beliefBehavioural'] as String? ?? '',
-      consequences: m['consequences'] as String? ?? '',
+      belief: composedBelief,
+      consequencesEmotional:
+          m['consequencesEmotional'] as String? ?? legacyConsequences ?? '',
+      consequencesPsychological:
+          m['consequencesPsychological'] as String? ?? '',
+      consequencesPhysical: m['consequencesPhysical'] as String? ?? '',
+      consequencesBehavioural: m['consequencesBehavioural'] as String? ?? '',
       dispute: m['dispute'] as String? ?? '',
       emotionalEffect: m['emotionalEffect'] as String? ?? '',
       psychologicalEffect: m['psychologicalEffect'] as String? ?? '',
@@ -208,8 +239,8 @@ class AbcdWorksheet {
   }
 }
 
-class AbcdStorage {
-  Future<List<AbcdWorksheet>> loadAll() async {
+class ABCDEStorage {
+  Future<List<ABCDEWorksheet>> loadAll() async {
     final prefs = await SharedPreferences.getInstance();
     final jsonStr = prefs.getString(_kStorageKey);
     if (jsonStr == null || jsonStr.isEmpty) return [];
@@ -217,7 +248,7 @@ class AbcdStorage {
       final List<dynamic> list = json.decode(jsonStr) as List<dynamic>;
       return list
           .map(
-            (e) => AbcdWorksheet.fromMap(Map<String, dynamic>.from(e as Map)),
+            (e) => ABCDEWorksheet.fromMap(Map<String, dynamic>.from(e as Map)),
           )
           .toList();
     } catch (_) {
@@ -225,19 +256,19 @@ class AbcdStorage {
     }
   }
 
-  Future<void> saveAll(List<AbcdWorksheet> items) async {
+  Future<void> saveAll(List<ABCDEWorksheet> items) async {
     final prefs = await SharedPreferences.getInstance();
     final jsonStr = json.encode(items.map((e) => e.toMap()).toList());
     await prefs.setString(_kStorageKey, jsonStr);
   }
 
-  Future<void> add(AbcdWorksheet item) async {
+  Future<void> add(ABCDEWorksheet item) async {
     final all = await loadAll();
     all.insert(0, item); // newest first
     await saveAll(all);
   }
 
-  Future<void> update(AbcdWorksheet item) async {
+  Future<void> update(ABCDEWorksheet item) async {
     final all = await loadAll();
     final idx = all.indexWhere((e) => e.id == item.id);
     if (idx >= 0) {
@@ -255,27 +286,29 @@ class AbcdStorage {
 
 // ---------------- Page UI ----------------
 
-class AbcdWorksheetPage extends StatefulWidget {
-  const AbcdWorksheetPage({super.key});
+class ABCDEWorksheetPage extends StatefulWidget {
+  const ABCDEWorksheetPage({super.key});
 
   @override
-  State<AbcdWorksheetPage> createState() => _AbcdWorksheetPageState();
+  State<ABCDEWorksheetPage> createState() => _ABCDEWorksheetPageState();
 }
 
-class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
+class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
     with TickerProviderStateMixin {
-  final _storage = AbcdStorage();
+  final _storage = ABCDEStorage();
 
   // controllers
   final _activatingCtrl = TextEditingController();
 
-  // B — belief controllers (four types)
-  final _belEmoCtrl = TextEditingController();
-  final _belPsyCtrl = TextEditingController();
-  final _belPhyCtrl = TextEditingController();
-  final _belBehCtrl = TextEditingController();
+  // B — belief controller (single)
+  final _beliefCtrl = TextEditingController();
 
-  final _consequencesCtrl = TextEditingController();
+  // C — consequences controllers (four types)
+  final _consecEmoCtrl = TextEditingController();
+  final _consecPsyCtrl = TextEditingController();
+  final _consecPhyCtrl = TextEditingController();
+  final _consecBehCtrl = TextEditingController();
+
   final _disputeCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
 
@@ -286,11 +319,11 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
   final _behCtrl = TextEditingController();
 
   late final TabController _effectsTabController;
-  late final TabController _beliefTabController;
+  late final TabController _consequencesTabController;
 
   bool _loading = true;
-  List<AbcdWorksheet> _items = [];
-  AbcdWorksheet? _editing;
+  List<ABCDEWorksheet> _items = [];
+  ABCDEWorksheet? _editing;
 
   // auto-open guard (if route passes open:true)
   bool _didAutoOpen = false;
@@ -302,7 +335,7 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
   void initState() {
     super.initState();
     _effectsTabController = TabController(length: 4, vsync: this);
-    _beliefTabController = TabController(length: 4, vsync: this);
+    _consequencesTabController = TabController(length: 4, vsync: this);
     _load();
   }
 
@@ -323,11 +356,11 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
   @override
   void dispose() {
     _activatingCtrl.dispose();
-    _belEmoCtrl.dispose();
-    _belPsyCtrl.dispose();
-    _belPhyCtrl.dispose();
-    _belBehCtrl.dispose();
-    _consequencesCtrl.dispose();
+    _beliefCtrl.dispose();
+    _consecEmoCtrl.dispose();
+    _consecPsyCtrl.dispose();
+    _consecPhyCtrl.dispose();
+    _consecBehCtrl.dispose();
     _disputeCtrl.dispose();
     _noteCtrl.dispose();
     _emoCtrl.dispose();
@@ -335,7 +368,7 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
     _phyCtrl.dispose();
     _behCtrl.dispose();
     _effectsTabController.dispose();
-    _beliefTabController.dispose();
+    _consequencesTabController.dispose();
     super.dispose();
   }
 
@@ -352,11 +385,11 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
     setState(() {
       _editing = null;
       _activatingCtrl.clear();
-      _belEmoCtrl.clear();
-      _belPsyCtrl.clear();
-      _belPhyCtrl.clear();
-      _belBehCtrl.clear();
-      _consequencesCtrl.clear();
+      _beliefCtrl.clear();
+      _consecEmoCtrl.clear();
+      _consecPsyCtrl.clear();
+      _consecPhyCtrl.clear();
+      _consecBehCtrl.clear();
       _disputeCtrl.clear();
       _noteCtrl.clear();
       _emoCtrl.clear();
@@ -364,20 +397,20 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
       _phyCtrl.clear();
       _behCtrl.clear();
       _effectsTabController.index = 0;
-      _beliefTabController.index = 0;
+      _consequencesTabController.index = 0;
     });
     _showFormSheet();
   }
 
-  void _startEdit(AbcdWorksheet item) {
+  void _startEdit(ABCDEWorksheet item) {
     setState(() {
       _editing = item;
       _activatingCtrl.text = item.activatingEvent;
-      _belEmoCtrl.text = item.beliefEmotional;
-      _belPsyCtrl.text = item.beliefPsychological;
-      _belPhyCtrl.text = item.beliefPhysical;
-      _belBehCtrl.text = item.beliefBehavioural;
-      _consequencesCtrl.text = item.consequences;
+      _beliefCtrl.text = item.belief;
+      _consecEmoCtrl.text = item.consequencesEmotional;
+      _consecPsyCtrl.text = item.consequencesPsychological;
+      _consecPhyCtrl.text = item.consequencesPhysical;
+      _consecBehCtrl.text = item.consequencesBehavioural;
       _disputeCtrl.text = item.dispute;
       _noteCtrl.text = item.note;
       _emoCtrl.text = item.emotionalEffect;
@@ -385,7 +418,7 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
       _phyCtrl.text = item.physicalEffect;
       _behCtrl.text = item.behaviouralEffect;
       _effectsTabController.index = 0;
-      _beliefTabController.index = 0;
+      _consequencesTabController.index = 0;
     });
     _showFormSheet();
   }
@@ -441,13 +474,13 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
 
   Future<void> _saveFromForm() async {
     final activating = _activatingCtrl.text.trim();
+    final belief = _beliefCtrl.text.trim();
 
-    final belEmo = _belEmoCtrl.text.trim();
-    final belPsy = _belPsyCtrl.text.trim();
-    final belPhy = _belPhyCtrl.text.trim();
-    final belBeh = _belBehCtrl.text.trim();
+    final consecEmo = _consecEmoCtrl.text.trim();
+    final consecPsy = _consecPsyCtrl.text.trim();
+    final consecPhy = _consecPhyCtrl.text.trim();
+    final consecBeh = _consecBehCtrl.text.trim();
 
-    final consequences = _consequencesCtrl.text.trim();
     final dispute = _disputeCtrl.text.trim();
     final note = _noteCtrl.text.trim();
 
@@ -456,16 +489,10 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
     final phy = _phyCtrl.text.trim();
     final beh = _behCtrl.text.trim();
 
-    if (activating.isEmpty ||
-        (belEmo.isEmpty &&
-            belPsy.isEmpty &&
-            belPhy.isEmpty &&
-            belBeh.isEmpty)) {
+    if (activating.isEmpty || belief.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Please complete the event and at least one belief field',
-          ),
+          content: Text('Please complete the event and the belief field'),
         ),
       );
       return;
@@ -475,11 +502,11 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
     if (_editing != null) {
       final updated = _editing!.copyWith(
         activatingEvent: activating,
-        beliefEmotional: belEmo,
-        beliefPsychological: belPsy,
-        beliefPhysical: belPhy,
-        beliefBehavioural: belBeh,
-        consequences: consequences,
+        belief: belief,
+        consequencesEmotional: consecEmo,
+        consequencesPsychological: consecPsy,
+        consequencesPhysical: consecPhy,
+        consequencesBehavioural: consecBeh,
         dispute: dispute,
         emotionalEffect: emo,
         psychologicalEffect: psy,
@@ -489,14 +516,14 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
       );
       await _storage.update(updated);
     } else {
-      final newItem = AbcdWorksheet(
+      final newItem = ABCDEWorksheet(
         id: _uuid.v4(),
         activatingEvent: activating,
-        beliefEmotional: belEmo,
-        beliefPsychological: belPsy,
-        beliefPhysical: belPhy,
-        beliefBehavioural: belBeh,
-        consequences: consequences,
+        belief: belief,
+        consequencesEmotional: consecEmo,
+        consequencesPsychological: consecPsy,
+        consequencesPhysical: consecPhy,
+        consequencesBehavioural: consecBeh,
         dispute: dispute,
         emotionalEffect: emo,
         psychologicalEffect: psy,
@@ -691,16 +718,32 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
                                 ),
                               ),
 
-                              // B — Beliefs
-                              _sectionWrapper(
+                              // B — Belief (single)
+                              _sectionLabelAndField(
+                                letter: 'B',
+                                title: 'Belief / Automatic thought',
                                 color: colorB,
+                                child: AppTextField(
+                                  controller: _beliefCtrl,
+                                  hint:
+                                      'Write the immediate thought (short — e.g. "I messed up")',
+                                  minLines: 2,
+                                  maxLines: 4,
+                                  maxLength: 800,
+                                  showCounter: true,
+                                ),
+                              ),
+
+                              // C — Consequences (now four types)
+                              _sectionWrapper(
+                                color: colorC,
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     _headerLabel(
-                                      'B',
-                                      'Belief / Automatic thoughts',
-                                      colorB,
+                                      'C',
+                                      'Consequences (feelings & actions)',
+                                      colorC,
                                     ),
                                     const SizedBox(height: 6),
                                     Container(
@@ -714,9 +757,10 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
                                       child: Column(
                                         children: [
                                           TabBar(
-                                            controller: _beliefTabController,
+                                            controller:
+                                                _consequencesTabController,
                                             indicator: BoxDecoration(
-                                              color: colorB,
+                                              color: colorC,
                                               borderRadius:
                                                   BorderRadius.circular(8),
                                             ),
@@ -742,20 +786,21 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
                                             isScrollable: true,
                                           ),
                                           SizedBox(
-                                            height: 120,
+                                            height: 140,
                                             child: TabBarView(
-                                              controller: _beliefTabController,
+                                              controller:
+                                                  _consequencesTabController,
                                               children: [
                                                 Padding(
                                                   padding: const EdgeInsets.all(
                                                     10,
                                                   ),
                                                   child: AppTextField(
-                                                    controller: _belEmoCtrl,
+                                                    controller: _consecEmoCtrl,
                                                     hint:
-                                                        'Emotional belief / feeling',
-                                                    minLines: 2,
-                                                    maxLines: 4,
+                                                        'Emotional consequence (how you felt)',
+                                                    minLines: 3,
+                                                    maxLines: 6,
                                                     maxLength: 400,
                                                     showCounter: true,
                                                   ),
@@ -765,11 +810,11 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
                                                     10,
                                                   ),
                                                   child: AppTextField(
-                                                    controller: _belPsyCtrl,
+                                                    controller: _consecPsyCtrl,
                                                     hint:
-                                                        'Psychological / cognitive belief',
-                                                    minLines: 2,
-                                                    maxLines: 4,
+                                                        'Psychological / cognitive consequence',
+                                                    minLines: 3,
+                                                    maxLines: 6,
                                                     maxLength: 400,
                                                     showCounter: true,
                                                   ),
@@ -779,11 +824,11 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
                                                     10,
                                                   ),
                                                   child: AppTextField(
-                                                    controller: _belPhyCtrl,
+                                                    controller: _consecPhyCtrl,
                                                     hint:
-                                                        'Physical belief / bodily thought',
-                                                    minLines: 2,
-                                                    maxLines: 4,
+                                                        'Physical consequence (tension, heart-rate)',
+                                                    minLines: 3,
+                                                    maxLines: 6,
                                                     maxLength: 400,
                                                     showCounter: true,
                                                   ),
@@ -793,11 +838,11 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
                                                     10,
                                                   ),
                                                   child: AppTextField(
-                                                    controller: _belBehCtrl,
+                                                    controller: _consecBehCtrl,
                                                     hint:
-                                                        'Behavioural belief (impulse to act)',
-                                                    minLines: 2,
-                                                    maxLines: 4,
+                                                        'Behavioural consequence (avoidance, actions)',
+                                                    minLines: 3,
+                                                    maxLines: 6,
                                                     maxLength: 400,
                                                     showCounter: true,
                                                   ),
@@ -809,21 +854,6 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
                                       ),
                                     ),
                                   ],
-                                ),
-                              ),
-
-                              // C — Consequences
-                              _sectionLabelAndField(
-                                letter: 'C',
-                                title: 'Consequences (feelings & actions)',
-                                color: colorC,
-                                child: AppTextField(
-                                  controller: _consequencesCtrl,
-                                  hint: 'How did you feel or behave?',
-                                  minLines: 2,
-                                  maxLines: 4,
-                                  maxLength: 800,
-                                  showCounter: true,
                                 ),
                               ),
 
@@ -984,6 +1014,7 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
                                       child: const Text('Save locally'),
                                     ),
                                   ),
+
                                   const SizedBox(width: 10),
                                   if (_editing != null)
                                     OutlinedButton(
@@ -1014,6 +1045,9 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
       },
     );
   }
+
+  /// Share a structured ABCDE worksheet directly to the doctor chat.
+  /// Used when user taps "Share with Doctor" in worksheet page.
 
   // 1. Refactored Widget: _HeaderLabel
   // Replace existing _headerLabel with this color-aware version
@@ -1052,7 +1086,7 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
     );
   }
 
-  Widget _beliefSummaryWidget(AbcdWorksheet item) {
+  Widget _beliefSummaryWidget(ABCDEWorksheet item) {
     // --- Define colors same as in detail sheet ---
     const colorA = Color(0xFFFF6F61); // Coral / reddish
     const colorB = Color(0xFFFFC107); // Amber
@@ -1077,26 +1111,27 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
     if (a.isNotEmpty)
       sections.add({'label': 'A — Event', 'text': a, 'color': colorA});
 
-    final bParts = <String>[];
-    final bEmo = firstLine(item.beliefEmotional);
-    final bPsy = firstLine(item.beliefPsychological);
-    final bPhy = firstLine(item.beliefPhysical);
-    final bBeh = firstLine(item.beliefBehavioural);
-    if (bEmo.isNotEmpty) bParts.add('Emo: $bEmo');
-    if (bPsy.isNotEmpty) bParts.add('Psy: $bPsy');
-    if (bPhy.isNotEmpty) bParts.add('Phy: $bPhy');
-    if (bBeh.isNotEmpty) bParts.add('Beh: $bBeh');
-    if (bParts.isNotEmpty) {
+    final b = firstLine(item.belief);
+    if (b.isNotEmpty)
+      sections.add({'label': 'B — Belief', 'text': b, 'color': colorB});
+
+    // Build short consequences summary by joining present parts
+    final cParts = <String>[];
+    final cEmo = firstLine(item.consequencesEmotional);
+    final cPsy = firstLine(item.consequencesPsychological);
+    final cPhy = firstLine(item.consequencesPhysical);
+    final cBeh = firstLine(item.consequencesBehavioural);
+    if (cEmo.isNotEmpty) cParts.add('Emo: $cEmo');
+    if (cPsy.isNotEmpty) cParts.add('Psy: $cPsy');
+    if (cPhy.isNotEmpty) cParts.add('Phy: $cPhy');
+    if (cBeh.isNotEmpty) cParts.add('Beh: $cBeh');
+    if (cParts.isNotEmpty) {
       sections.add({
-        'label': 'B — Beliefs',
-        'text': bParts.join(' | '),
-        'color': colorB,
+        'label': 'C — Consequences',
+        'text': cParts.join(' | '),
+        'color': colorC,
       });
     }
-
-    final c = firstLine(item.consequences);
-    if (c.isNotEmpty)
-      sections.add({'label': 'C — Consequences', 'text': c, 'color': colorC});
 
     final d = firstLine(item.dispute);
     if (d.isNotEmpty)
@@ -1155,29 +1190,25 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
     );
   }
 
-  // Helper function to create a concise summary of the belief types present
-
-  // Separate the PopupMenuButton into its own helper function for cleaner code
-  Widget _buildPopupMenu(AbcdWorksheet item) {
+  Widget _buildPopupMenu(ABCDEWorksheet item) {
     return PopupMenuButton<String>(
       color: Colors.white,
-      icon: const Icon(
-        Icons.more_vert,
-        color: Colors.white54,
-      ), // Subtle icon color
-      onSelected: (v) {
-        if (v == 'edit') _startEdit(item);
-        if (v == 'delete') _deleteItem(item.id);
-        if (v == 'share') {
+      icon: const Icon(Icons.more_vert, color: Colors.white54),
+      onSelected: (v) async {
+        if (v == 'edit') {
+          _startEdit(item);
+        } else if (v == 'delete') {
+          _deleteItem(item.id);
+        } else if (v == 'share') {
           final txt = [
-            'ABCD worksheet',
+            'ABCDE worksheet',
             'A: ${item.activatingEvent}',
-            'B — Beliefs:',
-            '  Emotional: ${item.beliefEmotional}',
-            '  Psychological: ${item.beliefPsychological}',
-            '  Physical: ${item.beliefPhysical}',
-            '  Behavioural: ${item.beliefBehavioural}',
-            'C: ${item.consequences}',
+            'B — Belief: ${item.belief}',
+            'C — Consequences:',
+            '  Emotional: ${item.consequencesEmotional}',
+            '  Psychological: ${item.consequencesPsychological}',
+            '  Physical: ${item.consequencesPhysical}',
+            '  Behavioural: ${item.consequencesBehavioural}',
             'D: ${item.dispute}',
             'E — Effects:',
             '  Emotional: ${item.emotionalEffect}',
@@ -1186,78 +1217,74 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
             '  Behavioural: ${item.behaviouralEffect}',
             if (item.note.isNotEmpty) 'Note: ${item.note}',
           ].join('\n');
-          Clipboard.setData(ClipboardData(text: txt));
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Copied to clipboard (for sharing)')),
-          );
+          await Clipboard.setData(ClipboardData(text: txt));
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Copied to clipboard (for sharing)'),
+              ),
+            );
+          }
+        } else if (v == 'share_doctor') {
+          // Share the already-saved worksheet to doctor's chat in Firestore.
+          try {
+            await ChatShare.sendAbcdeWorksheetToDoctor(item.toMap());
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Worksheet shared with doctor')),
+              );
+            }
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Failed to share with doctor: $e')),
+              );
+            }
+          }
         }
       },
       itemBuilder: (_) => const [
         PopupMenuItem(value: 'edit', child: Text('Edit')),
         PopupMenuItem(value: 'share', child: Text('Copy for share')),
+        PopupMenuItem(value: 'share_doctor', child: Text('Share with Doctor')),
         PopupMenuItem(
           value: 'delete',
           child: Text('Delete', style: TextStyle(color: Colors.red)),
-        ), // Highlight delete
+        ),
       ],
     );
   }
 
-  // --- THE MAIN WIDGET ---
-  Widget _buildListTile(AbcdWorksheet item) {
-    // Use a final variable for a clean separation of the 'A' event.
+  Widget _buildListTile(ABCDEWorksheet item) {
     final titleText = item.activatingEvent.isNotEmpty
         ? item.activatingEvent
-        : 'ABCD worksheet';
-
+        : 'ABCDE worksheet';
     final dateStr = MaterialLocalizations.of(
       context,
     ).formatFullDate(item.createdAt);
-    _beliefSummaryWidget(item); // Get the concise summary
 
     return Card(
-      // Enhanced Card Styling
       color: cardDark,
-      margin: const EdgeInsets.symmetric(
-        horizontal: 5.0,
-        vertical: 3.0,
-      ), // Add outer margin
+      margin: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 3.0),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16), // Softer, modern shape
-        side: const BorderSide(
-          color: Colors.white10,
-          width: 0.8,
-        ), // Subtle border
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: Colors.white10, width: 0.8),
       ),
-      elevation: 3, // Subtle lift for a layered effect
-
+      elevation: 3,
       child: InkWell(
-        // Use InkWell for better tap feedback on the whole card
         onTap: () => _showDetail(item),
-        borderRadius: BorderRadius.circular(16), // Match card border
-
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            vertical: 12.0,
-            horizontal: 8.0,
-          ), // Internal padding
+          padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- ROW 1: Title and Menu ---
               Row(
                 children: [
-                  // Icon for the Activating Event (The 'A')
                   const Padding(
                     padding: EdgeInsets.only(left: 8.0, right: 12.0),
-                    child: Icon(
-                      (Icons.flash_on),
-                      color: Colors.yellow,
-                      size: 24,
-                    ), // Teal accent
+                    child: Icon(Icons.flash_on, color: Colors.yellow, size: 24),
                   ),
-
-                  // Main Title (Activating Event)
                   Expanded(
                     child: Text(
                       titleText,
@@ -1265,27 +1292,20 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontWeight:
-                            FontWeight.w800, // Extra bold for primary info
+                        fontWeight: FontWeight.w800,
                         fontSize: 16,
                       ),
                     ),
                   ),
-
-                  // Menu Button
                   _buildPopupMenu(item),
                 ],
               ),
-
-              // --- Separator ---
               const Divider(
                 color: Colors.white10,
                 height: 16,
                 indent: 16,
                 endIndent: 16,
               ),
-
-              // --- ROW 2: Sub-details (Beliefs & Date) ---
               Padding(
                 padding: const EdgeInsets.only(
                   left: 12.0,
@@ -1293,12 +1313,7 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
                   bottom: 4.0,
                 ),
                 child: Row(
-                  children: [
-                    // Belief Summary with Icon
-                    Expanded(child: _beliefSummaryWidget(item)),
-
-                    // Date Saved with Icon (Aligned to the right)
-                  ],
+                  children: [Expanded(child: _beliefSummaryWidget(item))],
                 ),
               ),
               Padding(
@@ -1316,7 +1331,7 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
                       style: const TextStyle(
                         color: Colors.white54,
                         fontSize: 12,
-                      ), // Subtle date
+                      ),
                     ),
                   ],
                 ),
@@ -1328,156 +1343,559 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
     );
   }
 
-  // Separate the PopupMenuButton into its own helper function for cleaner code
-
-  // NOTE: You will need to make sure the _beliefSummary function is defined
-  // within the scope of your class or passed in, as done in the example above.
-
-  // Define your custom color palette for the ABCD/E sections
-
-  // 1. New Helper Widget for the Main Section Headers (A, B, C, D, E)
-  Widget _sectionHeader(String title, Color color) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),
-      child: Text(
-        title,
-        style: TextStyle(
-          color: color, // Use the assigned color
-          fontSize: 18,
-          fontWeight: FontWeight.w800, // Extra bold
-        ),
-      ),
-    );
-  }
-
-  // 2. Updated Helper Widget for the detail rows (if you have one defined elsewhere)
-  // Assuming _detailRow is defined as:
-  // Widget _detailRow(String label, String value) { ... }
-
-  // --- THE UPDATED SHOW DETAIL FUNCTION ---
-
-  void _showDetail(AbcdWorksheet item) {
+  void _showDetail(ABCDEWorksheet item) {
     showDialog<void>(
       context: context,
-      builder: (dctx) => AlertDialog(
-        // Modernize the dialog shape slightly
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        backgroundColor: cardDark,
-        title: const Text(
-          'Worksheet Detail',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
+      barrierDismissible: true,
+      builder: (dctx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 24,
           ),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // A - Activating Event (Red/Coral)
-              _sectionHeader('A — Activating Event', colorA),
-              _detailCard('Description', item.activatingEvent, colorA),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 720,
+              maxHeight: MediaQuery.of(context).size.height * 0.86,
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: cardDark,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.45),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+                border: Border.all(color: Colors.white10),
+              ),
+              child: Column(
+                children: [
+                  // --- Header ---
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(16),
+                      ),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          surfaceDark.withOpacity(0.02),
+                          const Color(0xFF003E3D).withOpacity(0.08),
+                        ],
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        // avatar / small icon
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            gradient: LinearGradient(
+                              colors: [colorE, colorC],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            border: Border.all(color: Colors.white12),
+                          ),
+                          child: const Icon(
+                            Icons.psychology_alt, // brain-like icon
+                            color: Color.fromARGB(255, 0, 40, 72),
+                            size: 30,
+                          ),
+                        ),
 
-              // B - Beliefs (Amber/Yellow)
-              _sectionHeader('B — Beliefs', colorB),
-              _detailCard('Emotional', item.beliefEmotional, colorB),
-              _detailCard('Psychological', item.beliefPsychological, colorB),
-              _detailCard('Physical', item.beliefPhysical, colorB),
-              _detailCard('Behavioural', item.beliefBehavioural, colorB),
+                        const SizedBox(width: 12),
 
-              // C - Consequences (Light Blue)
-              _sectionHeader('C — Consequences', colorC),
-              _detailCard('Description', item.consequences, colorC),
+                        // Title & subtitle
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Worksheet Detail',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
 
-              // D - Dispute (Light Green)
-              _sectionHeader('D — Dispute', colorD),
-              _detailCard('Description', item.dispute, colorD),
+                        // Top-right actions: copy + close
+                        Row(
+                          children: [
+                            IconButton(
+                              tooltip: 'Copy summary',
+                              onPressed: () {
+                                final txt = [
+                                  'ABCDE worksheet',
+                                  'A: ${item.activatingEvent}',
+                                  'B — Belief: ${item.belief}',
+                                  'C — Consequences:',
+                                  '  Emotional: ${item.consequencesEmotional}',
+                                  '  Psychological: ${item.consequencesPsychological}',
+                                  '  Physical: ${item.consequencesPhysical}',
+                                  '  Behavioural: ${item.consequencesBehavioural}',
+                                  'D: ${item.dispute}',
+                                  'E — Effects:',
+                                  '  Emotional: ${item.emotionalEffect}',
+                                  '  Psychological: ${item.psychologicalEffect}',
+                                  '  Physical: ${item.physicalEffect}',
+                                  '  Behavioural: ${item.behaviouralEffect}',
+                                  if (item.note.isNotEmpty)
+                                    'Note: ${item.note}',
+                                ].join('\n');
+                                Clipboard.setData(ClipboardData(text: txt));
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Copied worksheet summary to clipboard',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                              icon: const Icon(
+                                Icons.copy,
+                                color: Colors.white70,
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: 'Close',
+                              onPressed: () => Navigator.of(dctx).pop(),
+                              icon: const Icon(
+                                Icons.close,
+                                color: Colors.white70,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
 
-              // E - Effects (Orange)
-              _sectionHeader('E — Effects', colorE),
-              _detailCard('Emotional', item.emotionalEffect, colorE),
-              _detailCard('Psychological', item.psychologicalEffect, colorE),
-              _detailCard('Physical', item.physicalEffect, colorE),
-              _detailCard('Behavioural', item.behaviouralEffect, colorE),
+                  // subtle divider
+                  const Divider(color: Colors.white10, height: 1),
 
-              // Note (Optional, neutral color)
-              if (item.note.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                _sectionHeader('Note', Colors.white70),
-                // Use a neutral accent color for the Note card border
-                _detailCard('Details', item.note, Colors.white38),
-              ],
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dctx).pop(),
-            child: const Text('Close', style: TextStyle(color: Colors.white70)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: colorA,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                  // --- Content (scrollable) ---
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Reusable section widget pattern
+                          _buildSectionCard(
+                            'A',
+                            'Activating Event',
+                            colorA,
+                            item.activatingEvent,
+                          ),
+                          const SizedBox(height: 8),
+                          _buildSectionCard('B', 'Belief', colorB, item.belief),
+                          const SizedBox(height: 8),
+
+                          // C group displayed as sub-cards in a row on wide screens or column on narrow screens
+                          _sectionLabel(
+                            'C',
+                            'Consequences (feelings & actions)',
+                            colorC,
+                          ),
+                          const SizedBox(height: 8),
+                          _buildSubCardsForGroup([
+                            {
+                              'label': 'Emotional',
+                              'value': item.consequencesEmotional,
+                            },
+                            {
+                              'label': 'Psychological',
+                              'value': item.consequencesPsychological,
+                            },
+                            {
+                              'label': 'Physical',
+                              'value': item.consequencesPhysical,
+                            },
+                            {
+                              'label': 'Behavioural',
+                              'value': item.consequencesBehavioural,
+                            },
+                          ]),
+
+                          const SizedBox(height: 12),
+                          _buildSectionCard(
+                            'D',
+                            'Dispute / Alternative thought',
+                            colorD,
+                            item.dispute,
+                          ),
+                          const SizedBox(height: 8),
+
+                          _sectionLabel('E', 'Effects (four types)', colorE),
+                          const SizedBox(height: 8),
+                          _buildSubCardsForGroup([
+                            {
+                              'label': 'Emotional',
+                              'value': item.emotionalEffect,
+                            },
+                            {
+                              'label': 'Psychological',
+                              'value': item.psychologicalEffect,
+                            },
+                            {'label': 'Physical', 'value': item.physicalEffect},
+                            {
+                              'label': 'Behavioural',
+                              'value': item.behaviouralEffect,
+                            },
+                          ]),
+
+                          if (item.note.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            _sectionLabel('Note', 'Note', Colors.white70),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: cardDark.withOpacity(0.9),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.white10),
+                              ),
+                              child: Text(
+                                item.note,
+                                style: const TextStyle(color: Colors.white70),
+                              ),
+                            ),
+                          ],
+
+                          const SizedBox(height: 18),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // --- Actions row (sticky) ---
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: cardDark.withOpacity(0.9),
+                      borderRadius: const BorderRadius.vertical(
+                        bottom: Radius.circular(16),
+                      ),
+                      border: const Border(
+                        top: BorderSide(color: Colors.white10),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              // Confirm then share (keeps same confirmation & snackbar behavior)
+                              final confirm = await showDialog<bool>(
+                                context: dctx,
+                                builder: (confirmCtx) => AlertDialog(
+                                  backgroundColor: cardDark,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  title: const Text(
+                                    'Share worksheet?',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                  content: const Text(
+                                    'Share this ABCDE worksheet with your doctor? This will send the worksheet to the doctor\'s chat.',
+                                    style: TextStyle(color: Colors.white70),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(confirmCtx).pop(false),
+                                      child: const Text(
+                                        'Cancel',
+                                        style: TextStyle(color: Colors.white70),
+                                      ),
+                                    ),
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(
+                                          0xFF008F89,
+                                        ),
+                                      ),
+                                      onPressed: () =>
+                                          Navigator.of(confirmCtx).pop(true),
+                                      child: const Text('Share'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirm != true) return;
+                              Navigator.of(dctx).pop(); // close dialog quickly
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Sharing worksheet with your doctor...',
+                                    ),
+                                  ),
+                                );
+                              }
+                              try {
+                                await ChatShare.sendAbcdeWorksheetToDoctor(
+                                  item.toMap(),
+                                );
+                                if (mounted) {
+                                  final sb = SnackBar(
+                                    content: const Text(
+                                      'Worksheet shared with doctor',
+                                    ),
+                                    action: SnackBarAction(
+                                      label: 'View in chat',
+                                      textColor: Colors.tealAccent,
+                                      onPressed: () {
+                                        try {
+                                          Navigator.of(
+                                            context,
+                                          ).pushNamed('/drktv_chat');
+                                        } catch (_) {}
+                                      },
+                                    ),
+                                  );
+                                  ScaffoldMessenger.of(
+                                    context,
+                                  ).showSnackBar(sb);
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Failed to share with doctor: $e',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            icon: const Icon(
+                              Icons.send,
+                              color: Colors.tealAccent,
+                            ),
+                            label: const Text(
+                              'Share with Doctor',
+                              style: TextStyle(color: Colors.tealAccent),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Colors.tealAccent),
+                              backgroundColor: Colors.transparent,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.of(dctx).pop();
+                            _startEdit(item);
+                          },
+                          icon: const Icon(Icons.edit, color: Colors.black),
+                          label: const Text(
+                            'Edit',
+                            style: TextStyle(color: Colors.black),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: colorA,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            onPressed: () {
-              Navigator.of(dctx).pop();
-              _startEdit(item);
-            },
-            child: const Text('Edit', style: TextStyle(color: Colors.black)),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _detailCard(String label, String value, Color sectionColor) {
-    // Only display the card if there is actual content
-    if (value.isEmpty) return const SizedBox.shrink();
+  // ----------------- Helper widgets used above -----------------
 
-    return Padding(
-      padding: const EdgeInsets.only(top: 6.0),
-      child: Card(
-        color: Colors.transparent, // Use transparent so cardDark shows through
-        margin: EdgeInsets.zero,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-          // Subtle, colored border to tie the card to its section color
-          side: BorderSide(color: sectionColor.withOpacity(0.4), width: 1),
-        ),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+  Widget _sectionLabel(String letter, String labelText, Color accentColor) {
+    // small pill label used in content area
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           decoration: BoxDecoration(
-            // Use a very subtle, slightly lighter background for the content area
-            color: cardDark.withOpacity(0.9),
+            color: accentColor.withOpacity(0.92),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Label (e.g., Emotional, Psychological)
-              Text(
-                '$label:',
-                style: TextStyle(
-                  color: sectionColor, // Use the section color for the label
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 4),
-              // Value (The actual content)
-              Text(
-                value,
-                style: const TextStyle(color: Colors.white, fontSize: 15),
-              ),
-            ],
+          child: Text(
+            letter,
+            style: const TextStyle(
+              color: Colors.black,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ),
-      ),
+        const SizedBox(width: 10),
+        Text(
+          labelText,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionCard(
+    String letter,
+    String title,
+    Color color,
+    String value,
+  ) {
+    if (value.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionLabel(letter, title, color),
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: cardDark.withOpacity(0.85),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.white10),
+            ),
+            child: const Text('—', style: TextStyle(color: Colors.white38)),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionLabel(letter, title, color),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: cardDark.withOpacity(0.9),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.white10),
+          ),
+          child: Text(value, style: const TextStyle(color: Colors.white70)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSubCardsForGroup(List<Map<String, String>> items) {
+    // horizontal wrap with responsive behavior (if narrow -> column)
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth > 520;
+        if (isWide) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: items.map((m) {
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 8.0, bottom: 6.0),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: cardDark.withOpacity(0.9),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white10),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          m['label'] ?? '',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          m['value'] ?? '',
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          );
+        } else {
+          return Column(
+            children: items.map((m) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: cardDark.withOpacity(0.9),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white10),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        m['label'] ?? '',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        m['value'] ?? '',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          );
+        }
+      },
     );
   }
 
@@ -1486,7 +1904,7 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
     return Scaffold(
       backgroundColor: surfaceDark,
       appBar: AppBar(
-        title: const Text('ABCD Worksheet'),
+        title: const Text('ABCDE Worksheet'),
         elevation: 0,
         backgroundColor: Colors.transparent,
         systemOverlayStyle: Theme.of(context).appBarTheme.systemOverlayStyle,
@@ -1511,10 +1929,9 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
                 },
               );
             },
-            icon: const Icon(Icons.help_outline, color: Colors.white70),
+            icon: const Icon(Icons.help, color: Colors.white70),
             tooltip: 'Show tutorial',
           ),
-
           IconButton(
             onPressed: _startNew,
             icon: const Icon(Icons.add, color: Colors.white70),
@@ -1548,7 +1965,7 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Create a new ABCD worksheet to capture a situation, your thought, and a balanced alternative.',
+                      'Create a new ABCDE worksheet to capture a situation, your thought, and a balanced alternative.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: dimText),
                     ),
@@ -1563,12 +1980,11 @@ class _AbcdWorksheetPageState extends State<AbcdWorksheetPage>
                         ),
                       ),
                       child: Column(
-                        mainAxisSize: MainAxisSize
-                            .min, // Essential to keep the button size minimal
-                        children: [
-                          const Icon(Icons.add),
-                          const SizedBox(height: 4),
-                          const Text(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Icon(Icons.add),
+                          SizedBox(height: 4),
+                          Text(
                             'Create worksheet',
                             textAlign: TextAlign.center,
                             style: TextStyle(fontSize: 12),
