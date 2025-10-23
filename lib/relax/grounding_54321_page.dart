@@ -262,42 +262,6 @@ class _RelaxGroundingPageState extends State<RelaxGroundingPage> {
     _playCue();
   }
 
-  void _pauseSequence() {
-    _tickTimer?.cancel();
-    _phaseEndTimer?.cancel();
-    setState(() {
-      _isRunning = false;
-    });
-  }
-
-  Future<void> _confirmAndStop(BuildContext ctx) async {
-    final confirmed = await showDialog<bool>(
-      context: ctx,
-      builder: (dctx) {
-        return AlertDialog(
-          title: const Text('Stop & Reset'),
-          content: const Text(
-            'Are you sure you want to stop and reset the exercise? This will keep your saved progress unless you choose "Reset & Clear".',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dctx).pop(false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(dctx).pop(true),
-              child: const Text('Stop'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed == true) {
-      _stopSequence();
-    }
-  }
-
   void _stopSequence() {
     _tickTimer?.cancel();
     _phaseEndTimer?.cancel();

@@ -8,6 +8,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:cbt_drktv/widgets/abcd_tutorial_sheet.dart'
+    hide colorB, colorA, cardDark;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
@@ -18,6 +20,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cbt_drktv/screens/abcd_worksheet.dart'
+    show ABCDEStorage, ABCDEWorksheet, cardDark, colorA, colorB;
 
 /// DrKtv Chat Screen — polished UI with wide script support (Noto Sans).
 class DrKtvChatScreen extends StatefulWidget {
@@ -27,7 +31,7 @@ class DrKtvChatScreen extends StatefulWidget {
   State<DrKtvChatScreen> createState() => _DrktvChatScreenState();
 }
 
-enum _AiProvider { openai, gemini }
+enum _AiProvider { gemini }
 
 class _DrktvChatScreenState extends State<DrKtvChatScreen>
     with SingleTickerProviderStateMixin {
@@ -45,7 +49,6 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
   static const _prefsConsentKey = 'drktv_consent';
 
   // Provider state (OpenAI by default)
-  _AiProvider _provider = _AiProvider.openai;
 
   // Firestore & Auth
   final _firestore = FirebaseFirestore.instance;
@@ -68,6 +71,750 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
     _initPrefsAndHistory();
     _initChatIdentifiersAndListeners();
   }
+
+  // Show bottom sheet with user's saved ABCDE worksheets
+  // ---------------------------
+  // Attach sheet: show worksheet summary cards (then detail dialog)
+  // ---------------------------
+
+  Future<void> _openAttachWorksheetSheet() async {
+    try {
+      FocusScope.of(context).unfocus();
+    } catch (_) {}
+    await Future.delayed(const Duration(milliseconds: 120));
+    if (!mounted) return;
+
+    final storage = ABCDEStorage();
+    List<ABCDEWorksheet> items = [];
+    try {
+      items = await storage.loadAll();
+    } catch (e) {
+      debugPrint('Failed to load worksheets: $e');
+    }
+
+    if (!mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF021515),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        final mq = MediaQuery.of(ctx);
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 12,
+              right: 12,
+              top: 12,
+              bottom: mq.viewInsets.bottom + 12,
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: mq.size.height * 0.78),
+              child: Column(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Attach worksheet',
+                          style: _textStyle(weight: FontWeight.w700),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        child: Text('Close', style: _textStyle()),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (items.isEmpty)
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          'No saved worksheets.\nCreate one from the Worksheets screen first.',
+                          textAlign: TextAlign.center,
+                          style: _textStyle().copyWith(color: Colors.white54),
+                        ),
+                      ),
+                    )
+                  else
+                    Expanded(
+                      child: ListView.separated(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        itemCount: items.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        itemBuilder: (ctx2, i) {
+                          final w = items[i];
+                          return _worksheetSummaryCard(w, sheetContext: ctx);
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Summary card styled like the worksheet list tile in the worksheet page.
+  /// Tapping opens the detailed dialog (same visual as worksheet page).
+  Widget _worksheetSummaryCard(
+    ABCDEWorksheet item, {
+    required BuildContext sheetContext,
+  }) {
+    // small helper to produce first line summary
+    String firstLine(String s, {int max = 120}) {
+      final t = s.trim();
+      if (t.isEmpty) return '';
+      final fl = t.split(RegExp(r'\r?\n')).first.trim();
+      if (fl.length <= max) return fl;
+      return fl.substring(0, max - 1).trim() + '…';
+    }
+
+    final titleText = item.activatingEvent.isNotEmpty
+        ? item.activatingEvent
+        : 'ABCDE worksheet';
+    final subtitle = firstLine(item.belief, max: 80);
+    final dateStr = MaterialLocalizations.of(
+      context,
+    ).formatFullDate(item.createdAt);
+
+    return Card(
+      color: cardDark,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: Colors.white10, width: 0.8),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () =>
+            _showWorksheetDetailDialog(item, fromSheetContext: sheetContext),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+          child: Row(
+            children: [
+              // left colored stripe
+              Container(
+                width: 6,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: colorA.withOpacity(0.95),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    bottomLeft: Radius.circular(12),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      titleText,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: _textStyle(
+                        weight: FontWeight.w800,
+                      ).copyWith(color: Colors.white),
+                    ),
+                    const SizedBox(height: 6),
+                    if (subtitle.isNotEmpty)
+                      Text(
+                        subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: _textStyle(
+                          size: 13,
+                        ).copyWith(color: Colors.white70),
+                      ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white12,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'B — ${item.belief.isEmpty ? "—" : (item.belief.length > 40 ? item.belief.substring(0, 40) + '…' : item.belief)}',
+                            style: _textStyle(
+                              size: 12,
+                            ).copyWith(color: Colors.white70),
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          dateStr,
+                          style: _textStyle(
+                            size: 11,
+                          ).copyWith(color: Colors.white38),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              // small "view" icon
+              Icon(Icons.chevron_right, color: Colors.white54),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Detailed dialog for a worksheet; visually matches the worksheet page's detail UI.
+  /// `fromSheetContext` is the sheet builder context so we can close the sheet before sharing.
+  Future<void> _showWorksheetDetailDialog(
+    ABCDEWorksheet item, {
+    BuildContext? fromSheetContext,
+  }) async {
+    // Use showDialog over the sheet so it appears above the sheet
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dctx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 24,
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 720,
+              maxHeight: MediaQuery.of(context).size.height * 0.86,
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: cardDark,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.45),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+                border: Border.all(color: Colors.white10),
+              ),
+              child: Column(
+                children: [
+                  // Header
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(16),
+                      ),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          surfaceDark.withOpacity(0.02),
+                          const Color(0xFF003E3D).withOpacity(0.08),
+                        ],
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        // small colored brain-like box
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            gradient: LinearGradient(
+                              colors: [
+                                colorE.withOpacity(0.12),
+                                colorC.withOpacity(0.08),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            border: Border.all(color: Colors.white12),
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.psychology_alt,
+                              color: Colors.tealAccent,
+                              size: 30,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Worksheet Detail',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                item.activatingEvent.isNotEmpty
+                                    ? (item.activatingEvent.length > 100
+                                          ? item.activatingEvent.substring(
+                                                  0,
+                                                  100,
+                                                ) +
+                                                '…'
+                                          : item.activatingEvent)
+                                    : 'Saved ABCDE worksheet',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Close',
+                          icon: const Icon(Icons.close, color: Colors.white70),
+                          onPressed: () => Navigator.of(dctx).pop(),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const Divider(color: Colors.white10, height: 1),
+
+                  // Scrollable content
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _contentSection(
+                            'A',
+                            'Activating Event',
+                            colorA,
+                            item.activatingEvent,
+                          ),
+                          const SizedBox(height: 8),
+                          _contentSection('B', 'Belief', colorB, item.belief),
+                          const SizedBox(height: 8),
+                          _groupSection(
+                            'C',
+                            'Consequences (feelings & actions)',
+                            colorC,
+                            [
+                              {
+                                'label': 'Emotional',
+                                'value': item.consequencesEmotional,
+                              },
+                              {
+                                'label': 'Psychological',
+                                'value': item.consequencesPsychological,
+                              },
+                              {
+                                'label': 'Physical',
+                                'value': item.consequencesPhysical,
+                              },
+                              {
+                                'label': 'Behavioural',
+                                'value': item.consequencesBehavioural,
+                              },
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          _contentSection(
+                            'D',
+                            'Dispute / Alternative thought',
+                            colorD,
+                            item.dispute,
+                          ),
+                          const SizedBox(height: 8),
+                          _groupSection('E', 'Effects (four types)', colorE, [
+                            {
+                              'label': 'Emotional',
+                              'value': item.emotionalEffect,
+                            },
+                            {
+                              'label': 'Psychological',
+                              'value': item.psychologicalEffect,
+                            },
+                            {'label': 'Physical', 'value': item.physicalEffect},
+                            {
+                              'label': 'Behavioural',
+                              'value': item.behaviouralEffect,
+                            },
+                          ]),
+                          if (item.note.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            _sectionLabel('Note', 'Note', Colors.white70),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: cardDark.withOpacity(0.9),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.white10),
+                              ),
+                              child: Text(
+                                item.note,
+                                style: const TextStyle(color: Colors.white70),
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 18),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Sticky actions
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: cardDark.withOpacity(0.9),
+                      borderRadius: const BorderRadius.vertical(
+                        bottom: Radius.circular(16),
+                      ),
+                      border: const Border(
+                        top: BorderSide(color: Colors.white10),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              // Confirm -> share
+                              final confirm = await showDialog<bool>(
+                                context: dctx,
+                                builder: (confirmCtx) => AlertDialog(
+                                  backgroundColor: cardDark,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  title: const Text(
+                                    'Share worksheet?',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                  content: const Text(
+                                    'Share this ABCDE worksheet with your doctor? This will send the worksheet to the doctor\'s chat.',
+                                    style: TextStyle(color: Colors.white70),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(confirmCtx).pop(false),
+                                      child: const Text(
+                                        'Cancel',
+                                        style: TextStyle(color: Colors.white70),
+                                      ),
+                                    ),
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Color(0xFF008F89),
+                                      ),
+                                      onPressed: () =>
+                                          Navigator.of(confirmCtx).pop(true),
+                                      child: const Text('Share'),
+                                    ),
+                                  ],
+                                ),
+                              );
+
+                              if (confirm != true) return;
+                              // close detail dialog and bottom sheet if present
+                              Navigator.of(dctx).pop();
+                              if (fromSheetContext != null) {
+                                try {
+                                  Navigator.of(fromSheetContext).pop();
+                                } catch (_) {}
+                              }
+
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Sharing worksheet with your doctor...',
+                                    ),
+                                  ),
+                                );
+                              }
+
+                              try {
+                                await sendAbcdeWorksheetToDoctor(item.toMap());
+                                if (mounted) {
+                                  final sb = SnackBar(
+                                    content: const Text(
+                                      'Worksheet shared with doctor',
+                                    ),
+                                    action: SnackBarAction(
+                                      label: 'View in chat',
+                                      textColor: Colors.tealAccent,
+                                      onPressed: () {
+                                        try {
+                                          Navigator.of(
+                                            context,
+                                          ).pushNamed('/drktv_chat');
+                                        } catch (_) {}
+                                      },
+                                    ),
+                                  );
+                                  ScaffoldMessenger.of(
+                                    context,
+                                  ).showSnackBar(sb);
+                                }
+                              } catch (e) {
+                                if (mounted)
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Failed to share with doctor: $e',
+                                      ),
+                                    ),
+                                  );
+                              }
+                            },
+                            icon: const Icon(
+                              Icons.send,
+                              color: Colors.tealAccent,
+                            ),
+                            label: const Text(
+                              'Share with Doctor',
+                              style: TextStyle(color: Colors.tealAccent),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Colors.tealAccent),
+                              backgroundColor: Colors.transparent,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.of(dctx).pop();
+                            Navigator.of(context).pushNamed(
+                              '/abcd', // make sure this route is registered in your app routes
+                              arguments: {'editWorksheet': item.toMap()},
+                            ); // opens your existing editor
+                          },
+                          icon: const Icon(Icons.edit, color: Colors.black),
+                          label: const Text(
+                            'Edit',
+                            style: TextStyle(color: Colors.black),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: colorA,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ----------------- Small UI helpers reused above -----------------
+
+  Widget _sectionLabel(String letter, String labelText, Color accentColor) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: accentColor.withOpacity(0.92),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            letter,
+            style: const TextStyle(
+              color: Colors.black,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          labelText,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _contentSection(
+    String letter,
+    String title,
+    Color color,
+    String value,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionLabel(letter, title, color),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: cardDark.withOpacity(0.9),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.white10),
+          ),
+          child: Text(
+            value.isEmpty ? '—' : value,
+            style: const TextStyle(color: Colors.white70),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _groupSection(
+    String letter,
+    String title,
+    Color color,
+    List<Map<String, String>> items,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionLabel(letter, title, color),
+        const SizedBox(height: 8),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth > 520;
+            if (isWide) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: items.map((m) {
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 8.0, bottom: 6.0),
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: cardDark.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.white10),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              m['label'] ?? '',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              (m['value'] ?? '').isEmpty
+                                  ? '—'
+                                  : (m['value'] ?? ''),
+                              style: const TextStyle(color: Colors.white70),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              );
+            } else {
+              return Column(
+                children: items.map((m) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: cardDark.withOpacity(0.9),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white10),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            m['label'] ?? '',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            (m['value'] ?? '').isEmpty
+                                ? '—'
+                                : (m['value'] ?? ''),
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              );
+            }
+          },
+        ),
+      ],
+    );
+  }
+
+  // small tile UI for each worksheet in the sheet
 
   Future<void> _initChatIdentifiersAndListeners() async {
     final user = _auth.currentUser;
@@ -123,8 +870,20 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
                 : DateTime.now().millisecondsSinceEpoch);
 
       if (sender == 'user') {
+        final mType = data['type'] as String?;
+        final ws = data['worksheet'] != null
+            ? Map<String, dynamic>.from(data['worksheet'] as Map)
+            : null;
+
         userMsgs.add(
-          _ChatMessage._withId(id, text, isUser: true, timestamp: ts),
+          _ChatMessage._withId(
+            id,
+            text,
+            isUser: true,
+            timestamp: ts,
+            type: mType,
+            worksheet: ws,
+          ),
         );
       } else if (sender == 'assistant') {
         final approved = data['approved'] == true;
@@ -143,10 +902,6 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
           );
         } else {
           // pending assistant — include preview for user display
-          final preview =
-              (data['preview'] as String?) ??
-              // fallback to a trimmed substring (do not leak full text)
-              (text.length > 240 ? text.substring(0, 240).trim() + '…' : text);
 
           assistantMsgs.add(
             _ChatMessageWithMeta(
@@ -597,36 +1352,20 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
 
   // --- API key resolution (dart-define first, then dotenv) ---
   Future<String?> _getApiKey(_AiProvider forProvider) async {
-    if (forProvider == _AiProvider.openai) {
-      const compileTimeApiKey = String.fromEnvironment(
-        'OPENAI_API_KEY',
-        defaultValue: '',
-      );
-      if (compileTimeApiKey.isNotEmpty) return compileTimeApiKey;
+    // Keep param for compatibility; we only support GEMINI now.
+    const compileTimeApiKey = String.fromEnvironment(
+      'GEMINI_API_KEY',
+      defaultValue: '',
+    );
+    if (compileTimeApiKey.isNotEmpty) return compileTimeApiKey;
 
-      try {
-        final dot = dotenv.env['OPENAI_API_KEY'];
-        if (dot != null && dot.trim().isNotEmpty) return dot.trim();
-      } catch (e) {
-        debugPrint('dotenv lookup failed: $e');
-      }
-      return null;
-    } else {
-      // GEMINI
-      const compileTimeApiKey = String.fromEnvironment(
-        'GEMINI_API_KEY',
-        defaultValue: '',
-      );
-      if (compileTimeApiKey.isNotEmpty) return compileTimeApiKey;
-
-      try {
-        final dot = dotenv.env['GEMINI_API_KEY'];
-        if (dot != null && dot.trim().isNotEmpty) return dot.trim();
-      } catch (e) {
-        debugPrint('dotenv lookup failed: $e');
-      }
-      return null;
+    try {
+      final dot = dotenv.env['GEMINI_API_KEY'];
+      if (dot != null && dot.trim().isNotEmpty) return dot.trim();
+    } catch (e) {
+      debugPrint('dotenv lookup failed: $e');
     }
+    return null;
   }
 
   String _systemPromptForCBT() {
@@ -647,57 +1386,6 @@ End each reply with an encouraging or reflective question inviting follow-up.
   }
 
   // --- OpenAI call (UTF-8 safe + defensive API key) ---
-  Future<String> _queryOpenAI(
-    String prompt,
-    List<Map<String, String>> history,
-    String apiKey,
-  ) async {
-    if (apiKey.trim().isEmpty) {
-      throw Exception('OpenAI API key not set.');
-    }
-
-    final systemInstruction = _systemPromptForCBT();
-
-    final messages = <Map<String, String>>[
-      {'role': 'system', 'content': systemInstruction},
-      {
-        'role': 'assistant',
-        'content':
-            'Hello — I am Dr. Kanhaiya (DrKtv). I respond with CBT-based suggestions and practical steps. I do not provide diagnosis. If you are in crisis call local emergency services.',
-      },
-      ...history,
-      {'role': 'user', 'content': prompt},
-    ];
-
-    final url = Uri.parse('https://api.openai.com/v1/chat/completions');
-    final body = jsonEncode({
-      'model': 'gpt-4o-mini',
-      'messages': messages,
-      'temperature': 1,
-      'max_tokens': 800,
-    });
-
-    final resp = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $apiKey',
-      },
-      body: body,
-    );
-
-    if (resp.statusCode >= 400) {
-      final safe = utf8.decode(resp.bodyBytes);
-      throw Exception('OpenAI error ${resp.statusCode}: $safe');
-    }
-
-    final utf8Body = utf8.decode(resp.bodyBytes);
-    final data = jsonDecode(utf8Body) as Map<String, dynamic>;
-
-    final choice = (data['choices'] as List).first;
-    final text = ((choice['message'] ?? {})['content'] ?? '') as String;
-    return text.trim();
-  }
 
   // --- Gemini call (Generative Language HTTP REST) ---
   Future<String> _queryGemini(String prompt, String apiKey) async {
@@ -772,14 +1460,6 @@ End each reply with an encouraging or reflective question inviting follow-up.
     }
   }
 
-  List<Map<String, String>> _buildHistoryForOpenAI() {
-    final out = <Map<String, String>>[];
-    for (final m in _messages) {
-      out.add({'role': m.isUser ? 'user' : 'assistant', 'content': m.text});
-    }
-    return out;
-  }
-
   // New helper: ensure chatIndex doc exists and update pending count/lastMessage
   Future<void> _updateChatIndexForPending(String lastMessageText) async {
     if (_chatId == null) return;
@@ -800,8 +1480,10 @@ End each reply with an encouraging or reflective question inviting follow-up.
   /// Share a structured ABCDE worksheet directly to the doctor chat.
   /// Used when user taps "Share with Doctor" in worksheet page.
   Future<void> sendAbcdeWorksheetToDoctor(
-    Map<String, dynamic> worksheetMap,
-  ) async {
+    Map<String, dynamic> worksheetMap, {
+    // set to true to also ask the AI to generate a review (pending doctor approval)
+    bool requestAiReview = true,
+  }) async {
     try {
       final auth = FirebaseAuth.instance;
       final firestore = FirebaseFirestore.instance;
@@ -814,7 +1496,7 @@ End each reply with an encouraging or reflective question inviting follow-up.
           .doc(chatId)
           .collection('messages');
 
-      // Compose readable summary
+      // Compose readable summary (same as before)
       final summary =
           '''
 🧠 *ABCDE Worksheet Shared by User*
@@ -846,6 +1528,7 @@ ${worksheetMap['dispute'] ?? ''}
       final ts = DateTime.now().millisecondsSinceEpoch;
       final docId = const Uuid().v4();
 
+      // IMPORTANT: include the worksheet map in the message doc so client can render a summary card
       await messagesRef.doc(docId).set({
         'sender': 'user',
         'text': summary,
@@ -853,6 +1536,7 @@ ${worksheetMap['dispute'] ?? ''}
         'approved': true,
         'type': 'worksheet',
         'worksheetType': 'ABCDE',
+        'worksheet': worksheetMap, // <-- store the structured worksheet
         'createdAt': FieldValue.serverTimestamp(),
       });
 
@@ -864,9 +1548,66 @@ ${worksheetMap['dispute'] ?? ''}
         'lastUpdated': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      debugPrint('✅ ABCDE worksheet shared with doctor.');
+      debugPrint('✅ ABCDE worksheet shared with doctor (docId=$docId).');
+
+      // Optionally ask the AI to generate a review (pending approval) and attach it as assistant child
+      if (requestAiReview) {
+        try {
+          await _generateWorksheetReviewAndWrite(
+            worksheetMap,
+            parentMessageId: docId,
+          );
+        } catch (e) {
+          debugPrint('Failed to trigger AI review: $e');
+        }
+      }
     } catch (e) {
       debugPrint('Error sharing ABCDE worksheet: $e');
+    }
+  }
+
+  /// Ask the AI to provide a short CBT-style review of the worksheet and store it
+  /// as an assistant message with parentId so the doctor can approve/edit it.
+  /// This function is best-effort: if API key absent or call fails it logs and returns.
+  Future<void> _generateWorksheetReviewAndWrite(
+    Map<String, dynamic> worksheetMap, {
+    required String parentMessageId,
+  }) async {
+    // Build a concise prompt asking for a helpful review / suggestions
+    final belief = worksheetMap['belief'] ?? '';
+    final activating = worksheetMap['activatingEvent'] ?? '';
+    final dispute = worksheetMap['dispute'] ?? '';
+    final note = worksheetMap['note'] ?? '';
+
+    final prompt = StringBuffer()
+      ..writeln(
+        'Please provide a short CBT-style review of this ABCDE worksheet.',
+      )
+      ..writeln(
+        'Keep suggestions concise (3–6 short bullet points) and practical.',
+      )
+      ..writeln()
+      ..writeln('Activating event: $activating')
+      ..writeln('Belief: $belief')
+      ..writeln('Dispute / alternative: $dispute')
+      ..writeln('Note: $note')
+      ..writeln()
+      ..writeln(
+        'Include 1–2 simple steps the user can try, and one reflective question to prompt follow-up.',
+      );
+
+    try {
+      // Use Gemini only
+      final apiKey = await _getApiKey(_AiProvider.gemini);
+      if (apiKey == null) throw Exception('Gemini API key not configured');
+      final reply = await _queryGemini(prompt.toString(), apiKey);
+
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      // write assistant reply as not-approved (or auto-approved if short)
+      await _writeAiReplyToFirestore(reply, ts, parentMessageId);
+    } catch (e) {
+      debugPrint('AI review generation failed: $e');
+      // don't rethrow — the share still succeeded
     }
   }
 
@@ -1037,17 +1778,10 @@ ${worksheetMap['dispute'] ?? ''}
 
     try {
       // Query AI provider
-      String reply;
-      if (_provider == _AiProvider.openai) {
-        final apiKey = await _getApiKey(_AiProvider.openai);
-        if (apiKey == null) throw Exception('OpenAI API key not found.');
-        final history = _buildHistoryForOpenAI();
-        reply = await _queryOpenAI(text, history, apiKey);
-      } else {
-        final apiKey = await _getApiKey(_AiProvider.gemini);
-        if (apiKey == null) throw Exception('Gemini API key not found.');
-        reply = await _queryGemini(text, apiKey);
-      }
+      // Query Gemini only
+      final apiKey = await _getApiKey(_AiProvider.gemini);
+      if (apiKey == null) throw Exception('Gemini API key not found.');
+      final reply = await _queryGemini(text, apiKey);
 
       // Write AI reply to Firestore as approved:false so doctor can review/edit/approve
       final ts = DateTime.now().millisecondsSinceEpoch;
@@ -1411,21 +2145,36 @@ ${worksheetMap['dispute'] ?? ''}
                     ),
                     child: Row(
                       children: [
+                        // Replace the existing Quick templates Container with this:
                         Container(
                           margin: const EdgeInsets.only(right: 8),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.03),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: IconButton(
-                            tooltip: 'Quick templates',
-                            icon: const Icon(
-                              Icons.bolt_outlined,
-                              color: Colors.white,
-                            ),
-                            onPressed: _showTemplatesMenu,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                tooltip: 'Attach worksheet',
+                                icon: const Icon(
+                                  Icons.attach_file,
+                                  color: Colors.white,
+                                ),
+                                onPressed: _openAttachWorksheetSheet,
+                              ),
+                              IconButton(
+                                tooltip: 'Quick templates',
+                                icon: const Icon(
+                                  Icons.bolt_outlined,
+                                  color: Colors.white,
+                                ),
+                                onPressed: _showTemplatesMenu,
+                              ),
+                            ],
                           ),
                         ),
+
                         Expanded(
                           child: Container(
                             padding: const EdgeInsets.symmetric(
@@ -1520,91 +2269,11 @@ ${worksheetMap['dispute'] ?? ''}
             ),
 
             // --- FAB positioned under AppBar (top-right) ---
-            Positioned(
-              top:
-                  8, // small gap below AppBar (Scaffold places body under AppBar already)
-              right: 12,
-              child: FloatingActionButton.extended(
-                onPressed: _showProviderPicker,
-                label: Text(
-                  _provider == _AiProvider.openai ? 'OpenAI' : 'Gemini',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                icon: Icon(
-                  _provider == _AiProvider.openai
-                      ? Icons.open_in_new
-                      : Icons.flash_on,
-                ),
-                backgroundColor: const Color(0xFF008F89),
-                elevation: 4,
-              ),
-            ),
           ],
         ),
       ),
 
       // Floating action button to choose provider
-    );
-  }
-
-  void _showProviderPicker() {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: const Color(0xFF021515),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Choose AI provider',
-                  style: _textStyle(weight: FontWeight.w700),
-                ),
-                const SizedBox(height: 12),
-                ListTile(
-                  leading: const Icon(Icons.open_in_new),
-                  title: Text('OpenAI', style: _textStyle()),
-                  subtitle: Text(
-                    'Uses your OpenAI key',
-                    style: _textStyle(size: 12),
-                  ),
-                  trailing: _provider == _AiProvider.openai
-                      ? const Icon(Icons.check)
-                      : null,
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    setState(() => _provider = _AiProvider.openai);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.flash_on),
-                  title: Text('Gemini (Flash 2.5 Lite)', style: _textStyle()),
-                  subtitle: Text(
-                    'Uses your GEMINI_API_KEY',
-                    style: _textStyle(size: 12),
-                  ),
-                  trailing: _provider == _AiProvider.gemini
-                      ? const Icon(Icons.check)
-                      : null,
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    setState(() => _provider = _AiProvider.gemini);
-                  },
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -1867,7 +2536,6 @@ ${worksheetMap['dispute'] ?? ''}
     required int maxLines,
   }) {
     // We need to use a TextStyle reference to use in the ShaderMask
-    final textStyle = DefaultTextStyle.of(context).style;
 
     return ShaderMask(
       // 🎨 Define the gradient for the fade effect
@@ -2085,6 +2753,207 @@ ${worksheetMap['dispute'] ?? ''}
       bottomRight: Radius.circular(isUser ? 4 : 14),
     );
 
+    // -------------------------------
+    // Worksheet summary card in stream
+    // -------------------------------
+    // Show the same summary card UI as on the worksheet page when the message
+    // represents an attached worksheet.
+    if (m.type == 'worksheet' && m.worksheet != null) {
+      final wsMap = m.worksheet!;
+      // Defensive parse: try to convert to ABCDEWorksheet; otherwise show raw data
+      ABCDEWorksheet? parsed;
+      try {
+        parsed = ABCDEWorksheet.fromMap(wsMap);
+      } catch (_) {
+        parsed = null;
+      }
+
+      // helper to extract short subtitle (first line of belief or activating event)
+      String firstLine(String? s, {int max = 80}) {
+        if (s == null) return '';
+        final t = s.trim();
+        if (t.isEmpty) return '';
+        final fl = t.split(RegExp(r'\r?\n')).first.trim();
+        if (fl.length <= max) return fl;
+        return fl.substring(0, max - 1).trim() + '…';
+      }
+
+      final titleText =
+          (parsed?.activatingEvent ??
+                  (wsMap['activatingEvent'] as String?) ??
+                  '')
+              .isNotEmpty
+          ? (parsed?.activatingEvent ??
+                (wsMap['activatingEvent'] as String? ?? ''))
+          : 'ABCDE worksheet';
+      final subtitle = firstLine(
+        parsed?.belief ?? (wsMap['belief'] as String?),
+      );
+
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Align(
+          alignment: alignment,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.82,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Card UI — same look as worksheet list
+                InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    if (parsed != null) {
+                      _showWorksheetDetailDialog(parsed);
+                    } else {
+                      // If parsing failed, create a fallback ABCDEWorksheet-like object
+                      // or show raw contents in a simple dialog.
+                      showDialog<void>(
+                        context: context,
+                        builder: (dctx) => AlertDialog(
+                          backgroundColor: cardDark,
+                          title: Text(
+                            'Worksheet',
+                            style: _textStyle(weight: FontWeight.w700),
+                          ),
+                          content: SingleChildScrollView(
+                            child: Text(wsMap.toString(), style: _textStyle()),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(dctx).pop(),
+                              child: Text('Close', style: _textStyle()),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                  },
+                  child: Card(
+                    color: cardDark,
+                    margin: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: const BorderSide(color: Colors.white10),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 56,
+                            decoration: BoxDecoration(
+                              color: colorA.withOpacity(0.95),
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(10),
+                                bottomLeft: Radius.circular(10),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  titleText,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: _textStyle(
+                                    weight: FontWeight.w800,
+                                  ).copyWith(color: Colors.white),
+                                ),
+                                const SizedBox(height: 6),
+                                if (subtitle.isNotEmpty)
+                                  Text(
+                                    subtitle,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: _textStyle(
+                                      size: 13,
+                                    ).copyWith(color: Colors.white70),
+                                  ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white12,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        'B — ${((parsed?.belief) ?? (wsMap['belief'] as String?) ?? '—').length > 40 ? ((parsed?.belief ?? (wsMap['belief'] as String? ?? '')).substring(0, 40) + '…') : (parsed?.belief ?? (wsMap['belief'] as String? ?? '—'))}',
+                                        style: _textStyle(
+                                          size: 12,
+                                        ).copyWith(color: Colors.white70),
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    // show timestamp of this message if desired
+                                    Text(
+                                      _formatTimestamp(m.timestamp),
+                                      style: _textStyle(
+                                        size: 11,
+                                      ).copyWith(color: Colors.white38),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(
+                            Icons.chevron_right,
+                            color: Colors.white54,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // Optional small "attach/ask review" hint (tap card to view + share)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.02),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Please review this CBT worksheet by me',
+                          style: _textStyle(
+                            size: 13,
+                          ).copyWith(color: Colors.white70),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // -------------------------------
+    // Normal message bubble (user / assistant / pending)
+    // -------------------------------
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Align(
@@ -2116,8 +2985,6 @@ ${worksheetMap['dispute'] ?? ''}
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // If this is a pending assistant message, show preview + lock UI
-                  // If this is a pending assistant message, show preview + lock UI
                   if (!m.isUser && m.isPending) ...[
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2126,12 +2993,10 @@ ${worksheetMap['dispute'] ?? ''}
                           child: _buildFadingPendingText(
                             context,
                             m.preview ?? '[Preview not available]',
-                            maxLines:
-                                6, // Define how many lines you want to be visible
+                            maxLines: 6,
                           ),
                         ),
                         const SizedBox(width: 8),
-                        // ... (Rest of the lock/pending UI) ...
                         Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -2170,13 +3035,12 @@ ${worksheetMap['dispute'] ?? ''}
                       ).copyWith(color: Colors.white54),
                     ),
                   ] else ...[
-                    // normal message rendering (approved assistant or user)
                     SelectableText.rich(
                       _parseMarkdownToTextSpan(m.text),
                       showCursor: false,
                       cursorWidth: 0,
                     ),
-                    // If assistant and approved but not auto, show a small "Approved by Doctor" badge.
+
                     if (!m.isUser && !m.isPending)
                       Padding(
                         padding: const EdgeInsets.only(top: 6.0),
@@ -2200,7 +3064,6 @@ ${worksheetMap['dispute'] ?? ''}
                               ),
                             ),
                             const SizedBox(width: 8),
-
                             Text(
                               'by doctor',
                               style: _textStyle(
@@ -2271,6 +3134,10 @@ class _ChatMessage {
   final String? preview; // short preview to show user while pending
   final bool isApproved; // convenience
 
+  // New: type and worksheet map (nullable)
+  final String? type; // e.g. 'worksheet', 'worksheet_composer', etc.
+  final Map<String, dynamic>? worksheet;
+
   _ChatMessage._({
     required this.id,
     required this.text,
@@ -2280,6 +3147,8 @@ class _ChatMessage {
     this.isPending = false,
     this.preview,
     this.isApproved = true,
+    this.type,
+    this.worksheet,
   }) : timestamp = timestamp ?? DateTime.now().millisecondsSinceEpoch;
 
   factory _ChatMessage.user(String t) =>
@@ -2301,6 +3170,8 @@ class _ChatMessage {
     bool isPending = false,
     String? preview,
     bool isApproved = true,
+    String? type,
+    Map<String, dynamic>? worksheet,
   }) => _ChatMessage._(
     id: id,
     text: t,
@@ -2309,6 +3180,8 @@ class _ChatMessage {
     isPending: isPending,
     preview: preview,
     isApproved: isApproved,
+    type: type,
+    worksheet: worksheet,
   );
 
   Map<String, dynamic> toMap() => {
@@ -2320,6 +3193,8 @@ class _ChatMessage {
     'isPending': isPending,
     'preview': preview,
     'isApproved': isApproved,
+    'type': type,
+    'worksheet': worksheet,
   };
 
   factory _ChatMessage.fromMap(Map<String, dynamic> m) => _ChatMessage._(
@@ -2331,6 +3206,10 @@ class _ChatMessage {
     isPending: m['isPending'] as bool? ?? false,
     preview: m['preview'] as String?,
     isApproved: m['isApproved'] as bool? ?? true,
+    type: m['type'] as String?,
+    worksheet: m['worksheet'] != null
+        ? Map<String, dynamic>.from(m['worksheet'] as Map)
+        : null,
   );
 }
 
