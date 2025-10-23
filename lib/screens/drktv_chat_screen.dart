@@ -231,7 +231,7 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
                       overflow: TextOverflow.ellipsis,
                       style: _textStyle(
                         weight: FontWeight.w800,
-                      ).copyWith(color: Colors.white),
+                      ).copyWith(color: Colors.teal.shade100),
                     ),
                     const SizedBox(height: 6),
                     if (subtitle.isNotEmpty)
@@ -255,14 +255,8 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
                             color: Colors.white12,
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Text(
-                            'B — ${item.belief.isEmpty ? "—" : (item.belief.length > 40 ? item.belief.substring(0, 40) + '…' : item.belief)}',
-                            style: _textStyle(
-                              size: 12,
-                            ).copyWith(color: Colors.white70),
-                          ),
                         ),
-                        const Spacer(),
+                        SizedBox(width: 8),
                         Text(
                           dateStr,
                           style: _textStyle(
@@ -478,7 +472,11 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
                           ]),
                           if (item.note.isNotEmpty) ...[
                             const SizedBox(height: 12),
-                            _sectionLabel('Note', 'Note', Colors.white70),
+                            _sectionLabel(
+                              'Note',
+                              'To be practiced',
+                              Colors.white70,
+                            ),
                             const SizedBox(height: 8),
                             Container(
                               padding: const EdgeInsets.all(12),
@@ -582,24 +580,13 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
                                     content: const Text(
                                       'Worksheet shared with doctor',
                                     ),
-                                    action: SnackBarAction(
-                                      label: 'View in chat',
-                                      textColor: Colors.tealAccent,
-                                      onPressed: () {
-                                        try {
-                                          Navigator.of(
-                                            context,
-                                          ).pushNamed('/drktv_chat');
-                                        } catch (_) {}
-                                      },
-                                    ),
                                   );
                                   ScaffoldMessenger.of(
                                     context,
                                   ).showSnackBar(sb);
                                 }
                               } catch (e) {
-                                if (mounted)
+                                if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
@@ -607,45 +594,18 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
                                       ),
                                     ),
                                   );
+                                }
                               }
                             },
-                            icon: const Icon(
-                              Icons.send,
-                              color: Colors.tealAccent,
-                            ),
+                            icon: const Icon(Icons.send, color: Colors.white),
                             label: const Text(
                               'Share with Doctor',
-                              style: TextStyle(color: Colors.tealAccent),
+                              style: TextStyle(color: Colors.white),
                             ),
                             style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Colors.tealAccent),
-                              backgroundColor: Colors.transparent,
+                              side: const BorderSide(color: Colors.white),
+                              backgroundColor: Colors.green,
                               padding: const EdgeInsets.symmetric(vertical: 14),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.of(dctx).pop();
-                            Navigator.of(context).pushNamed(
-                              '/abcd', // make sure this route is registered in your app routes
-                              arguments: {'editWorksheet': item.toMap()},
-                            ); // opens your existing editor
-                          },
-                          icon: const Icon(Icons.edit, color: Colors.black),
-                          label: const Text(
-                            'Edit',
-                            style: TextStyle(color: Colors.black),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: colorA,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
                             ),
                           ),
                         ),
@@ -2179,7 +2139,7 @@ ${worksheetMap['dispute'] ?? ''}
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
-                              vertical: 6,
+                              vertical: 12,
                             ),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.03),
@@ -2879,22 +2839,6 @@ ${worksheetMap['dispute'] ?? ''}
                                 const SizedBox(height: 8),
                                 Row(
                                   children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white12,
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        'B — ${((parsed?.belief) ?? (wsMap['belief'] as String?) ?? '—').length > 40 ? ((parsed?.belief ?? (wsMap['belief'] as String? ?? '')).substring(0, 40) + '…') : (parsed?.belief ?? (wsMap['belief'] as String? ?? '—'))}',
-                                        style: _textStyle(
-                                          size: 12,
-                                        ).copyWith(color: Colors.white70),
-                                      ),
-                                    ),
                                     const Spacer(),
                                     // show timestamp of this message if desired
                                     Text(

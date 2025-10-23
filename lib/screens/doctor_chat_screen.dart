@@ -76,20 +76,41 @@ class _DoctorChatThreadState extends State<DoctorChatThread> {
           }
         }
       }
+
+      // Decide whether we should auto-scroll AFTER the update.
+      // Auto-scroll only if the user was already near the bottom.
+      bool wasAtBottom = false;
+      try {
+        if (_scroll_controller_has_clients()) {
+          final pos = _scrollController.position;
+          // threshold in pixels: within 60 px of bottom -> treat as "at bottom"
+          const threshold = 60.0;
+          wasAtBottom = pos.pixels >= (pos.maxScrollExtent - threshold);
+        }
+      } catch (_) {
+        wasAtBottom = false;
+      }
+
+      // Update state with new docs & replies
       setState(() {
         _docs = docs;
         _replies = replies;
       });
 
-      // Automatically scroll to the bottom when new messages arrive
+      // After frame, only scroll if user was previously at bottom
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scroll_controller_has_clients()) {
-          _scrollController.animateTo(
-            _scrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
+        if (wasAtBottom && _scroll_controller_has_clients()) {
+          try {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          } catch (_) {
+            // defensive: ignore if animation fails due to race conditions
+          }
         }
+        // else: intentionally do nothing — keep user at current scroll offset
       });
     });
   }
@@ -645,13 +666,6 @@ class _DoctorChatThreadState extends State<DoctorChatThread> {
                           decoration: BoxDecoration(
                             color: Colors.white12,
                             borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            'B — ${belief.isEmpty ? "—" : (belief.length > 40 ? belief.substring(0, 40) + '…' : belief)}',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                            ),
                           ),
                         ),
                         const Spacer(),

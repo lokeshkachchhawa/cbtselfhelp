@@ -372,9 +372,57 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
     super.dispose();
   }
 
+  /// Returns a pre-filled example worksheet in Hindi.
+  ABCDEWorksheet _exampleWorksheet() {
+    final now = DateTime.now();
+    return ABCDEWorksheet(
+      id: _uuid.v4(),
+      activatingEvent:
+          'आज सुबह बॉस ने कहा कि कल प्रोजेक्ट की विस्तृत रिपोर्ट चाहिए। मैंने सोचा यह बहुत मुश्किल होगा।',
+      belief:
+          'यदि मैं रिपोर्ट समय पर अच्छी तरह नहीं बना पाया/पाई, तो मैं असफल हूँ और लोग मुझे घटिया समझेंगे।',
+      consequencesEmotional: 'घबराहट, शर्म, उदासी',
+      consequencesPsychological:
+          'बार-बार "मैं असफल हूँ" जैसा विचार, ध्यान न लगना',
+      consequencesPhysical: 'दिल की धड़कन तेज, पेट में घबराहट, नींद कम',
+      consequencesBehavioural: 'काम टालना, छोटे कामों से बचना',
+      dispute:
+          'क्या एक रिपोर्ट की कमी मेरे पूरे कौशल को तय कर देती है? मैंने पहले भी अच्छा किया है; मदद माँगना ठीक है।',
+      emotionalEffect: 'कुछ राहत; आशावाद की थोड़ी झलक',
+      psychologicalEffect:
+          'नकारात्मक विचारों में कमी; "कोशिश करूँगा/करूँगी" का विचार',
+      physicalEffect: 'साँसें धीमी होना, तनाव में कमी',
+      behaviouralEffect:
+          'रिपोर्ट को छोटे हिस्सों में बाँटना; सहकर्मी से फीडबैक लेना',
+      note:
+          'छोटे-छोटे हिस्से बनाकर काम करें; 60 मिनट काम + 5 मिनट ब्रेक का नियम अपनाएँ।',
+      createdAt: now,
+    );
+  }
+
   Future<void> _load() async {
     setState(() => _loading = true);
-    final items = await _storage.loadAll();
+
+    final prefs = await SharedPreferences.getInstance();
+    final exampleInserted = prefs.getBool('ABCDE_example_inserted_v1') ?? false;
+
+    // Load current items
+    var items = await _storage.loadAll();
+
+    // If nothing saved yet and we haven't inserted example before, add it once
+    if (!exampleInserted && (items.isEmpty)) {
+      try {
+        final example = _exampleWorksheet();
+        await _storage.add(example);
+        await prefs.setBool('ABCDE_example_inserted_v1', true);
+
+        // reload items after inserting example
+        items = await _storage.loadAll();
+      } catch (e) {
+        debugPrint('Failed to insert example worksheet: $e');
+      }
+    }
+
     setState(() {
       _items = items;
       _loading = false;
@@ -1567,7 +1615,11 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
 
                           if (item.note.isNotEmpty) ...[
                             const SizedBox(height: 12),
-                            _sectionLabel('Note', 'Note', Colors.white70),
+                            _sectionLabel(
+                              'Note',
+                              'To be practiced',
+                              Colors.white70,
+                            ),
                             const SizedBox(height: 8),
                             Container(
                               padding: const EdgeInsets.all(12),
@@ -1695,17 +1747,14 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
                                 }
                               }
                             },
-                            icon: const Icon(
-                              Icons.send,
-                              color: Colors.tealAccent,
-                            ),
+                            icon: const Icon(Icons.send, color: Colors.white),
                             label: const Text(
                               'Share with Doctor',
-                              style: TextStyle(color: Colors.tealAccent),
+                              style: TextStyle(color: Colors.white),
                             ),
                             style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Colors.tealAccent),
-                              backgroundColor: Colors.transparent,
+                              side: const BorderSide(color: Colors.white),
+                              backgroundColor: Colors.green,
                               padding: const EdgeInsets.symmetric(vertical: 14),
                             ),
                           ),
