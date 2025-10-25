@@ -1,13 +1,19 @@
+// updated_abcd_worksheets.dart
 import 'dart:convert';
 import 'package:cbt_drktv/services/chat_share.dart';
 import 'package:cbt_drktv/widgets/abcd_tutorial_sheet.dart';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show Clipboard, ClipboardData;
+import 'package:flutter/services.dart'
+    show Clipboard, ClipboardData, rootBundle;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 const _kStorageKey = 'ABCDE_worksheets_v1';
+const String _kExampleIdsKey = 'ABCDE_example_ids_v1';
+const String _kExamplesImportedFlag = 'ABCDE_examples_imported_v1';
+const String _kLegacyExampleIdKey = 'ABCDE_example_id_v1';
+
 final _uuid = Uuid();
 
 // Teal palette (kept consistent)
@@ -29,6 +35,8 @@ const Color colorB = Color(0xFFFDD835); // Amber/Yellow for Beliefs
 const Color colorC = Color(0xFF64B5F6); // Light Blue for Consequences
 const Color colorD = Color(0xFF81C784); // Light Green for Dispute
 const Color colorE = Color(0xFFFFB74D); // Orange for Effects
+const Color countBackgroundColor = Colors.green;
+const Color countTextColor = Colors.white;
 
 /// Reusable text field with teal focus styling (dark theme)
 class AppTextField extends StatelessWidget {
@@ -193,14 +201,11 @@ class ABCDEWorksheet {
 
   static ABCDEWorksheet fromMap(Map<String, dynamic> m) {
     // Support legacy fields:
-    // - older versions may have 'beliefEmotional', 'beliefPsychological', etc.
-    // - older versions may have a single 'consequences' string
     final legacyBelEmo = m['beliefEmotional'] as String?;
     final legacyBelPsy = m['beliefPsychological'] as String?;
     final legacyBelPhy = m['beliefPhysical'] as String?;
     final legacyBelBeh = m['beliefBehavioural'] as String?;
 
-    // Compose a single belief string from legacy belief parts if present.
     String composedBelief =
         (m['belief'] as String?) ??
         ([
@@ -214,7 +219,6 @@ class ABCDEWorksheet {
             'Beh: ${legacyBelBeh!.trim()}',
         ].join(' | '));
 
-    // Support legacy single consequences => map into Emotional consequence slot
     final legacyConsequences = m['consequences'] as String?;
 
     return ABCDEWorksheet(
@@ -320,6 +324,10 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
 
   late final TabController _effectsTabController;
   late final TabController _consequencesTabController;
+  late final TabController _mainTabController;
+
+  // multiple example ids support
+  Set<String> _exampleIds = {};
 
   bool _loading = true;
   List<ABCDEWorksheet> _items = [];
@@ -336,6 +344,7 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
     super.initState();
     _effectsTabController = TabController(length: 4, vsync: this);
     _consequencesTabController = TabController(length: 4, vsync: this);
+    _mainTabController = TabController(length: 2, vsync: this); // <-- new
     _load();
   }
 
@@ -369,59 +378,91 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
     _behCtrl.dispose();
     _effectsTabController.dispose();
     _consequencesTabController.dispose();
+    _mainTabController.dispose();
+
     super.dispose();
   }
 
-  /// Returns a pre-filled example worksheet in Hindi.
-  ABCDEWorksheet _exampleWorksheet() {
-    final now = DateTime.now();
-    return ABCDEWorksheet(
-      id: _uuid.v4(),
-      activatingEvent:
-          'आज सुबह बॉस ने कहा कि कल प्रोजेक्ट की विस्तृत रिपोर्ट चाहिए। मैंने सोचा यह बहुत मुश्किल होगा।',
-      belief:
-          'यदि मैं रिपोर्ट समय पर अच्छी तरह नहीं बना पाया/पाई, तो मैं असफल हूँ और लोग मुझे घटिया समझेंगे।',
-      consequencesEmotional: 'घबराहट, शर्म, उदासी',
-      consequencesPsychological:
-          'बार-बार "मैं असफल हूँ" जैसा विचार, ध्यान न लगना',
-      consequencesPhysical: 'दिल की धड़कन तेज, पेट में घबराहट, नींद कम',
-      consequencesBehavioural: 'काम टालना, छोटे कामों से बचना',
-      dispute:
-          'क्या एक रिपोर्ट की कमी मेरे पूरे कौशल को तय कर देती है? मैंने पहले भी अच्छा किया है; मदद माँगना ठीक है।',
-      emotionalEffect: 'कुछ राहत; आशावाद की थोड़ी झलक',
-      psychologicalEffect:
-          'नकारात्मक विचारों में कमी; "कोशिश करूँगा/करूँगी" का विचार',
-      physicalEffect: 'साँसें धीमी होना, तनाव में कमी',
-      behaviouralEffect:
-          'रिपोर्ट को छोटे हिस्सों में बाँटना; सहकर्मी से फीडबैक लेना',
-      note:
-          'छोटे-छोटे हिस्से बनाकर काम करें; 60 मिनट काम + 5 मिनट ब्रेक का नियम अपनाएँ।',
-      createdAt: now,
-    );
+  // Helper: build an ABCDEWorksheet from JSON map ensuring id & createdAt exist
+  ABCDEWorksheet _worksheetFromJsonMap(Map<String, dynamic> m) {
+    final id = (m['id'] as String?) ?? _uuid.v4();
+    final mapCopy = Map<String, dynamic>.from(m);
+    mapCopy['id'] = id;
+    mapCopy['createdAt'] =
+        mapCopy['createdAt'] ?? DateTime.now().toIso8601String();
+    return ABCDEWorksheet.fromMap(mapCopy);
+  }
+
+  /// Import examples from asset JSON once (idempotent)
+  Future<void> _importExamplesFromAssetsIfNeeded() async {
+    final prefs = await SharedPreferences.getInstance();
+    final imported = prefs.getBool(_kExamplesImportedFlag) ?? false;
+    if (imported) {
+      // read persisted example ids if present
+      final saved = prefs.getStringList(_kExampleIdsKey);
+      if (saved != null) _exampleIds = saved.toSet();
+      return;
+    }
+
+    try {
+      final jsonStr = await rootBundle.loadString('assets/abcd_examples.json');
+      final List<dynamic> list = json.decode(jsonStr) as List<dynamic>;
+      final examples = list
+          .map(
+            (e) => _worksheetFromJsonMap(Map<String, dynamic>.from(e as Map)),
+          )
+          .toList();
+
+      final existing = (await _storage.loadAll()).map((e) => e.id).toSet();
+
+      for (final ex in examples) {
+        if (!existing.contains(ex.id)) {
+          await _storage.add(ex);
+        }
+        _exampleIds.add(ex.id);
+      }
+
+      await prefs.setStringList(_kExampleIdsKey, _exampleIds.toList());
+      await prefs.setBool(_kExamplesImportedFlag, true);
+    } catch (e) {
+      debugPrint('Failed to import example worksheets from assets: $e');
+    }
+  }
+
+  /// Migration for older installs that used a single example id key
+  Future<void> _runLegacyMigrationIfNeeded() async {
+    final prefs = await SharedPreferences.getInstance();
+    final legacy = prefs.getString(_kLegacyExampleIdKey);
+    if (legacy != null && legacy.isNotEmpty) {
+      final saved = prefs.getStringList(_kExampleIdsKey) ?? <String>[];
+      if (!saved.contains(legacy)) {
+        saved.add(legacy);
+        await prefs.setStringList(_kExampleIdsKey, saved);
+      }
+      _exampleIds = saved.toSet();
+    } else {
+      // if no legacy but there is saved set, read it
+      final saved = prefs.getStringList(_kExampleIdsKey);
+      if (saved != null) _exampleIds = saved.toSet();
+    }
   }
 
   Future<void> _load() async {
     setState(() => _loading = true);
 
+    // migration
+    await _runLegacyMigrationIfNeeded();
+
+    // import examples from assets if needed
+    await _importExamplesFromAssetsIfNeeded();
+
+    // now load stored items
+    final items = await _storage.loadAll();
+
+    // refresh _exampleIds from prefs in case anything changed
     final prefs = await SharedPreferences.getInstance();
-    final exampleInserted = prefs.getBool('ABCDE_example_inserted_v1') ?? false;
-
-    // Load current items
-    var items = await _storage.loadAll();
-
-    // If nothing saved yet and we haven't inserted example before, add it once
-    if (!exampleInserted && (items.isEmpty)) {
-      try {
-        final example = _exampleWorksheet();
-        await _storage.add(example);
-        await prefs.setBool('ABCDE_example_inserted_v1', true);
-
-        // reload items after inserting example
-        items = await _storage.loadAll();
-      } catch (e) {
-        debugPrint('Failed to insert example worksheet: $e');
-      }
-    }
+    final savedExampleIds = prefs.getStringList(_kExampleIdsKey);
+    if (savedExampleIds != null) _exampleIds = savedExampleIds.toSet();
 
     setState(() {
       _items = items;
@@ -593,6 +634,20 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
   }
 
   Future<void> _deleteItem(String id) async {
+    // Prevent deletion of any built-in example
+    if (_exampleIds.contains(id)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'This is an example worksheet and cannot be deleted.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dctx) => AlertDialog(
@@ -1239,6 +1294,8 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
   }
 
   Widget _buildPopupMenu(ABCDEWorksheet item) {
+    final isExample = _exampleIds.contains(item.id);
+
     return PopupMenuButton<String>(
       color: Colors.white,
       icon: const Icon(Icons.more_vert, color: Colors.white54),
@@ -1274,7 +1331,6 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
             );
           }
         } else if (v == 'share_doctor') {
-          // Share the already-saved worksheet to doctor's chat in Firestore.
           try {
             await ChatShare.sendAbcdeWorksheetToDoctor(item.toMap());
             if (mounted) {
@@ -1291,15 +1347,40 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
           }
         }
       },
-      itemBuilder: (_) => const [
-        PopupMenuItem(value: 'edit', child: Text('Edit')),
-        PopupMenuItem(value: 'share', child: Text('Copy for share')),
-        PopupMenuItem(value: 'share_doctor', child: Text('Share with Doctor')),
-        PopupMenuItem(
-          value: 'delete',
-          child: Text('Delete', style: TextStyle(color: Colors.red)),
-        ),
-      ],
+      itemBuilder: (_) {
+        final items = <PopupMenuEntry<String>>[
+          const PopupMenuItem(value: 'edit', child: Text('Edit')),
+          const PopupMenuItem(value: 'share', child: Text('Copy for share')),
+          const PopupMenuItem(
+            value: 'share_doctor',
+            child: Text('Share with Doctor'),
+          ),
+        ];
+
+        // Add delete only if not the example
+        if (!isExample) {
+          items.add(
+            const PopupMenuItem(
+              value: 'delete',
+              child: Text('Delete', style: TextStyle(color: Colors.red)),
+            ),
+          );
+        } else {
+          // Optionally show a disabled Delete menu entry (visual hint)
+          items.add(
+            const PopupMenuItem(
+              enabled: false,
+              value: 'delete_disabled',
+              child: Text(
+                'Delete (not allowed)',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          );
+        }
+
+        return items;
+      },
     );
   }
 
@@ -1334,20 +1415,48 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
                     child: Icon(Icons.flash_on, color: Colors.yellow, size: 24),
                   ),
                   Expanded(
-                    child: Text(
-                      titleText,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                      ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            titleText,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                        if (_exampleIds.contains(item.id))
+                          Container(
+                            margin: const EdgeInsets.only(left: 8.0),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white12,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.white10),
+                            ),
+                            child: const Text(
+                              'Example',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                   _buildPopupMenu(item),
                 ],
               ),
+
               const Divider(
                 color: Colors.white10,
                 height: 16,
@@ -1364,28 +1473,100 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
                   children: [Expanded(child: _beliefSummaryWidget(item))],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.calendar_today,
-                      color: Colors.white38,
-                      size: 14,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      dateStr,
-                      style: const TextStyle(
-                        color: Colors.white54,
-                        fontSize: 12,
+              // Show date only for non-example worksheets
+              if (!_exampleIds.contains(item.id))
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.calendar_today,
+                        color: Colors.white38,
+                        size: 14,
                       ),
+                      const SizedBox(width: 4),
+                      Text(
+                        dateStr,
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildListForItems(List<ABCDEWorksheet> items) {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (items.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 22.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'No worksheets',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: mutedText,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Create a new ABCDE worksheet to capture a situation, your thought, and a balanced alternative.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: dimText),
+              ),
+              const SizedBox(height: 14),
+              ElevatedButton(
+                onPressed: _startNew,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: teal3,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.add),
+                    SizedBox(height: 4),
+                    Text(
+                      'Create worksheet',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 12),
                     ),
                   ],
                 ),
               ),
             ],
           ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      backgroundColor: cardDark,
+      color: teal2,
+      onRefresh: _load,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(12),
+        itemCount: items.length,
+        itemBuilder: (_, i) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6.0),
+          child: _buildListTile(items[i]),
         ),
       ),
     );
@@ -1478,6 +1659,26 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
+                              if (_exampleIds.contains(item.id))
+                                const SizedBox(height: 6),
+                              if (_exampleIds.contains(item.id))
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white12,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Text(
+                                    'Example',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
                             ],
                           ),
                         ),
@@ -1950,6 +2151,14 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
 
   @override
   Widget build(BuildContext context) {
+    // compute filtered lists
+    final exampleList = _items
+        .where((it) => _exampleIds.contains(it.id))
+        .toList();
+    final userList = _items
+        .where((it) => !_exampleIds.contains(it.id))
+        .toList();
+
     return Scaffold(
       backgroundColor: surfaceDark,
       appBar: AppBar(
@@ -1987,7 +2196,82 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
             tooltip: 'New worksheet',
           ),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(52),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: TabBar(
+              controller: _mainTabController,
+              indicatorColor: teal3, // or teal2 / Colors.tealAccent
+              indicatorWeight: 3.0, // thickness of the line
+              indicatorSize: TabBarIndicatorSize.tab, // full-width underline
+
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white60,
+
+              tabs: [
+                Tab(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('  Examples'),
+                      const SizedBox(width: 6),
+                      if (exampleList.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: countBackgroundColor,
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                          child: Text(
+                            '${exampleList.length}',
+                            style: const TextStyle(
+                              color: countTextColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Tab(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('  My worksheets'),
+                      const SizedBox(width: 6),
+                      if (userList.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: countBackgroundColor,
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                          child: Text(
+                            '${userList.length}',
+                            style: const TextStyle(
+                              color: countTextColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
+
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _startNew,
         icon: const Icon(Icons.add),
@@ -1995,69 +2279,27 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
         backgroundColor: teal3,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 22.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'No saved worksheets',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: mutedText,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Create a new ABCDE worksheet to capture a situation, your thought, and a balanced alternative.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: dimText),
-                    ),
-                    const SizedBox(height: 14),
-                    ElevatedButton(
-                      onPressed: _startNew,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: teal3,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(Icons.add),
-                          SizedBox(height: 4),
-                          Text(
-                            'Create worksheet',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          : RefreshIndicator(
-              backgroundColor: cardDark,
-              color: teal2,
-              onRefresh: _load,
-              child: ListView.builder(
-                padding: const EdgeInsets.all(12),
-                itemCount: _items.length,
-                itemBuilder: (_, i) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6.0),
-                  child: _buildListTile(_items[i]),
-                ),
-              ),
+
+      body: Column(
+        children: [
+          // Keep a thin separator under the tab bar for visual separation
+          Container(height: 6, color: Colors.transparent),
+
+          // Tab views
+          Expanded(
+            child: TabBarView(
+              controller: _mainTabController,
+              children: [
+                // Examples tab
+                _buildListForItems(exampleList),
+
+                // My worksheets tab
+                _buildListForItems(userList),
+              ],
             ),
+          ),
+        ],
+      ),
     );
   }
 }

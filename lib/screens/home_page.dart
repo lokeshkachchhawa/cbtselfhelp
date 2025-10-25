@@ -1,6 +1,7 @@
 // lib/screens/home_page.dart
 import 'dart:convert';
 
+import 'package:cbt_drktv/widgets/reminder_card.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
@@ -1015,12 +1016,18 @@ class _HomePageState extends State<HomePage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // Mood quick entry card (local-only)
+                      // Mood quick entry card (local-only)
                       _buildMoodCard(),
 
                       const SizedBox(height: 12),
 
                       // Today's task card (now has ABCD option)
                       _buildTaskCard(),
+
+                      const SizedBox(height: 12),
+
+                      // Reminder card (next upcoming reminder + quick actions)
+                      const ReminderCardImproved(),
 
                       const SizedBox(height: 12),
 
@@ -1523,11 +1530,7 @@ class _HomePageState extends State<HomePage> {
     final tools = [
       {'icon': Icons.note_alt, 'label': 'Thought', 'route': '/thought'},
       {'icon': Icons.rule, 'label': 'ABCD', 'route': '/abcd'},
-      {
-        'icon': Icons.access_time,
-        'label': 'Activities',
-        'route': '/activities',
-      },
+
       {'icon': Icons.self_improvement, 'label': 'Relax', 'route': '/relax'},
       {'icon': Icons.psychology, 'label': 'CBT Game', 'route': '/thought_game'},
     ];

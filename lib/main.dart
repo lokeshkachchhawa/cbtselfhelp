@@ -6,7 +6,6 @@ import 'package:cbt_drktv/relax/mini_meditation_timer.dart';
 import 'package:cbt_drktv/relax/relax_breath_page.dart';
 import 'package:cbt_drktv/relax/relax_pmr_page.dart';
 import 'package:cbt_drktv/screens/abcd_worksheet.dart';
-import 'package:cbt_drktv/screens/activities_page.dart';
 import 'package:cbt_drktv/screens/doctor_home.dart';
 import 'package:cbt_drktv/screens/drktv_chat_screen.dart';
 import 'package:cbt_drktv/screens/home_page.dart';
@@ -14,6 +13,7 @@ import 'package:cbt_drktv/screens/relax_page.dart';
 import 'package:cbt_drktv/screens/thought_detective_game.dart';
 import 'package:cbt_drktv/screens/thought_record_page.dart';
 import 'package:cbt_drktv/screens/safety_page.dart';
+import 'package:cbt_drktv/widgets/reminder_card.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -30,8 +30,15 @@ import 'utils/auth_router.dart';
 // App theme
 import 'theme.dart';
 
-void main() async {
+// Notifications / timezone
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
+import 'services/notification_service.dart';
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // --- dotenv (optional) ---
   try {
     await dotenv.load(fileName: '.env');
     debugPrint('dotenv loaded from project root');
@@ -42,15 +49,28 @@ void main() async {
       debugPrint('dotenv loaded from assets/.env');
     } catch (e2) {
       debugPrint('dotenv load from assets failed: $e2');
-      // Continue without dotenv — _queryOpenAI will throw a clear error if API key missing.
     }
   }
+
+  // --- Firebase ---
   await Firebase.initializeApp();
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  runApp(MyApp());
+
+  // --- Timezone initialization (pure Dart, no native plugin) ---
+  tz.initializeTimeZones();
+  final local = tz.local; // system local timezone
+  tz.setLocalLocation(local);
+  debugPrint('Local timezone: ${local.name}');
+
+  // --- Notifications initialization (use centralized NotificationService) ---
+  await NotificationService().init();
+
+  // Optionally request permissions at a more appropriate UX moment:
+  // await NotificationService().requestPermissions();
+
+  runApp(const MyApp());
 }
 
+// --- AppState ---
 class AppState extends ChangeNotifier {
   User? user = FirebaseAuth.instance.currentUser;
 
@@ -64,6 +84,7 @@ class AppState extends ChangeNotifier {
   Future<void> signOut() => FirebaseAuth.instance.signOut();
 }
 
+// --- MyApp ---
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -74,7 +95,7 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'CBT Self-Guided',
-        theme: appTheme(), // use centralized theme
+        theme: appTheme(),
         home: const EntryRouter(),
         routes: {
           '/home': (_) => const HomePage(),
@@ -84,7 +105,6 @@ class MyApp extends StatelessWidget {
           '/signin': (_) => const SignInScreen(),
           '/signup': (_) => const SignUpPage(),
           '/safety': (_) => const SafetyPage(),
-          '/activities': (_) => const ActivitiesPage(),
           '/abcd': (_) => const ABCDEWorksheetPage(),
           '/relax': (_) => const RelaxPage(),
           '/relax/breath': (_) => const RelaxBreathPage(),
@@ -96,12 +116,16 @@ class MyApp extends StatelessWidget {
           '/drktv_chat': (ctx) => const DrKtvChatScreen(),
           '/doctor/home': (ctx) => const DoctorHome(),
           '/thought_game': (context) => const ThoughtDetectiveGame(),
+
+          // Reminders route (simple in-app page). Adjust if you have your own RemindersPage file.
+          '/reminders': (_) => const ReminderCardImproved(),
         },
       ),
     );
   }
 }
 
+// --- EntryRouter ---
 class EntryRouter extends StatelessWidget {
   const EntryRouter({super.key});
 
@@ -113,12 +137,10 @@ class EntryRouter extends StatelessWidget {
       return const SignInScreen();
     }
 
-    // Defer navigation to avoid calling Navigator during build
     Future.microtask(() async {
       await navigateAfterSignIn(context, user: app.user);
     });
 
-    // Simple loading state while router decides destination
     return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
 }

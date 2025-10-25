@@ -1060,7 +1060,6 @@ class _DoctorChatThreadState extends State<DoctorChatThread> {
       final sender = d['sender'] ?? '';
 
       // support either parent field names for replies created by different code paths
-      final inReplyTo = (d['inReplyTo'] ?? d['parentId']) as String?;
 
       if (sender == 'user') {
         final text = (d['text'] ?? '').toString();

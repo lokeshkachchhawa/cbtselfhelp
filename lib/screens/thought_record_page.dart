@@ -4,8 +4,11 @@
 // UI aligned with ABCD sheet: list view + modal bottom sheet create/edit.
 
 import 'dart:convert';
+import 'package:cbt_drktv/widgets/thought_tutorial_sheet.dart'
+    show showThoughtTutorialSheet;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show Clipboard, ClipboardData;
+import 'package:flutter/services.dart'
+    show Clipboard, ClipboardData, rootBundle;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
@@ -19,6 +22,12 @@ const Color teal3 = Color(0xFF008F89);
 const Color teal4 = Color(0xFF007A78);
 const Color teal5 = Color(0xFF005E5C);
 const Color teal6 = Color(0xFF004E4D);
+// Emotion colors (for field distinction)
+const Color colorA = Color(0xFFE57373); // Light Red/Coral — Emotion
+const Color colorB = Color(0xFFFDD835); // Amber/Yellow — Awareness
+const Color colorC = Color(0xFF64B5F6); // Light Blue — Thought
+const Color colorD = Color(0xFF81C784); // Light Green — Rational
+const Color colorE = Color(0xFFFFB74D); // Orange — Action/Reflection
 
 // Dark surfaces for theme
 const Color surfaceDark = Color(0xFF071617);
@@ -26,7 +35,11 @@ const Color cardDark = Color(0xFF072726);
 const Color mutedText = Color(0xFFBFDCDC);
 const Color dimText = Color(0xFFA3CFCB);
 
-/// Reusable AppTextField — dark variant with teal focus color and optional counter
+// ----------------- Embedded Hindi examples JSON -----------------
+// You can keep this embedded or move to an asset file (assets/examples_hi.json) and load it via rootBundle.loadString.
+
+// ----------------- Reusable AppTextField -----------------
+
 class AppTextField extends StatelessWidget {
   final TextEditingController controller;
   final String? hint;
@@ -37,6 +50,7 @@ class AppTextField extends StatelessWidget {
   final int? maxLength;
   final bool showCounter;
   final bool autofocus;
+  final TextCapitalization textCapitalization;
 
   const AppTextField({
     required this.controller,
@@ -49,6 +63,7 @@ class AppTextField extends StatelessWidget {
     this.showCounter = false,
     this.autofocus = false,
     super.key,
+    this.textCapitalization = TextCapitalization.sentences,
   });
 
   InputDecoration _dec(BuildContext context) {
@@ -59,15 +74,15 @@ class AppTextField extends StatelessWidget {
       fillColor: cardDark,
       isDense: true,
       counterText: showCounter ? null : '',
-      hintStyle: TextStyle(color: Colors.white38),
+      hintStyle: const TextStyle(color: Colors.white38),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.white10, width: 1),
+        borderSide: const BorderSide(color: Colors.white10, width: 1),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: teal3, width: 2),
+        borderSide: const BorderSide(color: teal3, width: 2),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -86,6 +101,7 @@ class AppTextField extends StatelessWidget {
       autofocus: autofocus,
       maxLength: maxLength,
       style: const TextStyle(color: Colors.white),
+      textCapitalization: textCapitalization,
       decoration: _dec(context),
     );
   }
@@ -260,12 +276,15 @@ class _ThoughtRecordPageState extends State<ThoughtRecordPage> {
   ThoughtRecord? _editing;
 
   // tutorial language: false = EN, true = HI
-  bool _tutorialInHindi = false;
+
+  // examples loaded from JSON (each is a Map<String,String>)
+  List<Map<String, String>> _examples = [];
 
   @override
   void initState() {
     super.initState();
     _load();
+    _loadExamples();
   }
 
   @override
@@ -279,6 +298,21 @@ class _ThoughtRecordPageState extends State<ThoughtRecordPage> {
     super.dispose();
   }
 
+  Future<void> _loadExamples() async {
+    try {
+      final jsonStr = await rootBundle.loadString('assets/examples_hi.json');
+      final List<dynamic> parsed = json.decode(jsonStr) as List<dynamic>;
+      _examples = parsed
+          .map((e) => Map<String, String>.from(e as Map))
+          .toList(growable: false);
+    } catch (e) {
+      // fallback: empty list if asset missing or parse error
+      _examples = [];
+      debugPrint('Failed to load examples asset: $e');
+    }
+    if (mounted) setState(() {});
+  }
+
   Future<void> _load() async {
     setState(() => _loading = true);
     final items = await _storage.loadAll();
@@ -288,15 +322,15 @@ class _ThoughtRecordPageState extends State<ThoughtRecordPage> {
     });
   }
 
-  void _startNew() {
+  void _startNew({Map<String, String>? fromExample}) {
     setState(() {
       _editing = null;
-      _situationCtrl.clear();
-      _automaticCtrl.clear();
-      _evidenceForCtrl.clear();
-      _evidenceAgainstCtrl.clear();
-      _alternativeCtrl.clear();
-      _noteCtrl.clear();
+      _situationCtrl.text = fromExample?['situation'] ?? '';
+      _automaticCtrl.text = fromExample?['automaticThought'] ?? '';
+      _evidenceForCtrl.text = fromExample?['evidenceFor'] ?? '';
+      _evidenceAgainstCtrl.text = fromExample?['evidenceAgainst'] ?? '';
+      _alternativeCtrl.text = fromExample?['alternativeThought'] ?? '';
+      _noteCtrl.text = fromExample?['note'] ?? '';
       _beforeMood = 5;
       _afterMood = 5;
     });
@@ -401,11 +435,17 @@ class _ThoughtRecordPageState extends State<ThoughtRecordPage> {
     if (confirmed == true) {
       await _storage.delete(id);
       await _load();
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Deleted')));
+      }
     }
+  }
+
+  void _applyExampleToForm(Map<String, String> example) {
+    // open form with example values pre-filled (as a new record)
+    _startNew(fromExample: example);
   }
 
   void _showFormSheet() {
@@ -415,8 +455,6 @@ class _ThoughtRecordPageState extends State<ThoughtRecordPage> {
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         final pad = MediaQuery.of(ctx).viewInsets.bottom;
-
-        // Use local copies so sliders update inside the sheet instantly
         int localBefore = _beforeMood;
         int localAfter = _afterMood;
 
@@ -426,11 +464,6 @@ class _ThoughtRecordPageState extends State<ThoughtRecordPage> {
             padding: EdgeInsets.only(bottom: pad),
             child: StatefulBuilder(
               builder: (BuildContext ctx2, StateSetter setModalState) {
-                void _updateBefore(double v) =>
-                    setModalState(() => localBefore = v.toInt());
-                void _updateAfter(double v) =>
-                    setModalState(() => localAfter = v.toInt());
-
                 return Container(
                   decoration: BoxDecoration(
                     color: surfaceDark,
@@ -463,8 +496,8 @@ class _ThoughtRecordPageState extends State<ThoughtRecordPage> {
                             Expanded(
                               child: Text(
                                 _editing != null
-                                    ? 'Edit thought record'
-                                    : 'New thought record',
+                                    ? 'Edit Thought Record'
+                                    : 'New Thought Record',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
@@ -495,133 +528,82 @@ class _ThoughtRecordPageState extends State<ThoughtRecordPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              _fieldLabel('Situation'),
-                              AppTextField(
-                                controller: _situationCtrl,
+                              // 🔴 SITUATION (Coral/Amber)
+                              ColoredFieldTile(
+                                label: 'Situation',
                                 hint: 'Where were you? What happened?',
+                                controller: _situationCtrl,
+                                startColor: colorA,
+                                endColor: colorB,
+                                icon: Icons.location_on_outlined,
                                 minLines: 2,
                                 maxLines: 5,
-                                maxLength: 800,
-                                showCounter: true,
-                                autofocus: _editing == null,
                               ),
-                              const SizedBox(height: 10),
 
-                              _fieldLabel('Automatic thought'),
-                              AppTextField(
-                                controller: _automaticCtrl,
+                              // 🔵 AUTOMATIC THOUGHT (Blue)
+                              ColoredFieldTile(
+                                label: 'Automatic Thought',
                                 hint: 'What went through your mind?',
-                                minLines: 1,
-                                maxLines: 3,
-                                maxLength: 300,
-                                showCounter: true,
-                              ),
-                              const SizedBox(height: 12),
-
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          'Before mood',
-                                          style: TextStyle(
-                                            color: Colors.white70,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        Slider(
-                                          value: localBefore.toDouble(),
-                                          min: 0,
-                                          max: 10,
-                                          divisions: 10,
-                                          label: '$localBefore',
-                                          activeColor: teal3,
-                                          onChanged: _updateBefore,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          'After mood',
-                                          style: TextStyle(
-                                            color: Colors.white70,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        Slider(
-                                          value: localAfter.toDouble(),
-                                          min: 0,
-                                          max: 10,
-                                          divisions: 10,
-                                          label: '$localAfter',
-                                          activeColor: teal4,
-                                          onChanged: _updateAfter,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                                controller: _automaticCtrl,
+                                startColor: colorC,
+                                endColor: colorC.withOpacity(0.7),
+                                icon: Icons.cloud,
                               ),
 
-                              const SizedBox(height: 10),
-                              _fieldLabel('Evidence FOR'),
-                              AppTextField(
-                                controller: _evidenceForCtrl,
+                              // 🟢 EVIDENCE FOR (Green)
+                              ColoredFieldTile(
+                                label: 'Evidence For',
                                 hint: 'Facts that support the thought',
+                                controller: _evidenceForCtrl,
+                                startColor: colorD,
+                                endColor: colorD.withOpacity(0.6),
+                                icon: Icons.trending_up_outlined,
                                 minLines: 2,
                                 maxLines: 4,
-                                maxLength: 800,
-                                showCounter: true,
                               ),
-                              const SizedBox(height: 10),
-                              _fieldLabel('Evidence AGAINST'),
-                              AppTextField(
-                                controller: _evidenceAgainstCtrl,
+
+                              // 🟠 EVIDENCE AGAINST (Amber → Orange)
+                              ColoredFieldTile(
+                                label: 'Evidence Against',
                                 hint: 'Facts that contradict the thought',
+                                controller: _evidenceAgainstCtrl,
+                                startColor: colorB,
+                                endColor: colorE,
+                                icon: Icons.trending_down_outlined,
                                 minLines: 2,
                                 maxLines: 4,
-                                maxLength: 800,
-                                showCounter: true,
                               ),
-                              const SizedBox(height: 10),
-                              _fieldLabel('Alternative thought'),
-                              AppTextField(
-                                controller: _alternativeCtrl,
+
+                              // 💡 ALTERNATIVE THOUGHT (Light Blue → Green)
+                              ColoredFieldTile(
+                                label: 'Alternative Thought',
                                 hint: 'A kinder or balanced thought',
+                                controller: _alternativeCtrl,
+                                startColor: colorC,
+                                endColor: colorD,
+                                icon: Icons.lightbulb_outline,
                                 minLines: 2,
                                 maxLines: 4,
-                                maxLength: 600,
-                                showCounter: true,
                               ),
-                              const SizedBox(height: 10),
-                              _fieldLabel('Note (optional)'),
-                              AppTextField(
-                                controller: _noteCtrl,
+
+                              // 🟤 NOTE (Neutral / soft blend)
+                              ColoredFieldTile(
+                                label: 'Note (Optional)',
                                 hint: 'Optional strategy or reminder',
+                                controller: _noteCtrl,
+                                startColor: Colors.white30,
+                                endColor: Colors.white10,
+                                icon: Icons.sticky_note_2_outlined,
                                 minLines: 1,
                                 maxLines: 3,
-                                maxLength: 400,
-                                showCounter: true,
                               ),
 
                               const SizedBox(height: 16),
-
-                              // Buttons row (save/cancel/delete)
                               Row(
                                 children: [
                                   Expanded(
                                     child: ElevatedButton(
                                       onPressed: () async {
-                                        // copy modal-local sliders back to parent and save
                                         setState(() {
                                           _beforeMood = localBefore;
                                           _afterMood = localAfter;
@@ -660,8 +642,6 @@ class _ThoughtRecordPageState extends State<ThoughtRecordPage> {
                                   ],
                                 ],
                               ),
-
-                              const SizedBox(height: 16),
                             ],
                           ),
                         ),
@@ -676,20 +656,6 @@ class _ThoughtRecordPageState extends State<ThoughtRecordPage> {
       },
     );
   }
-
-  Widget _fieldLabel(String s) => Align(
-    alignment: Alignment.centerLeft,
-    child: Padding(
-      padding: const EdgeInsets.only(bottom: 6.0),
-      child: Text(
-        s,
-        style: const TextStyle(
-          fontWeight: FontWeight.w700,
-          color: Colors.white,
-        ),
-      ),
-    ),
-  );
 
   Widget _buildListTile(ThoughtRecord item) {
     final dateStr = MaterialLocalizations.of(
@@ -714,7 +680,14 @@ class _ThoughtRecordPageState extends State<ThoughtRecordPage> {
           style: const TextStyle(color: Colors.white60),
         ),
         trailing: PopupMenuButton<String>(
-          color: cardDark,
+          icon: const Icon(
+            Icons.more_vert,
+            color: Colors.white70, // white icon on dark background
+          ),
+          color: Colors.white, // popup menu background
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
           onSelected: (v) {
             if (v == 'edit') _startEdit(item);
             if (v == 'delete') _deleteItem(item.id);
@@ -737,95 +710,58 @@ class _ThoughtRecordPageState extends State<ThoughtRecordPage> {
               );
             }
           },
-          itemBuilder: (_) => const [
-            PopupMenuItem(value: 'edit', child: Text('Edit')),
-            PopupMenuItem(value: 'share', child: Text('Copy for share')),
-            PopupMenuItem(value: 'delete', child: Text('Delete')),
+          itemBuilder: (_) => [
+            PopupMenuItem(
+              value: 'edit',
+              child: Row(
+                children: const [
+                  Icon(Icons.edit_outlined, size: 18, color: Colors.black54),
+                  SizedBox(width: 8),
+                  Text('Edit'),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: 'share',
+              child: Row(
+                children: const [
+                  Icon(Icons.copy_outlined, size: 18, color: Colors.black54),
+                  SizedBox(width: 8),
+                  Text('Copy for share'),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: 'delete',
+              child: Row(
+                children: const [
+                  Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+                  SizedBox(width: 8),
+                  Text('Delete'),
+                ],
+              ),
+            ),
           ],
         ),
+
         onTap: () => _showDetail(item),
       ),
     );
   }
 
   void _showDetail(ThoughtRecord item) {
-    showDialog<void>(
-      context: context,
-      builder: (dctx) => AlertDialog(
-        backgroundColor: cardDark,
-        title: const Text(
-          'Thought record',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _detailRow('Situation', item.situation),
-              const SizedBox(height: 8),
-              _detailRow('Automatic thought', item.automaticThought),
-              const SizedBox(height: 8),
-              _detailRow('Evidence FOR', item.evidenceFor),
-              const SizedBox(height: 8),
-              _detailRow('Evidence AGAINST', item.evidenceAgainst),
-              const SizedBox(height: 8),
-              _detailRow('Alternative thought', item.alternativeThought),
-              const SizedBox(height: 8),
-              Text(
-                'Before mood: ${item.beforeMood} • After mood: ${item.afterMood}',
-                style: const TextStyle(color: Colors.white70),
-              ),
-              const SizedBox(height: 8),
-              if (item.note.isNotEmpty) _detailRow('Note', item.note),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dctx).pop(),
-            child: const Text('Close', style: TextStyle(color: teal2)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: teal3),
-            onPressed: () {
-              Navigator.of(dctx).pop();
-              _startEdit(item);
-            },
-            child: const Text('Edit'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _detailRow(String title, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(value, style: const TextStyle(color: Colors.white70)),
-      ],
-    );
-  }
-
-  // ----- Tutorial sheet (expanded explanation) -----
-  void _showTutorial() {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return DraggableScrollableSheet(
-          expand: false,
-          builder: (context, scrollController) {
-            return Container(
+      builder: (dctx) {
+        final media = MediaQuery.of(dctx);
+        final pad = media.viewInsets.bottom;
+        return FractionallySizedBox(
+          heightFactor: 0.92,
+          child: Padding(
+            padding: EdgeInsets.only(bottom: pad),
+            child: Container(
               decoration: BoxDecoration(
                 color: surfaceDark,
                 borderRadius: const BorderRadius.vertical(
@@ -833,621 +769,797 @@ class _ThoughtRecordPageState extends State<ThoughtRecordPage> {
                 ),
                 border: Border.all(color: Colors.white10),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-              child: StatefulBuilder(
-                builder: (sheetCtx, sheetSetState) {
-                  String t(String en, String hi) => _tutorialInHindi ? hi : en;
-
-                  return SingleChildScrollView(
-                    controller: scrollController,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+              child: Column(
+                children: [
+                  // Drag handle + header
+                  Container(
+                    margin: const EdgeInsets.symmetric(vertical: 10),
+                    height: 6,
+                    width: 72,
+                    decoration: BoxDecoration(
+                      color: Colors.white12,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
+                    child: Row(
                       children: [
-                        Container(
-                          height: 6,
-                          width: 60,
-                          margin: const EdgeInsets.only(bottom: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white24,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                t(
-                                  'Thought Record — CBT tutorial (expanded)',
-                                  'थॉट रिकॉर्ड — CBT मार्गदर्शिका (विस्तारित)',
-                                ),
+                        const Icon(Icons.article_outlined, color: Colors.white),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Thought record',
                                 style: TextStyle(
-                                  color: mutedText,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
                                 ),
                               ),
-                            ),
-                            IconButton(
-                              onPressed: () => Navigator.of(ctx).pop(),
-                              icon: const Icon(
-                                Icons.close,
-                                color: Colors.white70,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-
-                        // language toggle + copy checklist
-                        Row(
-                          children: [
-                            Text(
-                              _tutorialInHindi
-                                  ? 'Switch to EN'
-                                  : 'Switch to हिंदी',
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Switch(
-                              value: _tutorialInHindi,
-                              activeColor: teal3,
-                              onChanged: (v) {
-                                sheetSetState(() => _tutorialInHindi = v);
-                                setState(() => _tutorialInHindi = v);
-                              },
-                            ),
-                            const Spacer(),
-                            TextButton.icon(
-                              onPressed: () {
-                                final enClipboard = [
-                                  'Thought Record steps:',
-                                  '1) Describe the situation.',
-                                  '2) Note the automatic thought.',
-                                  '3) List evidence for and against.',
-                                  '4) Create a balanced alternative thought.',
-                                  '5) Re-rate mood; plan a small experiment or reminder.',
-                                ].join('\n');
-                                final hiClipboard = [
-                                  'थॉट रिकॉर्ड कदम:',
-                                  '1) स्थिति का वर्णन करें।',
-                                  '2) स्वचालित विचार लिखें।',
-                                  '3) समर्थन/विरोध के प्रमाण लिखें।',
-                                  '4) संतुलित वैकल्पिक विचार बनाएं।',
-                                  '5) मूड फिर से रेट करें; छोटा प्रयोग/नोट प्लान करें।',
-                                ].join('\n');
-                                Clipboard.setData(
-                                  ClipboardData(
-                                    text: _tutorialInHindi
-                                        ? hiClipboard
-                                        : enClipboard,
-                                  ),
-                                );
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      t(
-                                        'Checklist copied',
-                                        'चेकलिस्ट कॉपी हो गई',
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                              icon: const Icon(
-                                Icons.copy,
-                                color: Colors.white70,
-                                size: 18,
-                              ),
-                              label: Text(
-                                t('Copy checklist', 'चेकलिस्ट कॉपी करें'),
-                                style: const TextStyle(color: Colors.white70),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        // WHAT is a thought record + WHY helpful
-                        Text(
-                          t(
-                            'What is a Thought Record?',
-                            'थॉट रिकॉर्ड क्या है?',
-                          ),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          t(
-                            'A Thought Record is a structured worksheet used in Cognitive Behavioural Therapy (CBT) to help you examine distressing situations step-by-step. It guides you to separate facts from feelings, identify the quick automatic thought, evaluate supporting and contradicting evidence, and create a more balanced alternative thought.',
-                            'थॉट रिकॉर्ड CBT (संज्ञानात्मक व्यवहार थेरेपी) में उपयोग किया जाने वाला एक संरचित वर्कशीट है जो कठिन स्थितियों को चरण-दर-चरण देखने में मदद करता है। यह आपको तथ्यों और भावनाओं को अलग करने, तात्कालिक स्वचालित विचार की पहचान करने, समर्थन और विरोध के प्रमाणों का मूल्यांकन करने और एक संतुलित वैकल्पिक विचार बनाने में मार्गदर्शन करता है।',
-                          ),
-                          style: const TextStyle(color: Colors.white70),
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        Text(
-                          t('Why it helps', 'यह कैसे मदद करता है'),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        _bulletItem(
-                          Icons.check_circle_outline,
-                          t(
-                            'It slows down thinking so you can inspect the thought rather than react to it.',
-                            'यह सोचने की गति धीमी करता है ताकि आप प्रतिक्रिया देने की बजाय विचार का निरीक्षण कर सकें।',
-                          ),
-                        ),
-                        _bulletItem(
-                          Icons.analytics,
-                          t(
-                            'It separates evidence from emotion — decisions based on evidence tend to be less biased.',
-                            'यह भावनाओं से प्रमाणों को अलग करता है — प्रमाणों पर आधारित निर्णय कम पूर्वाग्रहपूर्ण होते हैं।',
-                          ),
-                        ),
-                        _bulletItem(
-                          Icons.self_improvement,
-                          t(
-                            'Over time, it trains you to spot thinking traps (catastrophising, black-and-white thinking, mind-reading).',
-                            'समय के साथ, यह आपको सोचने के जाल (विशालकरण, काले-से-सफेद सोच, दिमाग पढ़ना) को पहचानना सिखाता है।',
-                          ),
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        Text(
-                          t(
-                            'How it works (the practical method)',
-                            'यह कैसे काम करता है (व्यावहारिक विधि)',
-                          ),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          t(
-                            'Use the worksheet as a short experiment. Fill each section in order, using short factual statements where possible. The core idea: treat your automatic thought as a hypothesis and test it with evidence. Then form a balanced alternative and notice any change in mood or behavior.',
-                            'वर्कशीट को एक छोटे प्रयोग के रूप में उपयोग करें। प्रत्येक खंड को क्रम में भरें, जहाँ संभव हो संक्षिप्त तथ्यात्मक वाक्य का उपयोग करें। मूल विचार: अपने स्वचालित विचार को एक अनुमान के रूप में देखें और प्रमाणों से जांचें। फिर एक संतुलित वैकल्पिक विचार बनाएं और मूड/व्यवहार में किसी भी बदलाव को नोट करें।',
-                          ),
-                          style: const TextStyle(color: Colors.white70),
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        // Step-by-step with more detail
-                        _numberedItem(
-                          1,
-                          t(
-                            'Situation — write only the observable facts (who, what, when, where). Avoid interpretation here.',
-                            'स्थिति — केवल अवलोकनीय तथ्यों को लिखें (कौन, क्या, कब, कहाँ)। यहाँ व्याख्या से बचें।',
-                          ),
-                        ),
-                        _numberedItem(
-                          2,
-                          t(
-                            'Automatic thought — the immediate sentence or image that appears in your mind (keep it short).',
-                            'स्वचालित विचार — तुरंत जो वाक्य या छवि आपके मन में आती है उसे लिखें (संक्षेप में)।',
-                          ),
-                        ),
-                        _numberedItem(
-                          3,
-                          t(
-                            'Evidence FOR — factual points that would support this thought (dates, quotes, actions).',
-                            'समर्थक प्रमाण — तथ्यात्मक बिंदु जो इस विचार का समर्थन करते हैं (तिथियाँ, उद्धरण, क्रियाएँ)।',
-                          ),
-                        ),
-                        _numberedItem(
-                          4,
-                          t(
-                            'Evidence AGAINST — concrete facts that contradict or weaken the thought.',
-                            'विरोधी प्रमाण — ठोस तथ्य जो विचार का विरोध या उस कमज़ोर करते हैं।',
-                          ),
-                        ),
-                        _numberedItem(
-                          5,
-                          t(
-                            'Alternative thought — a kinder, more balanced hypothesis that fits the evidence. It does not need to be perfectly positive — just more realistic.',
-                            'वैकल्पिक विचार — एक दयालु, अधिक संतुलित अनुमान जो प्रमाणों से मेल खाता है। यह पूरी तरह सकारात्मक नहीं होना चाहिए — केवल अधिक वास्तविक होना चाहिए।',
-                          ),
-                        ),
-                        _numberedItem(
-                          6,
-                          t(
-                            'Behaviour / plan — note a small experiment or action you can try to test the alternative (e.g., ask a question, wait, observe).',
-                            'व्यवहार / योजना — एक छोटा प्रयोग या क्रिया नोट करें जिसे आप वैकल्पिक विचार का परीक्षण करने के लिए कर सकते हैं (उदा., प्रश्न पूछना, प्रतीक्षा करना, अवलोकन करना)।',
-                          ),
-                        ),
-                        _numberedItem(
-                          7,
-                          t(
-                            'Re-rate mood — before and after; notice any reduction in distress.',
-                            'मूड फिर से रेट करें — पहले और बाद में; कष्ट में किसी भी कमी को नोट करें।',
-                          ),
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        Text(
-                          t(
-                            'Socratic questioning — examples to use while completing the sheet',
-                            'सॉक्रेटिक प्रश्न — शीट भरते समय इस्तेमाल करने हेतु उदाहरण',
-                          ),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        _bulletItem(
-                          Icons.question_mark,
-                          t(
-                            'What is the evidence for this? What is the evidence against it?',
-                            'इसके पक्ष में क्या प्रमाण हैं? इसके खिलाफ क्या प्रमाण हैं?',
-                          ),
-                        ),
-                        _bulletItem(
-                          Icons.question_mark,
-                          t(
-                            'Am I assuming intentions or mind-reading? Is there another explanation?',
-                            'क्या मैं इरादों का अनुमान लगा रहा/रही हूँ? क्या कोई और व्याख्या संभव है?',
-                          ),
-                        ),
-                        _bulletItem(
-                          Icons.question_mark,
-                          t(
-                            'What would I say to a friend who had this thought?',
-                            'यदि किसी मित्र के साथ ऐसा विचार हो तो मैं क्या कहूँगा/कहूँगी?',
-                          ),
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        Text(
-                          t(
-                            'Worked example (detailed)',
-                            'व्यवहारिक उदाहरण (विस्तृत)',
-                          ),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        _exampleBlock(
-                          enTitle: 'Situation',
-                          enBody:
-                              'Spoke up in a meeting; the manager looked at their phone and didn\'t comment immediately.',
-                          hiTitle: 'स्थिति',
-                          hiBody:
-                              'मीटिंग में बोलने पर मैनेजर ने फोन देखा और तुरंत प्रतिक्रिया नहीं दी।',
-                        ),
-                        const SizedBox(height: 8),
-                        _exampleBlock(
-                          enTitle: 'Automatic thought',
-                          enBody: '\"They ignored me; I must be unimportant.\"',
-                          hiTitle: 'स्वचालित विचार',
-                          hiBody:
-                              '\"उन्होंने मुझे अनदेखा किया; मैं महत्वहीन हूँ।\"',
-                        ),
-                        const SizedBox(height: 8),
-                        _exampleBlock(
-                          enTitle: 'Evidence FOR',
-                          enBody:
-                              'They didn\'t respond and looked away during my comment.',
-                          hiTitle: 'समर्थक प्रमाण',
-                          hiBody:
-                              'मेरी टिप्पणी के दौरान उन्होंने प्रतिक्रिया नहीं दी और नजर हटा ली।',
-                        ),
-                        const SizedBox(height: 8),
-                        _exampleBlock(
-                          enTitle: 'Evidence AGAINST',
-                          enBody:
-                              'They often check devices during meetings; later they praised the point in private. Colleagues were distracted too.',
-                          hiTitle: 'विरोधी प्रमाण',
-                          hiBody:
-                              'वे अक्सर मीटिंग में डिवाइस देखते हैं; बाद में उन्होंने निजी रूप से प्रशंसा की। अन्य साथी भी व्यस्त थे।',
-                        ),
-                        const SizedBox(height: 8),
-                        _exampleBlock(
-                          enTitle: 'Balanced alternative',
-                          enBody:
-                              'Maybe they were checking something urgent; my point still had value. I can follow up for feedback.',
-                          hiTitle: 'संतुलित वैकल्पिक विचार',
-                          hiBody:
-                              'शायद वे कुछ आवश्यक देख रहे थे; मेरी बात अभी भी महत्वपूर्ण थी। मैं फॉलो-अप कर सकता/सकती हूँ।',
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        Text(
-                          t(
-                            'Practical tips & common mistakes',
-                            'व्यावहारिक सुझाव और सामान्य गलतियाँ',
-                          ),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        _bulletItem(
-                          Icons.lightbulb_outline,
-                          t(
-                            'Be concrete — prefer observable facts (quotes, times) over feelings when listing evidence.',
-                            'सटीक रहें — प्रमाण सूचीबद्ध करते समय भावनाओं के बजाय अवलोकनीय तथ्यों (उद्धरण, समय) को प्राथमिकता दें।',
-                          ),
-                        ),
-                        _bulletItem(
-                          Icons.timer,
-                          t(
-                            'Don\'t rush. Spend a few minutes on each section.',
-                            'जल्दी न करें। प्रत्येक खंड पर कुछ मिनट बिताएँ।',
-                          ),
-                        ),
-                        _bulletItem(
-                          Icons.loop,
-                          t(
-                            'Use the alternative thought as a hypothesis — try a small experiment to test it.',
-                            'वैकल्पिक विचार को एक अनुमान के रूप में उपयोग करें — इसे जांचने के लिए एक छोटा प्रयोग आज़माएँ।',
-                          ),
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        Text(
-                          t('When to seek help', 'कब सहायता लें'),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        _bulletItem(
-                          Icons.medical_services,
-                          t(
-                            'If thoughts are persistent, intrusive, or linked to self-harm, contact a mental health professional immediately.',
-                            'यदि विचार लगातार, घुसपैठिया या आत्म-हानि से जुड़े हों, तो तुरंत मानसिक स्वास्थ्य पेशेवर से संपर्क करें।',
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: () {
-                                  Navigator.of(ctx).pop();
-                                  _startNew();
-                                },
-                                icon: const Icon(Icons.add),
-                                label: Text(
-                                  t(
-                                    'Create thought record',
-                                    'थॉट रिकॉर्ड बनाएँ',
-                                  ),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: teal3,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                  ),
+                              const SizedBox(height: 2),
+                              Text(
+                                MaterialLocalizations.of(
+                                  context,
+                                ).formatFullDate(item.createdAt),
+                                style: const TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 12,
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            OutlinedButton(
-                              onPressed: () => Navigator.of(ctx).pop(),
-                              style: OutlinedButton.styleFrom(
-                                side: BorderSide(color: Colors.white12),
-                              ),
-                              child: Text(
-                                t('Close', 'बंद करें'),
-                                style: const TextStyle(color: Colors.white70),
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
 
-                        const SizedBox(height: 18),
+                        // top actions: copy all, edit
+                        IconButton(
+                          onPressed: () {
+                            final txt = [
+                              'Situation: ${item.situation}',
+                              'Thought: ${item.automaticThought}',
+                              'Evidence FOR: ${item.evidenceFor}',
+                              'Evidence AGAINST: ${item.evidenceAgainst}',
+                              'Alternative: ${item.alternativeThought}',
+                              'Before: ${item.beforeMood} • After: ${item.afterMood}',
+                              if (item.note.isNotEmpty) 'Note: ${item.note}',
+                            ].join('\n');
+                            Clipboard.setData(ClipboardData(text: txt));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Copied to clipboard'),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.copy, color: Colors.white70),
+                          tooltip: 'Copy all',
+                        ),
+                        IconButton(
+                          onPressed: () {
+                            Navigator.of(dctx).pop();
+                            _startEdit(item);
+                          },
+                          icon: const Icon(Icons.edit, color: Colors.white70),
+                          tooltip: 'Edit',
+                        ),
                       ],
                     ),
-                  );
-                },
+                  ),
+
+                  const Divider(color: Colors.white10, height: 1),
+
+                  // content area — uses same tile pattern as the form
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Situation — coral -> amber (colorA -> colorB)
+                          ReadOnlyColoredFieldTile(
+                            label: 'Situation',
+                            value: item.situation,
+                            startColor: colorA,
+                            endColor: colorB,
+                            icon: Icons.location_on_outlined,
+                          ),
+
+                          // Automatic thought — blue (colorC)
+                          ReadOnlyColoredFieldTile(
+                            label: 'Automatic thought',
+                            value: item.automaticThought,
+                            startColor: colorC,
+                            endColor: colorC.withOpacity(0.8),
+                            icon: Icons.psychology_outlined,
+                          ),
+
+                          // Evidence FOR — green (colorD)
+                          ReadOnlyColoredFieldTile(
+                            label: 'Evidence FOR',
+                            value: item.evidenceFor,
+                            startColor: colorD,
+                            endColor: colorD.withOpacity(0.7),
+                            icon: Icons.thumb_up_alt_outlined,
+                          ),
+
+                          // Evidence AGAINST — amber -> orange (colorB -> colorE)
+                          ReadOnlyColoredFieldTile(
+                            label: 'Evidence AGAINST',
+                            value: item.evidenceAgainst,
+                            startColor: colorB,
+                            endColor: colorE,
+                            icon: Icons.thumb_down_alt_outlined,
+                          ),
+
+                          // Alternative thought — blue -> green (colorC -> colorD)
+                          ReadOnlyColoredFieldTile(
+                            label: 'Alternative thought',
+                            value: item.alternativeThought,
+                            startColor: colorC,
+                            endColor: colorD,
+                            icon: Icons.lightbulb_outline,
+                          ),
+
+                          // Note
+                          ReadOnlyColoredFieldTile(
+                            label: 'Note',
+                            value: item.note,
+                            startColor: colorC,
+                            endColor: colorD,
+                            icon: Icons.note,
+                          ),
+
+                          const SizedBox(height: 10),
+
+                          // Mood row (keeps parity with form layout)
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // footer actions (sticky)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: cardDark,
+                      borderRadius: const BorderRadius.vertical(
+                        bottom: Radius.circular(16),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.of(dctx).pop(),
+                          child: const Text(
+                            'Close',
+                            style: TextStyle(color: teal2),
+                          ),
+                        ),
+                        const Spacer(),
+                        OutlinedButton(
+                          onPressed: () {
+                            Navigator.of(dctx).pop();
+                            _deleteItem(item.id);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.redAccent),
+                          ),
+                          child: const Text(
+                            'Delete',
+                            style: TextStyle(color: Colors.redAccent),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: teal3,
+                          ),
+                          onPressed: () {
+                            Navigator.of(dctx).pop();
+                            _startEdit(item);
+                          },
+                          child: const Text('Edit'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            );
-          },
+            ),
+          ),
         );
       },
     );
   }
 
-  Widget _bulletItem(IconData icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 20, color: teal2),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(text, style: const TextStyle(color: Colors.white70)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _numberedItem(int n, String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            radius: 12,
-            backgroundColor: teal3,
-            child: Text(
-              '$n',
-              style: const TextStyle(color: Colors.white, fontSize: 12),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(text, style: const TextStyle(color: Colors.white70)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _exampleBlock({
-    required String enTitle,
-    required String enBody,
-    String? hiTitle,
-    String? hiBody,
-  }) {
-    final showHi = _tutorialInHindi;
-    final title = showHi ? (hiTitle ?? enTitle) : enTitle;
-    final body = showHi ? (hiBody ?? enBody) : enBody;
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white10,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(body, style: const TextStyle(color: Colors.white70)),
-        ],
-      ),
-    );
+  // ----- Tutorial sheet (unchanged) -----
+  void _showTutorial() {
+    showThoughtTutorialSheet(context, initialHindi: false);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: surfaceDark,
-      appBar: AppBar(
-        title: const Text('Thought Records'),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [teal6, teal4],
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: surfaceDark,
+        appBar: AppBar(
+          title: const Text('Thought Records'),
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [teal6, teal4],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
+          bottom: TabBar(
+            indicatorColor: Colors.white,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            tabs: const [
+              Tab(text: 'Examples\n(उदाहरण)'),
+              Tab(text: 'My thoughts\n(मेरे विचार)'),
+            ],
+          ),
+          actions: [
+            IconButton(
+              onPressed: _showTutorial,
+              icon: const Icon(Icons.help_outline, color: Colors.white70),
+              tooltip: 'Show tutorial',
+            ),
+            IconButton(
+              onPressed: () => _startNew(),
+              icon: const Icon(Icons.add, color: Colors.white70),
+              tooltip: 'New thought record',
+            ),
+          ],
+        ),
+
+        // FAB
+        floatingActionButton: Container(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Colors.green, teal2],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.25),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: FloatingActionButton.extended(
+            onPressed: () => _startNew(),
+            icon: const Icon(Icons.add, color: Colors.white),
+            label: const Text(
+              'Add Thought',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            backgroundColor: Colors.transparent, // key part
+            elevation: 0, // avoid double shadow
           ),
         ),
-        actions: [
-          IconButton(
-            onPressed: _showTutorial,
-            icon: const Icon(Icons.help_outline, color: Colors.white70),
-            tooltip: 'Show tutorial',
-          ),
-          IconButton(
-            onPressed: _startNew,
-            icon: const Icon(Icons.add, color: Colors.white70),
-            tooltip: 'New thought record',
-          ),
-        ],
-      ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
 
-      // FAB
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _startNew,
-        icon: const Icon(Icons.add),
-        label: const Text('Add Thought'),
-        backgroundColor: teal3,
-        foregroundColor: Colors.white,
-        elevation: 4,
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        body: TabBarView(
+          children: [
+            // ---------------------- Tab 1: Examples ----------------------
+            _examples.isEmpty
+                ? Center(
+                    child: _loading
+                        ? const CircularProgressIndicator()
+                        : Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 22.0,
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'No examples available',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: mutedText,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Examples will show here. You can tap "Use example" to prefill the form.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: dimText),
+                                ),
+                              ],
+                            ),
+                          ),
+                  )
+                : RefreshIndicator(
+                    backgroundColor: cardDark,
+                    color: teal2,
+                    onRefresh: () async => _loadExamples(),
+                    child: Builder(
+                      builder: (ctx) {
+                        final bottomInset = MediaQuery.of(ctx)
+                            .viewPadding
+                            .bottom; // safe-area (e.g. iPhone home indicator)
+                        final fabExtra =
+                            76.0; // approximate FAB + margin — tweak to taste
+                        return ListView.builder(
+                          padding: EdgeInsets.fromLTRB(
+                            12,
+                            12,
+                            12,
+                            bottomInset + fabExtra,
+                          ),
+                          itemCount: _examples.length,
+                          itemBuilder: (_, i) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 6.0),
+                            child: ExampleCard(
+                              example: _examples[i],
+                              onUse: (example) => _applyExampleToForm(example),
+                              onCopyText: (txt) {
+                                Clipboard.setData(ClipboardData(text: txt));
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
 
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 22.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'No saved thought records',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: mutedText,
+            // ---------------------- Tab 2: My thoughts ----------------------
+            _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _items.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 22.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'No saved thought records',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: mutedText,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Create a new thought record to capture a situation and work through it.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: dimText),
+                          ),
+                          const SizedBox(height: 14),
+                          ElevatedButton.icon(
+                            onPressed: () => _startNew(),
+                            icon: const Icon(Icons.add),
+                            label: const Text('Create thought'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: teal3,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Create a new thought record to capture a situation and work through it.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: dimText),
+                  )
+                : RefreshIndicator(
+                    backgroundColor: cardDark,
+                    color: teal2,
+                    onRefresh: _load,
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: _items.length,
+                      itemBuilder: (_, i) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6.0),
+                        child: _buildListTile(_items[i]),
+                      ),
                     ),
-                    const SizedBox(height: 14),
-                    ElevatedButton.icon(
-                      onPressed: _startNew,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Create thought'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: teal3,
-                        // ADDED: Reduced padding for a more compact button shape
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
+                  ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ExampleCard extends StatefulWidget {
+  final Map<String, String> example;
+  final void Function(Map<String, String>) onUse;
+  final void Function(String) onCopyText;
+
+  const ExampleCard({
+    required this.example,
+    required this.onUse,
+    required this.onCopyText,
+    super.key,
+  });
+
+  @override
+  State<ExampleCard> createState() => _ExampleCardState();
+}
+
+class _ExampleCardState extends State<ExampleCard>
+    with SingleTickerProviderStateMixin {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final e = widget.example;
+    final title = e['title'] ?? '';
+    final situation = e['situation'] ?? '';
+    final preview = situation.length > 120
+        ? '${situation.substring(0, 117)}…'
+        : situation;
+    final hasNote = (e['note'] ?? '').isNotEmpty;
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeInOut,
+      child: Card(
+        color: cardDark,
+        elevation: 6,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => setState(() => _expanded = !_expanded),
+          child: Padding(
+            padding: const EdgeInsets.all(14.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Header row: badge + title + icon
+                Row(
+                  children: [
+                    // small badge (topic)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.amber.withOpacity(0.95),
+                            teal3.withOpacity(0.8),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.35),
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: const Text(
+                        'Example',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // expand/collapse icon
+                    AnimatedRotation(
+                      turns: _expanded ? 0.5 : 0.0,
+                      duration: const Duration(milliseconds: 220),
+                      child: const Icon(
+                        Icons.keyboard_arrow_down,
+                        color: Colors.white70,
                       ),
                     ),
                   ],
                 ),
-              ),
-            )
-          : RefreshIndicator(
-              backgroundColor: cardDark,
-              color: teal2,
-              onRefresh: _load,
-              child: ListView.builder(
-                padding: const EdgeInsets.all(12),
-                itemCount: _items.length,
-                itemBuilder: (_, i) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6.0),
-                  child: _buildListTile(_items[i]),
+
+                const SizedBox(height: 10),
+
+                // situation preview
+                Text(
+                  preview,
+                  style: const TextStyle(color: Colors.white70, height: 1.3),
+                  maxLines: _expanded ? 10 : 3,
+                  overflow: TextOverflow.fade,
                 ),
+
+                if (_expanded) ...[
+                  const SizedBox(height: 10),
+                  ReadOnlyColoredFieldTile(
+                    label: 'Situation',
+                    value: e['situation'] ?? '',
+                    startColor: colorA,
+                    endColor: colorA.withOpacity(0.8),
+                    icon: Icons.location_on_outlined,
+                  ),
+
+                  // Automatic thought (compact tile)
+                  ReadOnlyColoredFieldTile(
+                    label: 'Automatic thought',
+                    value: e['automaticThought'] ?? '',
+                    startColor: colorC,
+                    endColor: colorC.withOpacity(0.8),
+                    icon: Icons.psychology_outlined,
+                  ),
+
+                  // Evidence FOR
+                  ReadOnlyColoredFieldTile(
+                    label: 'Evidence FOR',
+                    value: e['evidenceFor'] ?? '',
+                    startColor: colorD,
+                    endColor: colorD.withOpacity(0.7),
+                    icon: Icons.thumb_up_alt_outlined,
+                  ),
+
+                  // Evidence AGAINST
+                  ReadOnlyColoredFieldTile(
+                    label: 'Evidence AGAINST',
+                    value: e['evidenceAgainst'] ?? '',
+                    startColor: colorB,
+                    endColor: colorE,
+                    icon: Icons.thumb_down_alt_outlined,
+                  ),
+
+                  // Alternative thought
+                  ReadOnlyColoredFieldTile(
+                    label: 'Alternative thought',
+                    value: e['alternativeThought'] ?? '',
+                    startColor: colorC,
+                    endColor: colorD,
+                    icon: Icons.lightbulb_outline,
+                  ),
+
+                  // Note (optional)
+                  if (hasNote) ...[
+                    ReadOnlyColoredFieldTile(
+                      label: 'Note',
+                      value: e['note'] ?? '',
+                      startColor: Colors.white30,
+                      endColor: Colors.white10,
+                      icon: Icons.sticky_note_2_outlined,
+                    ),
+                  ],
+
+                  const SizedBox(height: 6),
+
+                  // footer action row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () => widget.onUse(widget.example),
+                        icon: const Icon(Icons.playlist_add_check, size: 18),
+                        label: const Text(
+                          'Use example',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          elevation: 3,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 8,
+                            horizontal: 12,
+                          ),
+                          minimumSize: const Size(0, 36),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ColoredFieldTile extends StatelessWidget {
+  final String label;
+  final String hint;
+  final TextEditingController controller;
+  final Color startColor;
+  final Color endColor;
+  final IconData icon;
+  final int minLines;
+  final int maxLines;
+
+  const ColoredFieldTile({
+    required this.label,
+    required this.hint,
+    required this.controller,
+    required this.startColor,
+    required this.endColor,
+    required this.icon,
+    this.minLines = 1,
+    this.maxLines = 3,
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [startColor.withOpacity(0.22), endColor.withOpacity(0.10)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: startColor.withOpacity(0.4), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: startColor.withOpacity(0.18),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 18, color: startColor),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            AppTextField(
+              controller: controller,
+              hint: hint,
+              minLines: minLines,
+              maxLines: maxLines,
+              showCounter: true,
+              textCapitalization: TextCapitalization.sentences,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ----------------- Read-only colored tile (for detail view) -----------------
+class ReadOnlyColoredFieldTile extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color startColor;
+  final Color endColor;
+  final IconData icon;
+
+  const ReadOnlyColoredFieldTile({
+    required this.label,
+    required this.value,
+    required this.startColor,
+    required this.endColor,
+    required this.icon,
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [startColor.withOpacity(0.18), endColor.withOpacity(0.08)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: startColor.withOpacity(0.38), width: 1.1),
+        boxShadow: [
+          BoxShadow(
+            color: startColor.withOpacity(0.12),
+            blurRadius: 6,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // icon column
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: startColor.withOpacity(0.14),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 18, color: startColor),
+            ),
+            const SizedBox(width: 12),
+
+            // content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    value.isNotEmpty ? value : '—',
+                    style: const TextStyle(color: Colors.white70, height: 1.35),
+                  ),
+                ],
               ),
             ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -74,7 +74,7 @@ Future<void> showAbcdTutorialSheet(
                 }
 
                 // Layout pattern:
-                // - Fixed header + video at top (but video is responsive and can shrink)
+                // - Fixed header + video at top (video sized based on available space)
                 // - Expanded ListView below that uses the DraggableScrollableSheet's scrollController
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -92,7 +92,7 @@ Future<void> showAbcdTutorialSheet(
 
                     const SizedBox(height: 10),
 
-                    // Responsive, animated video that never exceeds available space
+                    // Responsive video that never exceeds available space
                     LayoutBuilder(
                       builder: (context, constraints) {
                         // constraints.maxHeight is the available height inside the sheet above the ListView
@@ -106,21 +106,18 @@ Future<void> showAbcdTutorialSheet(
                           math.max(120.0, available * 0.45),
                         );
 
-                        return AnimatedSize(
-                          duration: const Duration(milliseconds: 200),
-                          curve: Curves.easeInOut,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: SizedBox(
+                        // NOTE: removed AnimatedSize to avoid relayout thrash while dragging.
+                        return ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: SizedBox(
+                            height: videoHeight,
+                            width: double.infinity,
+                            child: TutorialYoutubePlayer(
+                              videoUrl: 'https://youtu.be/BKBBTY44UU8',
                               height: videoHeight,
-                              width: double.infinity,
-                              child: TutorialYoutubePlayer(
-                                videoUrl: 'https://youtu.be/BKBBTY44UU8',
-                                height: videoHeight,
-                                autoPlay: false,
-                                startMuted: false,
-                                showControls: true,
-                              ),
+                              autoPlay: false,
+                              startMuted: false,
+                              showControls: true,
                             ),
                           ),
                         );
@@ -134,6 +131,11 @@ Future<void> showAbcdTutorialSheet(
                       child: ListView(
                         controller: scrollController,
                         padding: EdgeInsets.zero,
+                        // Use clamping physics for a snappier drag on Android-like platforms
+                        physics: const ClampingScrollPhysics(),
+                        // Dismiss keyboard when user drags to avoid focus/scroll interference
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
                         children: [
                           // Title row + close button
                           Row(
@@ -323,7 +325,7 @@ Future<void> showAbcdTutorialSheet(
                             Icons.build,
                             tLocal(
                               'Behavioural experiments test beliefs by trying small actions and observing results.',
-                              'व्यवहारिक प्रयोग छोटे कदम उठाकर और परिणाम देखकर विश्वास का परीक्षण करते हैं।',
+                              'व्यवहारिक परीक्षण छोटे कदम उठाकर और परिणाम देखकर विश्वास का परीक्षण करते हैं।',
                             ),
                           ),
 
@@ -523,7 +525,7 @@ Future<void> showAbcdTutorialSheet(
                                 'I heard them whisper; my voice shook slightly.',
                             hiTitle: 'समर्थक प्रमाण',
                             hiBody:
-                                'मैंने फुसफुसाहट सुनी; मेरी आवाज थोड़ा कांपी थी।',
+                                'मैंने फुसफुसाहट सुनी; मेरी आवाज थोड़ी कांपी थी।',
                             showHindi: _tutorialInHindi,
                           ),
                           const SizedBox(height: 8),
