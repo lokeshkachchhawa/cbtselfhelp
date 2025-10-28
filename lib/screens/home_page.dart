@@ -1,7 +1,9 @@
 // lib/screens/home_page.dart
 import 'dart:convert';
 
-import 'package:cbt_drktv/widgets/reminder_card.dart';
+import 'package:cbt_drktv/services/push_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
@@ -1021,16 +1023,6 @@ class _HomePageState extends State<HomePage> {
 
                       const SizedBox(height: 12),
 
-                      // Today's task card (now has ABCD option)
-                      _buildTaskCard(),
-
-                      const SizedBox(height: 12),
-
-                      // Reminder card (next upcoming reminder + quick actions)
-                      const ReminderCardImproved(),
-
-                      const SizedBox(height: 12),
-
                       // Quick tools row (includes ABCD)
                       _buildQuickTools(),
 
@@ -1474,57 +1466,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   // ---------------- Programs / Quick tools (unchanged) ----------------
-
-  Widget _buildTaskCard() {
-    return Card(
-      color: Colors.white.withOpacity(0.08),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: ListTile(
-          contentPadding: EdgeInsets.zero,
-          title: const Text(
-            'Today\'s task',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-          subtitle: const Text(
-            'Complete a short thought record or try an ABCD worksheet',
-            style: TextStyle(color: Colors.white70),
-          ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ElevatedButton(
-                onPressed: () => Navigator.pushNamed(context, '/thought'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: teal3,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: const Text(
-                  'Start',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-              const SizedBox(width: 8),
-              OutlinedButton(
-                onPressed: () => Navigator.pushNamed(context, '/abcd'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: BorderSide(color: Colors.white.withOpacity(0.12)),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: const Text('ABCD'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildQuickTools() {
     final tools = [
@@ -2194,7 +2135,7 @@ For more, tap "View full page".''';
 
   // Confirm then sign out
   Future<void> _confirmAndSignOut() async {
-    Theme.of(context);
+    Theme.of(context); // keeps your theme fetch (no-op)
 
     final bool? confirm = await showDialog<bool>(
       context: context,
@@ -2216,14 +2157,14 @@ For more, tap "View full page".''';
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            style: TextButton.styleFrom(foregroundColor: Colors.teal.shade700),
+            style: TextButton.styleFrom(foregroundColor: Colors.teal),
             child: const Text('Stay signed in'),
           ),
           ElevatedButton.icon(
             icon: const Icon(Icons.exit_to_app, size: 18),
             label: const Text('Sign out'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade600,
+              backgroundColor: Colors.red,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               shape: RoundedRectangleBorder(
@@ -2239,7 +2180,29 @@ For more, tap "View full page".''';
     if (confirm != true) return;
 
     try {
-      // Sign out from both Firebase & Google (if used)
+      // --- Remove this device's FCM token mapping first ---
+      final user = FirebaseAuth.instance.currentUser;
+      final token = await FirebaseMessaging.instance.getToken();
+
+      if (user != null && token != null) {
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'fcmTokens.$token': FieldValue.delete(),
+        }, SetOptions(merge: true));
+      }
+
+      // Also clear the device's cached token (forces a new one next login)
+      try {
+        await FirebaseMessaging.instance.deleteToken();
+      } catch (_) {
+        // ignore minor OEM issues
+      }
+
+      // If you created PushService, call the helper (safe even if token is already gone)
+      try {
+        await PushService.removeTokenOnLogout();
+      } catch (_) {}
+
+      // --- Sign out providers ---
       final googleSignIn = GoogleSignIn();
       if (await googleSignIn.isSignedIn()) {
         await googleSignIn.signOut();

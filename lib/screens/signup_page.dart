@@ -1,8 +1,10 @@
 // lib/screens/signup_page.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../utils/auth_router.dart';
 
 class SignUpPage extends StatefulWidget {
@@ -25,6 +27,38 @@ class _SignUpPageState extends State<SignUpPage> {
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
   String? _errorMessage;
+
+  // --- NEW: FCM token registration (same as SignIn) ---
+  Future<void> _registerFcmToken(User user) async {
+    try {
+      if (kIsWeb) return;
+      await FirebaseMessaging.instance.requestPermission();
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token == null) return;
+
+      final platformStr = Theme.of(context).platform == TargetPlatform.iOS
+          ? 'ios'
+          : 'android';
+
+      await _firestore.collection('users').doc(user.uid).set({
+        'fcmTokens.$token': {
+          'platform': platformStr,
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+      }, SetOptions(merge: true));
+
+      FirebaseMessaging.instance.onTokenRefresh.listen((t) {
+        _firestore.collection('users').doc(user.uid).set({
+          'fcmTokens.$t': {
+            'platform': platformStr,
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+        }, SetOptions(merge: true));
+      });
+    } catch (e) {
+      debugPrint('FCM token registration failed: $e');
+    }
+  }
 
   @override
   void dispose() {
@@ -59,7 +93,7 @@ class _SignUpPageState extends State<SignUpPage> {
     if (parts.isEmpty || parts[0].isEmpty) return 'User';
     var namePart = parts[0];
     if (namePart.contains('+')) namePart = namePart.split('+').first;
-    namePart = namePart.replaceAll(RegExp(r'[^a-zA-Z0-9._\-]'), '');
+    namePart = namePart.replaceAll(RegExp(r'[^a-zA-Z0-9._\\-]'), '');
     if (namePart.isEmpty) return 'User';
     final normalized = namePart.toLowerCase();
     return normalized[0].toUpperCase() + normalized.substring(1);
@@ -111,6 +145,9 @@ class _SignUpPageState extends State<SignUpPage> {
 
       await _createOrUpdateFirestoreUser(user);
 
+      // NEW: register token for fresh account
+      await _registerFcmToken(user);
+
       try {
         await user.sendEmailVerification();
       } catch (_) {}
@@ -154,6 +191,9 @@ class _SignUpPageState extends State<SignUpPage> {
 
       // write user doc
       await _createOrUpdateFirestoreUser(user);
+
+      // NEW: register FCM token
+      await _registerFcmToken(user);
 
       if (!mounted) return;
       await navigateAfterSignIn(context, user: user);

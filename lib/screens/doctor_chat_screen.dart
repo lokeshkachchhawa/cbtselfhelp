@@ -124,6 +124,12 @@ class _DoctorChatThreadState extends State<DoctorChatThread> {
     }
   }
 
+  String _initial(String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return '?';
+    return trimmed.characters.first.toUpperCase();
+  }
+
   @override
   void dispose() {
     _sub?.cancel();
@@ -201,20 +207,38 @@ class _DoctorChatThreadState extends State<DoctorChatThread> {
   }) async {
     final msgRef = doc.reference;
     final chatIndexRef = _firestore.collection('chatIndex').doc(widget.chatId);
+    final doctorUid = "DOCTOR_UID_OR_NAME"; // TODO: inject from auth
+
     try {
       await _firestore.runTransaction((tx) async {
+        final snap = await tx.get(msgRef);
+        if (!snap.exists) throw StateError('Message no longer exists.');
+        final cur = snap.data() as Map<String, dynamic>;
+        if (cur['approved'] == true) {
+          // already approved: no-op (prevents duplicate FCM)
+          return;
+        }
+
         tx.update(msgRef, {
           'text': updatedText,
           'approved': true,
           'editedByDoctor': true,
+          'approvedBy': doctorUid,
           'approvedAt': FieldValue.serverTimestamp(),
+          // optional: clear preview so clients don’t keep showing it
+          'preview': FieldValue.delete(),
+          'previewLen': FieldValue.delete(),
         });
+
+        // ❗ Prefer moving pendingCount decrement to the Cloud Function (see note below).
+        // If you keep it client-side, at least clamp it to non-negative in UI.
         tx.set(chatIndexRef, {
           'lastMessage': updatedText,
           'lastUpdated': FieldValue.serverTimestamp(),
           'pendingCount': FieldValue.increment(-1),
         }, SetOptions(merge: true));
       });
+
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -226,7 +250,7 @@ class _DoctorChatThreadState extends State<DoctorChatThread> {
           context,
         ).showSnackBar(SnackBar(content: Text('Error approving: $e')));
       }
-    } finally {}
+    }
   }
 
   Future<void> _editAssistantDialog(
@@ -1127,7 +1151,7 @@ class _DoctorChatThreadState extends State<DoctorChatThread> {
             CircleAvatar(
               backgroundColor: _kAccentColor,
               child: Text(
-                widget.userName[0].toUpperCase(),
+                _initial(widget.userName),
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -1136,7 +1160,8 @@ class _DoctorChatThreadState extends State<DoctorChatThread> {
             ),
             const SizedBox(width: 12),
             Text(
-              widget.userName,
+              widget.userName.isEmpty ? 'User' : widget.userName,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w600,

@@ -60,10 +60,16 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
 
   // Firestore listener subscription
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _messagesSub;
-
+  String? _focusMessageId;
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is Map && args['focus'] is String) {
+        _focusMessageId = args['focus'] as String;
+      }
+    });
     _ringController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -956,6 +962,29 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
                 isApproved: false,
               ),
             );
+            setState(() {
+              _messages
+                ..clear()
+                ..addAll(finalList);
+            });
+
+            if (_focusMessageId != null) {
+              final idx = _messages.indexWhere((m) => m.id == _focusMessageId);
+              if (idx != -1 && _scrollCtrl.hasClients) {
+                await Future.delayed(const Duration(milliseconds: 50));
+                _scrollCtrl.animateTo(
+                  (idx * 88.0).clamp(
+                    0,
+                    _scrollCtrl.position.maxScrollExtent,
+                  ), // rough item height
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOut,
+                );
+              }
+              _focusMessageId = null;
+            } else {
+              _scrollToBottom();
+            }
           }
           added.add(a.id);
         }

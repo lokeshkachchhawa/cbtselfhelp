@@ -1,8 +1,10 @@
 // lib/screens/signin_page.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../utils/auth_router.dart';
 
 class SignInScreen extends StatefulWidget {
@@ -26,6 +28,41 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _isResetting = false;
   bool _obscurePassword = true;
   String? _errorMessage;
+
+  // --- NEW: Register/save FCM token for this user (Android/iOS only) ---
+  Future<void> _registerFcmToken(User user) async {
+    try {
+      if (kIsWeb) return; // skip web
+      // Request permission (Android 13+/iOS) – safe on older versions too.
+      await FirebaseMessaging.instance.requestPermission();
+
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token == null) return;
+
+      final platformStr = Theme.of(context).platform == TargetPlatform.iOS
+          ? 'ios'
+          : 'android';
+
+      await _firestore.collection('users').doc(user.uid).set({
+        'fcmTokens.$token': {
+          'platform': platformStr,
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+      }, SetOptions(merge: true));
+
+      // Also keep future refreshes in sync (app lifetime)
+      FirebaseMessaging.instance.onTokenRefresh.listen((t) {
+        _firestore.collection('users').doc(user.uid).set({
+          'fcmTokens.$t': {
+            'platform': platformStr,
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+        }, SetOptions(merge: true));
+      });
+    } catch (e) {
+      debugPrint('FCM token registration failed: $e');
+    }
+  }
 
   @override
   void dispose() {
@@ -98,6 +135,11 @@ class _SignInScreenState extends State<SignInScreen> {
 
     // Ensure basic user doc exists / update lastLogin
     await _ensureUserDoc(user);
+
+    // NEW: register FCM token ASAP after sign-in
+    if (user != null) {
+      await _registerFcmToken(user);
+    }
 
     // If we don't have a firebase user for some reason, delegate to shared router
     if (user == null) {
@@ -192,8 +234,7 @@ class _SignInScreenState extends State<SignInScreen> {
     try {
       final googleUser = await GoogleSignIn().signIn();
       if (googleUser == null) {
-        // user cancelled
-        return;
+        return; // user cancelled
       }
       final googleAuth = await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
@@ -206,6 +247,11 @@ class _SignInScreenState extends State<SignInScreen> {
 
       // best-effort: update firestore / profile if missing
       await _ensureUserDoc(user);
+
+      // NEW: register token before we route away
+      if (user != null) {
+        await _registerFcmToken(user);
+      }
 
       await _postSignInNavigation(user ?? _auth.currentUser);
     } on FirebaseAuthException catch (e) {

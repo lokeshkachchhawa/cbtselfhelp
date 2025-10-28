@@ -13,7 +13,7 @@ import 'package:cbt_drktv/screens/relax_page.dart';
 import 'package:cbt_drktv/screens/thought_detective_game.dart';
 import 'package:cbt_drktv/screens/thought_record_page.dart';
 import 'package:cbt_drktv/screens/safety_page.dart';
-import 'package:cbt_drktv/widgets/reminder_card.dart';
+import 'package:cbt_drktv/services/push_service.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -33,7 +33,6 @@ import 'theme.dart';
 // Notifications / timezone
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
-import 'services/notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,7 +53,7 @@ Future<void> main() async {
 
   // --- Firebase ---
   await Firebase.initializeApp();
-
+  await PushService.init();
   // --- Timezone initialization (pure Dart, no native plugin) ---
   tz.initializeTimeZones();
   final local = tz.local; // system local timezone
@@ -62,7 +61,6 @@ Future<void> main() async {
   debugPrint('Local timezone: ${local.name}');
 
   // --- Notifications initialization (use centralized NotificationService) ---
-  await NotificationService().init();
 
   // Optionally request permissions at a more appropriate UX moment:
   // await NotificationService().requestPermissions();
@@ -118,7 +116,6 @@ class MyApp extends StatelessWidget {
           '/thought_game': (context) => const ThoughtDetectiveGame(),
 
           // Reminders route (simple in-app page). Adjust if you have your own RemindersPage file.
-          '/reminders': (_) => const ReminderCardImproved(),
         },
       ),
     );
