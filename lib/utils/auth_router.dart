@@ -4,11 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 /// Robust navigateAfterSignIn:
-/// - Accepts optional [user], falls back to FirebaseAuth.instance.currentUser
-/// - Ensures user doc exists / updates lastLogin
-/// - Routes to onboarding / baseline / safety / home
-/// - If possible, checks custom claims for role == 'doctor' and routes to '/doctor/home'
-/// - When sending user info to /home, forwards a small safe Map (never a raw User nor a List)
+/// Now also checks subscription.status == 'active'
 Future<void> navigateAfterSignIn(BuildContext context, {User? user}) async {
   user ??= FirebaseAuth.instance.currentUser;
 
@@ -64,10 +60,14 @@ Future<void> navigateAfterSignIn(BuildContext context, {User? user}) async {
         'isAnonymous': user.isAnonymous,
         'consentGiven': false,
         'baselineCompleted': false,
+        // initialize default subscription
+        'subscription': {'status': 'inactive'},
       }, SetOptions(merge: true));
     } catch (e) {
       debugPrint('Failed to create minimal user doc: $e');
     }
+
+    // new users → onboarding first
     Navigator.pushReplacementNamed(context, '/onboarding');
     return;
   }
@@ -80,7 +80,17 @@ Future<void> navigateAfterSignIn(BuildContext context, {User? user}) async {
     return;
   }
 
-  // ---------- STEP 3: Normal flow ----------
+  // ---------- ✅ STEP 3 — SUBSCRIPTION CHECK ----------
+  final sub = Map<String, dynamic>.from((data['subscription'] ?? {}));
+  final isActive = (sub['status'] ?? '') == 'active';
+
+  if (!isActive) {
+    debugPrint('→ Subscription inactive → paywall');
+    Navigator.pushReplacementNamed(context, '/paywall');
+    return;
+  }
+
+  // ---------- STEP 4: Continue your original logic ----------
   try {
     await userDocRef.update({'lastLogin': FieldValue.serverTimestamp()});
   } catch (e) {
@@ -120,7 +130,7 @@ Future<void> navigateAfterSignIn(BuildContext context, {User? user}) async {
     'photoUrl': user.photoURL,
   };
 
-  debugPrint('→ Routing to main home (default)');
+  debugPrint('→ Routing to main home (default after subscription OK)');
   Navigator.pushReplacementNamed(
     context,
     '/home',

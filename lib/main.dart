@@ -26,6 +26,7 @@ import 'screens/signup_page.dart';
 import 'screens/onboarding_page.dart';
 import 'screens/baseline_page.dart';
 import 'utils/auth_router.dart';
+import 'screens/paywall_screen.dart'; // <-- ADD THIS
 
 // App theme
 import 'theme.dart';
@@ -54,16 +55,12 @@ Future<void> main() async {
   // --- Firebase ---
   await Firebase.initializeApp();
   await PushService.init();
-  // --- Timezone initialization (pure Dart, no native plugin) ---
+
+  // --- Timezone init ---
   tz.initializeTimeZones();
-  final local = tz.local; // system local timezone
+  final local = tz.local;
   tz.setLocalLocation(local);
   debugPrint('Local timezone: ${local.name}');
-
-  // --- Notifications initialization (use centralized NotificationService) ---
-
-  // Optionally request permissions at a more appropriate UX moment:
-  // await NotificationService().requestPermissions();
 
   runApp(const MyApp());
 }
@@ -114,8 +111,7 @@ class MyApp extends StatelessWidget {
           '/drktv_chat': (ctx) => const DrKtvChatScreen(),
           '/doctor/home': (ctx) => const DoctorHome(),
           '/thought_game': (context) => const ThoughtDetectiveGame(),
-
-          // Reminders route (simple in-app page). Adjust if you have your own RemindersPage file.
+          '/paywall': (_) => const PaywallScreen(), // <-- ADD THIS
         },
       ),
     );
@@ -134,6 +130,7 @@ class EntryRouter extends StatelessWidget {
       return const SignInScreen();
     }
 
+    // Defer to subscription-aware router you updated
     Future.microtask(() async {
       await navigateAfterSignIn(context, user: app.user);
     });
