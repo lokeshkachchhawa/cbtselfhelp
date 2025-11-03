@@ -6,6 +6,7 @@
     "version": "1.0",
     "language": "hi",
     "days": 28,
+    "thumbnail": "images/thumb_worry.png",
     "recommendedDailyMinutes": 10,
     "notes": "‘action’ प्रकार के ब्लॉक्स ऐप के अंदर के मार्गों (/thought, /abcd, /relax) से जुड़ते हैं। 'exercise' ब्लॉक्स में अनुमानित समय दिया गया है।",
     "lessons": [

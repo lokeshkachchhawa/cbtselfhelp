@@ -6,6 +6,7 @@
     "version": "1.0",
     "language": "en",
     "days": 14,
+    "thumbnail": "images/thumb_sleep.png",
     "recommendedDailyMinutes": 10,
     "notes": "Blocks of type 'action' map to in-app routes (for example: /thought, /abcd, /relax). 'exercise' blocks include durationMinutes. Use prompts to capture sleep observations in Thought Record or ABCD.",
     "lessons": [

@@ -132,6 +132,168 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // Add near other fields in _HomePageState
+  final List<Map<String, String>> _courses = const [
+    {
+      'title': 'Cognitive Behavioral Therapy (CBT) by Dr. Kanhaiya',
+      'subtitle': 'Structured, practical CBT skills',
+      'url': 'https://drktv.in/courses/cognitive-behavioral-therapy-course/',
+      // Optional local image asset (put an image at assets/images/cbt_course.png and add to pubspec)
+      'image': 'images/cbt_course.png',
+    },
+    {
+      'title': 'Erectile Dysfunction & Premature Ejaculation Course',
+      'subtitle': 'Understand sexual health, boost confidence & wellness',
+      'url':
+          'https://drktv.in/courses/erectile-dysfunction-premature-ejaculation-course/',
+      'image': 'images/ed_pe_course_thumb.png',
+    },
+  ];
+  // Put this method anywhere inside _HomePageState (near other _build* methods)
+  Widget _buildCoursesSection() {
+    if (_courses.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Courses by Dr. Kanhaiya',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 160,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: _courses.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, i) {
+              final c = _courses[i];
+              return GestureDetector(
+                onTap: () => _openWebsite(c['url'] ?? ''),
+                child: Container(
+                  width: 300,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        teal4.withOpacity(0.85),
+                        teal5.withOpacity(0.85),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white.withOpacity(0.08)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.18),
+                        blurRadius: 10,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      // Left: image / icon
+                      Container(
+                        width: 90,
+                        height: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.06),
+                          borderRadius: const BorderRadius.horizontal(
+                            left: Radius.circular(14),
+                          ),
+                        ),
+                        child: (c['image'] != null && c['image']!.isNotEmpty)
+                            ? ClipRRect(
+                                borderRadius: const BorderRadius.horizontal(
+                                  left: Radius.circular(14),
+                                ),
+                                child: Image.asset(
+                                  c['image']!,
+                                  fit: BoxFit.cover,
+                                ),
+                              )
+                            : Center(
+                                child: Icon(
+                                  Icons.school,
+                                  color: teal2,
+                                  size: 30,
+                                ),
+                              ),
+                      ),
+
+                      // Right: text + button
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                c['title'] ?? 'Courses by Dr. Kanhaiya',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                c['subtitle'] ?? '',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  ElevatedButton.icon(
+                                    onPressed: () =>
+                                        _openWebsite(c['url'] ?? ''),
+                                    icon: const Icon(
+                                      Icons.open_in_new,
+                                      size: 18,
+                                    ),
+                                    label: const Text('Join on website'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 10,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildDrKanhaiyaChatCard() {
     return Card(
       elevation: 3,
@@ -1030,10 +1192,11 @@ class _HomePageState extends State<HomePage> {
                       _buildDrKanhaiyaChatCard(),
                       const SizedBox(height: 16),
                       _buildThoughtDetectiveCard(),
-
+                      _buildCoursesSection(),
+                      const SizedBox(height: 16),
                       // Programs carousel (simple horizontal list)
                       const Text(
-                        'Programs',
+                        'Programs (Quick learning)',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -1515,14 +1678,28 @@ class _HomePageState extends State<HomePage> {
       {
         'title': '7-Day Mood Boost',
         'days': '7 days',
+        'desc': 'Daily micro-exercises to uplift your mood & energy.',
         'color': const Color.fromARGB(255, 1, 73, 69),
+        'thumb': 'images/thumb_mood_boost.png',
       },
-      {'title': 'Managing Worry', 'days': '4 weeks', 'color': teal4},
-      {'title': 'Sleep Better', 'days': '2 weeks', 'color': teal5},
+      {
+        'title': 'Managing Worry',
+        'days': '4 weeks',
+        'desc': 'Learn CBT tools to reduce chronic worry & stress.',
+        'color': teal4,
+        'thumb': 'images/thumb_worry.png',
+      },
+      {
+        'title': 'Sleep Better',
+        'days': '2 weeks',
+        'desc': 'Improve sleep habits & wind-down routines naturally.',
+        'color': teal5,
+        'thumb': 'images/thumb_sleep.png',
+      },
     ];
 
     return SizedBox(
-      height: 140,
+      height: 200, // slightly taller for description
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: programs.length,
@@ -1532,55 +1709,119 @@ class _HomePageState extends State<HomePage> {
           return GestureDetector(
             onTap: () => Navigator.pushNamed(context, '/programs'),
             child: Container(
-              width: 260,
-              padding: const EdgeInsets.all(14),
+              width: 300,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    p['color'] as Color,
                     (p['color'] as Color).withOpacity(0.85),
+                    (p['color'] as Color).withOpacity(0.65),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white.withOpacity(0.08)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
+                    color: Colors.black.withOpacity(0.18),
+                    blurRadius: 10,
+                    offset: const Offset(0, 6),
                   ),
                 ],
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Row(
                 children: [
-                  Text(
-                    p['title'] as String,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    p['days'] as String,
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                  const SizedBox(height: 12),
-                  ElevatedButton(
-                    onPressed: () => Navigator.pushNamed(context, '/programs'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white.withOpacity(0.12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                  // LEFT THUMBNAIL
+                  Container(
+                    width: 90,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.06),
+                      borderRadius: const BorderRadius.horizontal(
+                        left: Radius.circular(14),
                       ),
                     ),
-                    child: const Text(
-                      'Start',
-                      style: TextStyle(color: Colors.white),
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.horizontal(
+                        left: Radius.circular(14),
+                      ),
+                      child:
+                          (p['thumb'] != null &&
+                              (p['thumb'] as String).isNotEmpty)
+                          ? Image.asset(
+                              p['thumb'] as String,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Center(
+                                child: Icon(Icons.menu_book, color: teal2),
+                              ),
+                            )
+                          : Center(child: Icon(Icons.menu_book, color: teal2)),
+                    ),
+                  ),
+
+                  // RIGHT TEXT
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(14.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            p['title'] as String,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            p['days'] as String,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+
+                          // ➕ NEW: DESCRIPTION
+                          Text(
+                            p['desc'] as String? ?? '',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                            ),
+                          ),
+
+                          const SizedBox(height: 12),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: ElevatedButton(
+                              onPressed: () =>
+                                  Navigator.pushNamed(context, '/programs'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white.withOpacity(0.14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                              ),
+                              child: const Text(
+                                'Start',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],

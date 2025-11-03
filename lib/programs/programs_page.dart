@@ -42,7 +42,9 @@ class Program {
   final int days;
   final int recommendedDailyMinutes;
   final List<Lesson> lessons;
-  final String language; // as declared in JSON (eg "en" or "hi")
+  final String language;
+  final String? thumbnail; // NEW
+
   Program({
     required this.id,
     required this.title,
@@ -52,6 +54,7 @@ class Program {
     required this.recommendedDailyMinutes,
     required this.lessons,
     required this.language,
+    this.thumbnail, // NEW
   });
 
   factory Program.fromMap(Map<String, dynamic> m) {
@@ -68,6 +71,7 @@ class Program {
           (m['recommendedDailyMinutes'] as num?)?.toInt() ?? 0,
       lessons: lessons,
       language: (m['language'] as String?)?.toLowerCase() ?? 'en',
+      thumbnail: m['thumbnail'] as String?, // NEW
     );
   }
 }
@@ -389,6 +393,7 @@ class _ProgramCardState extends State<ProgramCard> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     final p = widget.program;
     return FutureBuilder<Set<int>>(
@@ -396,7 +401,8 @@ class _ProgramCardState extends State<ProgramCard> {
       builder: (context, snap) {
         final completed = snap.data ?? <int>{};
         final prog = _progress(completed);
-        final thumb = _thumbColors();
+        _thumbColors();
+
         return Card(
           color: const Color(0xFF011F1F),
           shape: RoundedRectangleBorder(
@@ -411,55 +417,49 @@ class _ProgramCardState extends State<ProgramCard> {
                       ProgramDetailPage(program: p, lang: widget.lang),
                 ),
               );
-              setState(() {
-                _completedFuture = _loadCompleted();
-              });
+              setState(() => _completedFuture = _loadCompleted());
             },
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Row(
-                children: [
-                  // gradient avatar + circular progress
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Container(
-                        width: 64,
-                        height: 64,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: thumb,
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.25),
-                              blurRadius: 6,
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Text(
-                            // initials derived from title
-                            _initials(p.title),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+            child: Row(
+              children: [
+                // --- LEFT: Thumbnail with fallback ---
+                // LEFT: portrait thumbnail like course cards
+                Container(
+                  width: 90, // portrait strip
+                  height: 200, // gives a nice balance inside the card
+                  margin: const EdgeInsets.only(right: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.06),
+                    borderRadius: const BorderRadius.horizontal(
+                      left: Radius.circular(12),
+                    ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.horizontal(
+                      left: Radius.circular(12),
+                    ),
+                    child: (p.thumbnail != null && p.thumbnail!.isNotEmpty)
+                        ? Image.asset(
+                            p.thumbnail!,
+                            fit: BoxFit.cover, // important
+                          )
+                        : Container(
+                            color: Colors.black26,
+                            child: Icon(Icons.menu_book, color: teal2),
+                          ),
+                  ),
+                ),
+
+                // --- RIGHT: Text + actions ---
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           p.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -469,9 +469,11 @@ class _ProgramCardState extends State<ProgramCard> {
                         const SizedBox(height: 6),
                         Text(
                           p.shortDescription,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(color: Colors.white70),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 10),
                         Row(
                           children: [
                             Container(
@@ -484,66 +486,64 @@ class _ProgramCardState extends State<ProgramCard> {
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
-                                '${p.recommendedDailyMinutes} ${widget.lang == 'hi' ? 'मिन/दिन' : 'min/day'}',
+                                '${p.recommendedDailyMinutes} ${widget.lang == "hi" ? "मिन/दिन" : "min/day"}',
                                 style: const TextStyle(color: Colors.white70),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            TextButton(
-                              onPressed: () async {
-                                await Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => ProgramDetailPage(
-                                      program: p,
-                                      lang: widget.lang,
-                                    ),
-                                  ),
-                                );
-                                setState(
-                                  () => _completedFuture = _loadCompleted(),
-                                );
-                              },
-                              child: Text(
-                                widget.lang == 'hi' ? 'खोलें' : 'Open',
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                              style: TextButton.styleFrom(
-                                backgroundColor: const Color(0xFF011F1F),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                ),
                               ),
                             ),
                             const Spacer(),
                             SizedBox(
-                              width: 56,
-                              height: 56,
+                              width: 48,
+                              height: 48,
                               child: CircularProgressIndicator(
                                 value: prog,
                                 strokeWidth: 6,
-                                valueColor: const AlwaysStoppedAnimation(teal2),
+                                valueColor: const AlwaysStoppedAnimation<Color>(
+                                  teal2,
+                                ),
                                 backgroundColor: Colors.white12,
                               ),
                             ),
                           ],
                         ),
+                        const SizedBox(height: 6),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () async {
+                              await Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => ProgramDetailPage(
+                                    program: p,
+                                    lang: widget.lang,
+                                  ),
+                                ),
+                              );
+                              setState(
+                                () => _completedFuture = _loadCompleted(),
+                              );
+                            },
+                            style: TextButton.styleFrom(
+                              backgroundColor: const Color(0xFF011F1F),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+                            ),
+                            child: Text(
+                              widget.lang == 'hi' ? 'खोलें' : 'Open',
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         );
       },
     );
-  }
-
-  String _initials(String title) {
-    final words = title.trim().split(RegExp(r'\s+'));
-    if (words.isEmpty) return '';
-    if (words.length == 1) return words.first.substring(0, 1).toUpperCase();
-    return (words[0][0] + words[1][0]).toUpperCase();
   }
 }
 
