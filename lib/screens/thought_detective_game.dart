@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:cbt_drktv/screens/game_tutorial.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -689,6 +690,15 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
         ),
         actions: [
           _levelToggle(isAsq: isASQ),
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: 'How to play',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const GameTutorialPage()),
+              );
+            },
+          ),
           _modeToggle(),
         ],
       ),
