@@ -1,0 +1,304 @@
+[
+    {
+      "id": "asq_001",
+      "prompt": "You go on a vacation with a group of people and you have fun.",
+      "optionA": "I was in a good mood.",
+      "scoreA": 1,
+      "optionB": "The people I was with were in good moods.",
+      "scoreB": 0,
+      "dimension": "PsG",
+      "note": "Good event: Internal (PsG) gets 1."
+    },
+    {
+      "id": "asq_002",
+      "prompt": "All of your friends catch a cold except you.",
+      "optionA": "I have been healthy lately.",
+      "scoreA": 0,
+      "optionB": "I am a healthy person.",
+      "scoreB": 1,
+      "dimension": "PmG",
+      "note": "Good event: Permanent trait is 1."
+    },
+    {
+      "id": "asq_003",
+      "prompt": "Your pet gets run over by a car.",
+      "optionA": "I don’t take good care of my pets.",
+      "scoreA": 0,
+      "optionB": "Drivers are not cautious enough.",
+      "scoreB": 1,
+      "dimension": "PsB",
+      "note": "Bad event: External cause gets 1."
+    },
+    {
+      "id": "asq_004",
+      "prompt": "Some kids you know say that they don’t like you.",
+      "optionA": "Once in a while people are mean to me.",
+      "scoreA": 1,
+      "optionB": "Once in a while I am mean to other people.",
+      "scoreB": 0,
+      "dimension": "PsB",
+      "note": "Bad event: External explanation = 1."
+    },
+    {
+      "id": "asq_005",
+      "prompt": "You get very good grades.",
+      "optionA": "Schoolwork is simple.",
+      "scoreA": 0,
+      "optionB": "I am a hard worker.",
+      "scoreB": 1,
+      "dimension": "PsG",
+      "note": "Good event: Internal = 1."
+    },
+    {
+      "id": "asq_006",
+      "prompt": "You lose a small tournament match.",
+      "optionA": "I’m not athletic.",
+      "scoreA": 0,
+      "optionB": "I’m not good at that sport.",
+      "scoreB": 1,
+      "dimension": "PvB",
+      "note": "Bad event: Specific cause (PvB) = 1."
+    },
+    {
+      "id": "asq_007",
+      "prompt": "Your boss praises your presentation.",
+      "optionA": "I usually present well.",
+      "scoreA": 1,
+      "optionB": "This topic was easy to present.",
+      "scoreB": 0,
+      "dimension": "PmG",
+      "note": "Good event: Permanent = 1."
+    },
+    {
+      "id": "asq_008",
+      "prompt": "You made an error in an email.",
+      "optionA": "I always mess up communications.",
+      "scoreA": 0,
+      "optionB": "I was rushed today.",
+      "scoreB": 1,
+      "dimension": "PmB",
+      "note": "Bad event: Temporary = 1."
+    },
+  
+    {
+      "id": "asq_009",
+      "prompt": "You missed your morning bus.",
+      "optionA": "I was running late today.",
+      "scoreA": 1,
+      "optionB": "I’m always late.",
+      "scoreB": 0,
+      "dimension": "PmB",
+      "note": "Bad event: Temporary (today) vs. Permanent (always)."
+    },
+    {
+      "id": "asq_010",
+      "prompt": "You argued with a close friend.",
+      "optionA": "Our chat today went off track.",
+      "scoreA": 1,
+      "optionB": "My relationships always go wrong.",
+      "scoreB": 0,
+      "dimension": "PvB",
+      "note": "Bad event: Specific vs. Universal."
+    },
+    {
+      "id": "asq_011",
+      "prompt": "Your team lost a match.",
+      "optionA": "I played badly.",
+      "scoreA": 0,
+      "optionB": "Their team had more practice.",
+      "scoreB": 1,
+      "dimension": "PsB",
+      "note": "Bad event: External (their advantage) = 1."
+    },
+    {
+      "id": "asq_012",
+      "prompt": "You cooked a great meal.",
+      "optionA": "I’ve learned to cook well.",
+      "scoreA": 1,
+      "optionB": "That recipe is easy.",
+      "scoreB": 0,
+      "dimension": "PmG",
+      "note": "Good event: Permanent skill = 1."
+    },
+    {
+      "id": "asq_013",
+      "prompt": "A colleague complimented your communication.",
+      "optionA": "I’m good at communicating with people.",
+      "scoreA": 1,
+      "optionB": "I did okay in that chat.",
+      "scoreB": 0,
+      "dimension": "PvG",
+      "note": "Good event: Universal vs. just this instance."
+    },
+    {
+      "id": "asq_014",
+      "prompt": "You helped a friend solve a problem.",
+      "optionA": "I’m the kind of person who shows up.",
+      "scoreA": 1,
+      "optionB": "They were easy to help.",
+      "scoreB": 0,
+      "dimension": "PsG",
+      "note": "Good event: Internal trait = 1."
+    },
+    {
+      "id": "asq_015",
+      "prompt": "You made a mistake in a report.",
+      "optionA": "I can fix it now.",
+      "scoreA": 1,
+      "optionB": "My reports are always sloppy.",
+      "scoreB": 0,
+      "dimension": "PmB",
+      "note": "Bad event: Temporary fixable vs. stable flaw."
+    },
+    {
+      "id": "asq_016",
+      "prompt": "You forgot one household chore.",
+      "optionA": "I forget everything.",
+      "scoreA": 0,
+      "optionB": "I skipped this chore today.",
+      "scoreB": 1,
+      "dimension": "PvB",
+      "note": "Bad event: Specific (this chore) = 1."
+    },
+    {
+      "id": "asq_017",
+      "prompt": "Your child is crying loudly.",
+      "optionA": "I’m a bad parent.",
+      "scoreA": 0,
+      "optionB": "They’re tired and hungry.",
+      "scoreB": 1,
+      "dimension": "PsB",
+      "note": "Bad event: External situation = 1."
+    },
+    {
+      "id": "asq_018",
+      "prompt": "You slept really well last night.",
+      "optionA": "My sleep has been improving for good.",
+      "scoreA": 1,
+      "optionB": "Last night was a fluke.",
+      "scoreB": 0,
+      "dimension": "PmG",
+      "note": "Good event: Permanent trend = 1."
+    },
+    {
+      "id": "asq_019",
+      "prompt": "Your code review went smoothly.",
+      "optionA": "I’m improving across projects.",
+      "scoreA": 1,
+      "optionB": "This task matched my skills.",
+      "scoreB": 0,
+      "dimension": "PvG",
+      "note": "Good event: Universal vs. specific fit."
+    },
+    {
+      "id": "asq_020",
+      "prompt": "You finished your planned run.",
+      "optionA": "I trained consistently.",
+      "scoreA": 1,
+      "optionB": "Weather was perfect.",
+      "scoreB": 0,
+      "dimension": "PsG",
+      "note": "Good event: Internal effort = 1."
+    },
+    {
+      "id": "asq_021",
+      "prompt": "You were rejected for one job.",
+      "optionA": "This one didn’t work out; I’ll try again.",
+      "scoreA": 1,
+      "optionB": "I’ll never get hired.",
+      "scoreB": 0,
+      "dimension": "PmB",
+      "note": "Bad event: Temporary vs. permanent."
+    },
+    {
+      "id": "asq_022",
+      "prompt": "You burned dinner.",
+      "optionA": "I mess up everything I do.",
+      "scoreA": 0,
+      "optionB": "I overcooked this dish.",
+      "scoreB": 1,
+      "dimension": "PvB",
+      "note": "Bad event: Specific (this dish) = 1."
+    },
+    {
+      "id": "asq_023",
+      "prompt": "A friend cancelled your plan.",
+      "optionA": "They had a busy week.",
+      "scoreA": 1,
+      "optionB": "I’m not worth their time.",
+      "scoreB": 0,
+      "dimension": "PsB",
+      "note": "Bad event: External explanation = 1."
+    },
+    {
+      "id": "asq_024",
+      "prompt": "Your boss praised your steady progress.",
+      "optionA": "I consistently deliver good work.",
+      "scoreA": 1,
+      "optionB": "This month was lucky.",
+      "scoreB": 0,
+      "dimension": "PmG",
+      "note": "Good event: Permanent consistency = 1."
+    },
+    {
+      "id": "asq_025",
+      "prompt": "You won a local quiz.",
+      "optionA": "I’m knowledgeable across topics.",
+      "scoreA": 1,
+      "optionB": "Those questions fit me.",
+      "scoreB": 0,
+      "dimension": "PvG",
+      "note": "Good event: Universal (broad skill) = 1."
+    },
+    {
+      "id": "asq_026",
+      "prompt": "A colleague thanked you for mentoring.",
+      "optionA": "I’m a supportive mentor.",
+      "scoreA": 1,
+      "optionB": "They learn fast, so it was easy.",
+      "scoreB": 0,
+      "dimension": "PsG",
+      "note": "Good event: Internal trait = 1."
+    },
+    {
+      "id": "asq_027",
+      "prompt": "Tech issues disrupted your presentation.",
+      "optionA": "Today the setup failed; next time I’ll test earlier.",
+      "scoreA": 1,
+      "optionB": "My talks always fall apart.",
+      "scoreB": 0,
+      "dimension": "PmB",
+      "note": "Bad event: Temporary + controllable next steps."
+    },
+    {
+      "id": "asq_028",
+      "prompt": "You got a late fee on one bill.",
+      "optionA": "I’m irresponsible with everything.",
+      "scoreA": 0,
+      "optionB": "I missed this bill’s date.",
+      "scoreB": 1,
+      "dimension": "PvB",
+      "note": "Bad event: Specific instance = 1."
+    },
+    {
+      "id": "asq_029",
+      "prompt": "Your team didn’t meet the sales target.",
+      "optionA": "The market was slow this quarter.",
+      "scoreA": 1,
+      "optionB": "It’s my fault alone.",
+      "scoreB": 0,
+      "dimension": "PsB",
+      "note": "Bad event: External/shared factors = 1."
+    },
+    {
+      "id": "asq_030",
+      "prompt": "A friend says your advice helped them a lot.",
+      "optionA": "I give thoughtful advice.",
+      "scoreA": 1,
+      "optionB": "They already knew what to do.",
+      "scoreB": 0,
+      "dimension": "PsG",
+      "note": "Good event: Internal ownership = 1."
+    }
+  ]
+  

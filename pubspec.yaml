@@ -101,6 +101,9 @@ flutter:
     - assets/programs/
     - assets/.env
     - assets/
+    - assets/data/
+    - assets/data/thought_detective_questions.json
+    - assets/data/asq_items.json
 flutter_icons:
   android: true
   ios: true

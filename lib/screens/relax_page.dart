@@ -62,13 +62,6 @@ class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
       color: teal2,
       route: '/minimeditation',
     ),
-    _Feature(
-      title: 'Soothing Sounds',
-      subtitle: 'Rain, waves, birds & white noise. Loopable playback.',
-      icon: Icons.music_note,
-      color: Colors.indigoAccent,
-      route: '/sounds',
-    ),
   ];
 
   @override
@@ -95,7 +88,7 @@ class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
   }
 
   // build a per-index animation that returns a CurvedAnimation with an Interval
-  Animation<double> _buildInterval(int index, {double startOffset = 0}) {
+  Animation<double> _buildInterval(int index) {
     final int items = _features.length + 1; // +1 for tips
     final double start =
         (index * staggerDelay) /

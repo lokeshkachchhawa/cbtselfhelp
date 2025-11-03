@@ -1,0 +1,183 @@
+[
+    {
+      "id": "td_001",
+      "text": "If I speak up I will look foolish.",
+      "answers": ["Mind reading", "Catastrophising"],
+      "explanation": "Assuming others judge you negatively is mind reading; it often exaggerates outcomes."
+    },
+    {
+      "id": "td_002",
+      "text": "I always mess things up.",
+      "answers": ["Overgeneralisation"],
+      "explanation": "Using “always” is overgeneralisation — one or few events do not mean always."
+    },
+    {
+      "id": "td_003",
+      "text": "They didn’t reply — they must be angry with me.",
+      "answers": ["Mind reading", "Catastrophising"],
+      "explanation": "Guessing others’ feelings without evidence is mind reading; jumping to the worst outcome is catastrophising."
+    },
+    {
+      "id": "td_004",
+      "text": "If I can’t finish perfectly, there’s no point starting.",
+      "answers": ["All-or-nothing", "Catastrophising"],
+      "explanation": "Seeing only perfect vs. failure is all-or-nothing; predicting disaster if it’s not perfect is catastrophising."
+    },
+    {
+      "id": "td_005",
+      "text": "One awkward meeting means I’m terrible at socializing.",
+      "answers": ["Overgeneralisation", "Emotional reasoning"],
+      "explanation": "Making a broad rule from one event is overgeneralisation; using a feeling as proof is emotional reasoning."
+    },
+    {
+      "id": "td_006",
+      "text": "My friend yawned; I must be boring.",
+      "answers": ["Mind reading", "Emotional reasoning"],
+      "explanation": "You can’t know their reason (mind reading); feeling insecure doesn’t prove the belief (emotional reasoning)."
+    },
+    {
+      "id": "td_007",
+      "text": "I felt anxious in the interview, so I definitely failed.",
+      "answers": ["Emotional reasoning", "Catastrophising"],
+      "explanation": "Feelings aren’t facts; anxiety doesn’t mean failure. Predicting the worst is catastrophising."
+    },
+    {
+      "id": "td_008",
+      "text": "They corrected my work — I’m useless.",
+      "answers": ["Overgeneralisation", "All-or-nothing"],
+      "explanation": "One correction doesn’t define your whole ability; seeing yourself as ‘useless’ is all-or-nothing."
+    },
+    {
+      "id": "td_009",
+      "text": "If I make a mistake, everyone will judge me forever.",
+      "answers": ["Catastrophising", "Mind reading", "Overgeneralisation"],
+      "explanation": "Predicting extreme, lasting judgment is catastrophising and overgeneralising; assuming others’ thoughts is mind reading."
+    },
+    {
+      "id": "td_010",
+      "text": "They didn’t invite me this time; nobody likes me.",
+      "answers": ["Overgeneralisation", "Catastrophising"],
+      "explanation": "Turning one event into ‘nobody’ is overgeneralisation; imagining the worst is catastrophising."
+    },
+    {
+      "id": "td_011",
+      "text": "I’m feeling low, so my future will always be like this.",
+      "answers": ["Emotional reasoning", "Overgeneralisation"],
+      "explanation": "Using mood as evidence (emotional reasoning) and projecting it into ‘always’ is overgeneralisation."
+    },
+    {
+      "id": "td_012",
+      "text": "If they don’t text back in 10 minutes, the relationship is over.",
+      "answers": ["Catastrophising", "All-or-nothing"],
+      "explanation": "Jumping to breakup is catastrophising; ‘all or nothing’ ignores middle ground."
+    },
+    {
+      "id": "td_013",
+      "text": "I stumbled over a word — I’m a terrible speaker.",
+      "answers": ["Overgeneralisation", "All-or-nothing"],
+      "explanation": "One stumble ≠ ‘terrible.’ That’s overgeneralisation and black-and-white thinking."
+    },
+    {
+      "id": "td_014",
+      "text": "They looked away while I spoke; they don’t respect me.",
+      "answers": ["Mind reading"],
+      "explanation": "Assuming intent from a glance is mind reading; there could be many neutral reasons."
+    },
+    {
+      "id": "td_015",
+      "text": "If I can’t control every detail, everything will go wrong.",
+      "answers": ["Catastrophising", "All-or-nothing"],
+      "explanation": "Predicting total failure is catastrophising; ‘every detail or nothing’ is all-or-nothing."
+    },
+    {
+      "id": "td_016",
+      "text": "I felt nervous giving feedback, so it must have been bad.",
+      "answers": ["Emotional reasoning"],
+      "explanation": "Feeling nervous doesn’t prove the feedback was bad; feelings aren’t the same as outcomes."
+    },
+    {
+      "id": "td_017",
+      "text": "They cancelled our plan once; I can’t trust them anymore.",
+      "answers": ["Overgeneralisation", "All-or-nothing"],
+      "explanation": "From one instance to ‘never trust’ is overgeneralisation and black-and-white thinking."
+    },
+    {
+      "id": "td_018",
+      "text": "I didn’t answer perfectly; they’ll think I’m incompetent.",
+      "answers": ["Mind reading", "Catastrophising"],
+      "explanation": "Assuming others’ harsh judgment is mind reading; jumping to ‘incompetent’ is catastrophising."
+    },
+    {
+      "id": "td_019",
+      "text": "I’m worried about this symptom, so it’s probably something serious.",
+      "answers": ["Emotional reasoning", "Catastrophising"],
+      "explanation": "Worry ≠ evidence; leaping to worst-case is catastrophising."
+    },
+    {
+      "id": "td_020",
+      "text": "I didn’t go to the gym twice — I’ll never be consistent.",
+      "answers": ["Overgeneralisation"],
+      "explanation": "Two misses do not predict ‘never’; that’s overgeneralising from a small sample."
+    },
+    {
+      "id": "td_021",
+      "text": "They praised others and not me — I must be doing badly.",
+      "answers": ["Mind reading", "Emotional reasoning"],
+      "explanation": "Assuming the reason behind others’ praise is mind reading; feeling overlooked doesn’t prove poor performance."
+    },
+    {
+      "id": "td_022",
+      "text": "If I feel unsure, I should avoid it — it will go badly.",
+      "answers": ["Emotional reasoning", "Catastrophising"],
+      "explanation": "Using uncertainty as proof is emotional reasoning; predicting a bad outcome is catastrophising."
+    },
+    {
+      "id": "td_023",
+      "text": "I failed this task — I fail at everything.",
+      "answers": ["Overgeneralisation", "All-or-nothing"],
+      "explanation": "Expanding one failure to ‘everything’ is overgeneralisation and black-and-white thinking."
+    },
+    {
+      "id": "td_024",
+      "text": "They whispered during my talk; they were criticizing me.",
+      "answers": ["Mind reading", "Catastrophising"],
+      "explanation": "You can’t know what was said (mind reading); assuming criticism is catastrophising."
+    },
+    {
+      "id": "td_025",
+      "text": "Unless I feel 100% confident, I’ll mess it up.",
+      "answers": ["All-or-nothing", "Emotional reasoning"],
+      "explanation": "Requiring 100% confidence is black-and-white; treating anxiety as failure is emotional reasoning."
+    },
+    {
+      "id": "td_026",
+      "text": "A stranger didn’t smile back — people are unfriendly these days.",
+      "answers": ["Overgeneralisation", "Mind reading"],
+      "explanation": "Generalising from one moment is overgeneralisation; assuming their motive is mind reading."
+    },
+    {
+      "id": "td_027",
+      "text": "I had one binge, so my progress is ruined.",
+      "answers": ["All-or-nothing", "Catastrophising"],
+      "explanation": "Seeing one lapse as ‘ruin’ is black-and-white and catastrophising."
+    },
+    {
+      "id": "td_028",
+      "text": "My heart is racing — something is definitely wrong with me.",
+      "answers": ["Emotional reasoning", "Catastrophising"],
+      "explanation": "A sensation can have many causes; assuming danger is emotional reasoning and catastrophising."
+    },
+    {
+      "id": "td_029",
+      "text": "They didn’t laugh at my joke — I’m not funny at all.",
+      "answers": ["Overgeneralisation", "All-or-nothing"],
+      "explanation": "One reaction doesn’t define your humor; ‘not funny at all’ is black-and-white."
+    },
+    {
+      "id": "td_030",
+      "text": "If I rest today, I’ll become lazy.",
+      "answers": ["Overgeneralisation", "Catastrophising"],
+      "explanation": "One rest day doesn’t predict a trait; leaping to ‘lazy’ is catastrophising and overgeneralising."
+    }
+  ]
+  
