@@ -13,6 +13,183 @@ const Color teal3 = Color(0xFF008F89);
 const Color teal4 = Color(0xFF007A78);
 const Color teal6 = Color(0xFF004E4D);
 
+// ---------------- Lightweight i18n ----------------
+enum AppLang { en, hi }
+
+class _Strings {
+  final String appTitleDistortion;
+  final String appTitleAsq;
+  final String avgLast;
+  final String howToPlay;
+  final String modeDistortions;
+  final String modeAttribution;
+  final String noCards;
+  final String retry;
+  final String score;
+  final String level;
+  final String nextLevel;
+  final String nextLevelLocked;
+  final String replayLevel;
+  final String close;
+  final String createThought;
+  final String check;
+  final String correctAnswers;
+  final String addToThoughtRecord;
+  final String next;
+  final String finish;
+  final String submit;
+  final String answerRecorded;
+  final String atResultsTitle;
+  final String summary;
+  final String itemsAnswered;
+  final String optimismPoints;
+  final String hopeIndex;
+  final String hopeExplainer;
+  final String badEventsWantHigher;
+  final String goodEventsWantHigher;
+  final String badExplainer;
+  final String goodExplainer;
+  final String playAgain;
+  final List<String> distortionLabels;
+  final String need50Unlock;
+  final String unlockedNext;
+
+  const _Strings({
+    required this.appTitleDistortion,
+    required this.appTitleAsq,
+    required this.avgLast,
+    required this.howToPlay,
+    required this.modeDistortions,
+    required this.modeAttribution,
+    required this.noCards,
+    required this.retry,
+    required this.score,
+    required this.level,
+    required this.nextLevel,
+    required this.nextLevelLocked,
+    required this.replayLevel,
+    required this.close,
+    required this.createThought,
+    required this.check,
+    required this.correctAnswers,
+    required this.addToThoughtRecord,
+    required this.next,
+    required this.finish,
+    required this.submit,
+    required this.answerRecorded,
+    required this.atResultsTitle,
+    required this.summary,
+    required this.itemsAnswered,
+    required this.optimismPoints,
+    required this.hopeIndex,
+    required this.hopeExplainer,
+    required this.badEventsWantHigher,
+    required this.goodEventsWantHigher,
+    required this.badExplainer,
+    required this.goodExplainer,
+    required this.playAgain,
+    required this.distortionLabels,
+    required this.need50Unlock,
+    required this.unlockedNext,
+  });
+
+  static const en = _Strings(
+    appTitleDistortion: 'Thought Detective',
+    appTitleAsq: 'Attribution Game',
+    avgLast: 'Avg (last {n})',
+    howToPlay: 'How to play',
+    modeDistortions: 'Distortions Mode',
+    modeAttribution: 'Attribution Mode',
+    noCards: 'No cards available',
+    retry: 'Retry',
+    score: 'Score',
+    level: 'Level',
+    nextLevel: 'Next Level',
+    nextLevelLocked: 'Next Level (Locked)',
+    replayLevel: 'Replay Level',
+    close: 'Close',
+    createThought: 'Create thought record',
+    check: 'Check',
+    correctAnswers: 'Correct answers',
+    addToThoughtRecord: 'Add to thought record',
+    next: 'Next',
+    finish: 'Finish',
+    submit: 'Submit',
+    answerRecorded: 'Answer recorded',
+    atResultsTitle: 'Attribution Results',
+    summary: 'Summary',
+    itemsAnswered: 'Items answered',
+    optimismPoints: 'Optimism points (sum of 1s)',
+    hopeIndex: 'Hope Index (PmB+PvB)',
+    hopeExplainer:
+        'Higher Hope means you tended to explain bad events as temporary (Permanence) and specific (Pervasiveness).',
+    badEventsWantHigher: 'Bad Events (want higher %)',
+    goodEventsWantHigher: 'Good Events (want higher %)',
+    badExplainer:
+        'For bad events, optimistic style = Temporary (PmB), Specific (PvB), External (PsB).',
+    goodExplainer:
+        'For good events, optimistic style = Permanent (PmG), Universal (PvG), Internal (PsG).',
+    playAgain: 'Play again',
+    distortionLabels: [
+      'Mind reading',
+      'Catastrophising',
+      'Overgeneralisation',
+      'All-or-nothing',
+      'Emotional reasoning',
+    ],
+    need50Unlock: 'Get at least 50% correct to unlock the next level.',
+    unlockedNext: 'Unlocked next level!',
+  );
+
+  static const hi = _Strings(
+    appTitleDistortion: 'विचार जासूस',
+    appTitleAsq: 'आरोपण खेल',
+    avgLast: 'औसत (आख़िरी {n})',
+    howToPlay: 'कैसे खेलें',
+    modeDistortions: 'डिस्टॉर्शन मोड',
+    modeAttribution: 'आरोपण मोड',
+    noCards: 'कार्ड उपलब्ध नहीं',
+    retry: 'फिर कोशिश करें',
+    score: 'स्कोर',
+    level: 'स्तर',
+    nextLevel: 'अगला स्तर',
+    nextLevelLocked: 'अगला स्तर (लॉक)',
+    replayLevel: 'स्तर दोबारा खेलें',
+    close: 'बंद करें',
+    createThought: 'थॉट रिकॉर्ड बनाएं',
+    check: 'जांचें',
+    correctAnswers: 'सही उत्तर',
+    addToThoughtRecord: 'थॉट रिकॉर्ड में जोड़ें',
+    next: 'आगे',
+    finish: 'समाप्त',
+    submit: 'सबमिट',
+    answerRecorded: 'उत्तर दर्ज हुआ',
+    atResultsTitle: 'आरोपण के परिणाम',
+    summary: 'सारांश',
+    itemsAnswered: 'दिये गए उत्तर',
+    optimismPoints: 'आशावाद अंक (1 का योग)',
+    hopeIndex: 'होप इंडेक्स (PmB+PvB)',
+    hopeExplainer:
+        'उच्च होप का अर्थ है कि आप बुरी घटनाओं को अस्थायी (Permanence) और विशिष्ट (Pervasiveness) मानते हैं।',
+    badEventsWantHigher: 'बुरी घटनाएँ (ऊँचा % बेहतर)',
+    goodEventsWantHigher: 'अच्छी घटनाएँ (ऊँचा % बेहतर)',
+    badExplainer:
+        'बुरी घटनाओं में, आशावादी शैली = अस्थायी (PmB), विशिष्ट (PvB), बाहरी (PsB)।',
+    goodExplainer:
+        'अच्छी घटनाओं में, आशावादी शैली = स्थायी (PmG), सार्वभौमिक (PvG), आंतरिक (PsG)।',
+    playAgain: 'फिर खेलें',
+    distortionLabels: [
+      'दिमाग़ पढ़ना',
+      'विनाशकारी निष्कर्ष',
+      'अतिसामान्यीकरण',
+      'सब-या-कुछ नहीं',
+      'भावनात्मक तर्क',
+    ],
+    need50Unlock: 'अगला स्तर अनलॉक करने के लिए कम से कम 50% सही करें।',
+    unlockedNext: 'अगला स्तर अनलॉक हुआ!',
+  );
+}
+
 // ---------------- Models ----------------
 class CardItem {
   final String id;
@@ -46,13 +223,9 @@ class AttributionItem {
   final String id;
   final String prompt;
   final String optionA;
-  final int scoreA; // 0/1 (1 = more optimistic for that dimension)
+  final int scoreA; // 0/1
   final String optionB;
   final int scoreB; // 0/1
-  /// Dimension code:
-  /// PmB / PmG  (Permanence Bad/Good)
-  /// PvB / PvG  (Pervasiveness Bad/Good)
-  /// PsB / PsG  (Personalization Bad/Good)
   final String dimension;
   final String note;
 
@@ -137,30 +310,27 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
   // Levels config (Distortions)
   static const int _levelsCount = 6;
   static const int _cardsPerLevel = 5;
-  static const String _prefsLevelsKey =
-      'td_levels_unlocked'; // highest unlocked distortions (1..6)
+  static const String _prefsLevelsKey = 'td_levels_unlocked';
 
   // Levels config (Attribution)
   static const int _asqLevelsCount = 6;
   static const int _asqCardsPerLevel = 5;
-  static const String _prefsAsqLevelsKey =
-      'asq_levels_unlocked'; // highest unlocked ASQ (1..6)
+  static const String _prefsAsqLevelsKey = 'asq_levels_unlocked';
 
-  // Mode
+  // Language persistence
+  static const String _prefsLangKey = 'td_lang';
+
+  // Mode & Language
   GameMode _mode = GameMode.distortions;
+  AppLang _lang = AppLang.en;
+  _Strings get t => _lang == AppLang.hi ? _Strings.hi : _Strings.en;
 
   /// JSON-loaded content
   final List<CardItem> _cardBank = []; // distortions chips
   final List<AttributionItem> _asqBank = []; // attribution A/B
 
-  // Distortion labels (chips)
-  final List<String> _labels = const [
-    'Mind reading',
-    'Catastrophising',
-    'Overgeneralisation',
-    'All-or-nothing',
-    'Emotional reasoning',
-  ];
+  // Distortion labels (chips) — derived from t.distortionLabels
+  List<String> get _labels => t.distortionLabels;
 
   // ---- Levels state (Distortions) ----
   List<List<CardItem>> _tdLevels = [];
@@ -187,7 +357,7 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
   bool _showFeedback = false;
   int _correctThisRound = 0;
 
-  // Attribution tallies (optimism points = sum of 1s)
+  // Attribution tallies
   final Map<String, int> _dimensionTotals = {
     'PmB': 0,
     'PvB': 0,
@@ -208,7 +378,7 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
   // History
   List<GameSession> _history = [];
 
-  // UI animation controller for feedback area
+  // UI animation controller
   late final AnimationController _animController;
 
   @override
@@ -221,17 +391,20 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
       upperBound: 1.02,
     );
 
-    _loadHistory()
-        .then((_) => _loadLevelsProgress())
-        .then((_) => _loadCardsFromJson())
-        .then((_) => _loadAttributionFromJson())
-        .then((_) {
-          _buildThoughtDetectiveLevels();
-          _buildAsqLevels();
-          _selectedLevel = _selectedLevel.clamp(1, _highestUnlocked);
-          _selectedAsqLevel = _selectedAsqLevel.clamp(1, _highestUnlockedAsq);
-          _startRound();
-        });
+    _initAll();
+  }
+
+  Future<void> _initAll() async {
+    await _loadHistory();
+    await _loadLevelsProgress();
+    await _loadSavedLang();
+    await _loadCardsFromJson(); // language-aware
+    await _loadAttributionFromJson(); // language-aware
+    _buildThoughtDetectiveLevels();
+    _buildAsqLevels();
+    _selectedLevel = _selectedLevel.clamp(1, _highestUnlocked);
+    _selectedAsqLevel = _selectedAsqLevel.clamp(1, _highestUnlockedAsq);
+    _startRound();
   }
 
   @override
@@ -240,41 +413,91 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
     super.dispose();
   }
 
+  // ---------- Language ----------
+  Future<void> _loadSavedLang() async {
+    final prefs = await SharedPreferences.getInstance();
+    final val = prefs.getString(_prefsLangKey);
+    setState(() {
+      _lang = (val == 'hi') ? AppLang.hi : AppLang.en;
+    });
+  }
+
+  Future<void> _saveLang(AppLang lang) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_prefsLangKey, lang == AppLang.hi ? 'hi' : 'en');
+  }
+
+  Future<void> _switchLang(AppLang lang) async {
+    if (_lang == lang) return;
+    setState(() {
+      _lang = lang;
+    });
+    await _saveLang(lang);
+    await _loadCardsFromJson();
+    await _loadAttributionFromJson();
+    _buildThoughtDetectiveLevels();
+    _buildAsqLevels();
+    _startRound();
+  }
+
+  String get _langSuffix => _lang == AppLang.hi ? '_hi' : '';
+
   // ---------- Loaders ----------
   Future<void> _loadCardsFromJson() async {
-    try {
-      final raw = await rootBundle.loadString(
-        'assets/data/thought_detective_questions.json',
-      );
-      final List decoded = json.decode(raw) as List;
-      final loaded = decoded
-          .map((m) => CardItem.fromMap(m as Map<String, dynamic>))
-          .toList();
-      setState(() {
-        _cardBank
-          ..clear()
-          ..addAll(loaded);
-      });
-    } catch (e) {
-      debugPrint("Failed to load distortions JSON: $e");
+    // Try language file first; if missing, fall back to EN
+    final candidates = [
+      'assets/data/thought_detective_questions$_langSuffix.json',
+      'assets/data/thought_detective_questions.json',
+    ];
+    for (final path in candidates) {
+      try {
+        final raw = await rootBundle.loadString(path);
+        final List decoded = json.decode(raw) as List;
+        final loaded = decoded
+            .map((m) => CardItem.fromMap(m as Map<String, dynamic>))
+            .toList();
+        setState(() {
+          _cardBank
+            ..clear()
+            ..addAll(loaded);
+        });
+        return;
+      } catch (_) {
+        // try next
+      }
     }
+    debugPrint("Failed to load distortions JSON in any language.");
+    setState(() {
+      _cardBank.clear();
+    });
   }
 
   Future<void> _loadAttributionFromJson() async {
-    try {
-      final raw = await rootBundle.loadString('assets/data/asq_items.json');
-      final List decoded = json.decode(raw) as List;
-      final loaded = decoded
-          .map((m) => AttributionItem.fromMap(m as Map<String, dynamic>))
-          .toList();
-      setState(() {
-        _asqBank
-          ..clear()
-          ..addAll(loaded);
-      });
-    } catch (e) {
-      debugPrint("Failed to load attribution JSON: $e");
+    final candidates = [
+      'assets/data/asq_items$_langSuffix.json',
+      'assets/data/asq_items.json',
+    ];
+    for (final path in candidates) {
+      try {
+        final raw = await rootBundle.loadString(path);
+        final List decoded = json.decode(raw) as List;
+        final loaded = decoded
+            .map((m) => AttributionItem.fromMap(m as Map<String, dynamic>))
+            .toList();
+        setState(() {
+          _asqBank
+            ..clear()
+            ..addAll(loaded);
+        });
+        return;
+      } catch (_) {
+        // try next
+      }
     }
+    debugPrint("Failed to load ASQ JSON in any language.");
+    setState(() {
+      _asqBank.clear();
+    });
   }
 
   Future<void> _loadHistory() async {
@@ -296,14 +519,10 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
   Future<void> _loadLevelsProgress() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      // Distortions progress
       _highestUnlocked = prefs.getInt(_prefsLevelsKey) ?? 1;
       _selectedLevel = _highestUnlocked;
-
-      // ASQ progress
       _highestUnlockedAsq = prefs.getInt(_prefsAsqLevelsKey) ?? 1;
       _selectedAsqLevel = _highestUnlockedAsq;
-
       setState(() {});
     } catch (e) {
       debugPrint('Failed to load levels progress: $e');
@@ -444,24 +663,29 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
     setState(() {});
   }
 
+  // --------- UPDATED: Partial scoring, no penalty for wrong picks ---------
   void _submitAnswer() {
     if (_selected.isEmpty) return;
+
     final card = _cardsThisRound[_index];
     final correct = card.answers;
-    int correctCount = 0;
-    int wrongCount = 0;
+    final int totalCorrect = correct.length;
 
+    // Count only correct picks (no penalty for wrong)
+    int correctPicked = 0;
     for (final s in _selected) {
-      if (correct.contains(s)) {
-        correctCount++;
-      } else {
-        wrongCount++;
-      }
+      if (correct.contains(s)) correctPicked++;
     }
 
-    final earned = max(0, correctCount * 10 - wrongCount * 2);
+    // Each question is out of 10 points → split equally among correct answers
+    // Example: 2 correct → each worth 5. Pick 1 correct → 5. Pick both (+wrong) → 10.
+    final earned = totalCorrect == 0
+        ? 0
+        : ((10.0 * correctPicked) / totalCorrect).round();
+
     _score += earned;
-    _correctThisRound += correctCount;
+    _correctThisRound +=
+        correctPicked; // kept for legacy stats (not used for unlock)
 
     _animController.forward().then((_) => _animController.reverse());
     setState(() => _showFeedback = true);
@@ -472,7 +696,7 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
     final item = _asqThisRound[_index];
     final selectedScore = (_asqSelection == 0) ? item.scoreA : item.scoreB;
 
-    _score += selectedScore; // sum of 1s as "optimism points"
+    _score += selectedScore; // ASQ questions are 0/1 each
     _correctThisRound += selectedScore;
 
     if (_dimensionTotals.containsKey(item.dimension)) {
@@ -510,7 +734,6 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
       _saveSession(session);
 
       if (_mode == GameMode.attribution) {
-        // Unlock ASQ level if passed before showing results
         _maybeUnlockNextLevel(session);
         Navigator.of(context).push(
           MaterialPageRoute(
@@ -522,20 +745,25 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
                 Navigator.of(context).pop();
                 _startRound();
               },
+              strings: t, // pass localized strings
             ),
           ),
         );
       } else {
-        // Distortions mode -> show summary + maybe unlock
         _maybeUnlockNextLevel(session);
         _showSummary(session);
       }
     }
   }
 
+  // --------- UPDATED: Unlock by total score % (>= 50%) ---------
   void _maybeUnlockNextLevel(GameSession s) {
-    final accuracy = (s.cardsSeen == 0) ? 0.0 : s.correctCount / s.cardsSeen;
-    final passed = accuracy >= 0.5;
+    // Max score differs by mode
+    final int maxScore = (_mode == GameMode.attribution)
+        ? s.cardsSeen
+        : (s.cardsSeen * 10);
+    final double pct = maxScore == 0 ? 0.0 : s.score / maxScore;
+    final bool passed = pct >= 0.50;
 
     if (!passed) return;
 
@@ -554,11 +782,14 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
     }
   }
 
+  // --------- UPDATED: Summary shows score/max and % (no 7/5 bug) ---------
   void _showSummary(GameSession session) {
-    final accuracy = (session.cardsSeen == 0)
-        ? 0.0
-        : session.correctCount / session.cardsSeen;
-    final passed = accuracy >= 0.5;
+    final int maxScore = (_mode == GameMode.attribution)
+        ? session.cardsSeen
+        : (session.cardsSeen * 10);
+    final double pct = maxScore == 0 ? 0.0 : session.score / maxScore;
+    final bool passed = pct >= 0.5;
+    final String pctStr = (pct * 100).toStringAsFixed(0);
 
     final nextLockedDist = _highestUnlocked < _levelsCount
         ? (_selectedLevel + 1) > _highestUnlocked
@@ -577,34 +808,41 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Level ${_selectedLevel} complete',
+                '${t.level} $_selectedLevel ${t.close == 'Close' ? 'complete' : 'पूरा'}',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 12),
+              // Score line (e.g., 37/50 (74%))
               Text(
-                'Score: ${session.score}   •   Correct tags: ${session.correctCount}/${session.cardsSeen} (${(accuracy * 100).toStringAsFixed(0)}%)',
+                '${t.score}: ${session.score}/$maxScore  ($pctStr%)',
                 style: const TextStyle(color: Colors.white70),
+              ),
+              const SizedBox(height: 6),
+              // Items answered is just a count now (prevents 7/5 issue)
+              Text(
+                '${t.itemsAnswered}: ${session.cardsSeen}',
+                style: const TextStyle(color: Colors.white38, fontSize: 12),
               ),
               const SizedBox(height: 10),
               if (passed)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Icon(Icons.lock_open, color: Colors.tealAccent),
-                    SizedBox(width: 8),
+                  children: [
+                    const Icon(Icons.lock_open, color: Colors.tealAccent),
+                    const SizedBox(width: 8),
                     Text(
-                      'Unlocked next level!',
-                      style: TextStyle(color: Colors.tealAccent),
+                      t.unlockedNext,
+                      style: const TextStyle(color: Colors.tealAccent),
                     ),
                   ],
                 )
               else
-                const Text(
-                  'Get at least 50% correct to unlock the next level.',
-                  style: TextStyle(color: Colors.white70),
+                Text(
+                  t.need50Unlock,
+                  style: const TextStyle(color: Colors.white70),
                 ),
               const SizedBox(height: 16),
               Wrap(
@@ -618,7 +856,7 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
                       _startRound(); // replay same level
                     },
                     style: ElevatedButton.styleFrom(backgroundColor: teal3),
-                    child: const Text('Replay Level'),
+                    child: Text(t.replayLevel),
                   ),
                   OutlinedButton(
                     onPressed: () {
@@ -633,12 +871,12 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
                       side: const BorderSide(color: Colors.white12),
                     ),
                     child: Text(
-                      nextLockedDist ? 'Next Level (Locked)' : 'Next Level',
+                      nextLockedDist ? t.nextLevelLocked : t.nextLevel,
                     ),
                   ),
                   TextButton(
                     onPressed: () => Navigator.of(ctx).pop(),
-                    child: Text('Close', style: TextStyle(color: teal4)),
+                    child: Text(t.close, style: TextStyle(color: teal4)),
                   ),
                 ],
               ),
@@ -651,7 +889,7 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Colors.white12),
                 ),
-                child: const Text('Create thought record'),
+                child: Text(t.createThought),
               ),
             ],
           ),
@@ -670,29 +908,44 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
   @override
   Widget build(BuildContext context) {
     final isASQ = _mode == GameMode.attribution;
-
     final hasCards = isASQ
         ? (_asqThisRound.isNotEmpty)
         : (_cardsThisRound.isNotEmpty);
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: teal1,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(isASQ ? 'Attribution Game' : 'Thought Detective'),
-            if (_history.isNotEmpty)
-              Text(
-                'Avg (last ${min(7, _history.length)}): ${_avgScoreLast7.toStringAsFixed(0)} pts',
-                style: const TextStyle(fontSize: 12, color: Colors.white70),
-              ),
-          ],
+        elevation: 0,
+        title: Text(
+          "CBT games",
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
-          _levelToggle(isAsq: isASQ),
+          PopupMenuButton<AppLang>(
+            tooltip: 'Language',
+            icon: const Icon(Icons.language),
+            initialValue: _lang,
+            onSelected: _switchLang,
+            itemBuilder: (ctx) => [
+              CheckedPopupMenuItem(
+                value: AppLang.en,
+                checked: _lang == AppLang.en,
+                child: const Text('English'),
+              ),
+              CheckedPopupMenuItem(
+                value: AppLang.hi,
+                checked: _lang == AppLang.hi,
+                child: const Text('हिंदी'),
+              ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.help_outline),
-            tooltip: 'How to play',
+            tooltip: t.howToPlay,
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const GameTutorialPage()),
@@ -714,15 +967,12 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'No cards available',
-              style: TextStyle(color: Colors.white70),
-            ),
+            Text(t.noCards, style: const TextStyle(color: Colors.white70)),
             const SizedBox(height: 10),
             ElevatedButton(
               onPressed: () => setState(() => _startRound()),
               style: ElevatedButton.styleFrom(backgroundColor: teal3),
-              child: const Text('Retry'),
+              child: Text(t.retry),
             ),
           ],
         ),
@@ -737,8 +987,32 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Heading
+          Text(
+            isASQ ? t.appTitleAsq : t.appTitleDistortion,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (_history.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 2.0, bottom: 8.0),
+              child: Text(
+                '${t.avgLast.replaceFirst('{n}', min(7, _history.length).toString())}: ${_avgScoreLast7.toStringAsFixed(0)} pts',
+                style: const TextStyle(fontSize: 12, color: Colors.white70),
+                overflow: TextOverflow.ellipsis,
+              ),
+            )
+          else
+            const SizedBox(height: 8),
+
           _levelHeader(isAsq: isASQ),
+
           LinearProgressIndicator(
             value: progress,
             backgroundColor: Colors.white12,
@@ -746,14 +1020,19 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
             minHeight: 6,
           ),
           const SizedBox(height: 14),
-          Card(
-            color: Colors.white10,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(14.0),
-              child: isASQ ? _asqCard() : _distortionCard(),
+          Expanded(
+            child: Card(
+              color: Colors.white10,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(14.0),
+                child: SingleChildScrollView(
+                  physics: const ClampingScrollPhysics(),
+                  child: isASQ ? _asqCard() : _distortionCard(),
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -761,7 +1040,7 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Score: $_score',
+                '${t.score}: $_score',
                 style: const TextStyle(color: Colors.white70),
               ),
               Text(
@@ -783,111 +1062,107 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
         _mode = m;
         _startRound();
       }),
-      itemBuilder: (ctx) => const [
+      itemBuilder: (ctx) => [
         PopupMenuItem(
           value: GameMode.distortions,
-          child: Text('Distortions Mode'),
+          child: Text(t.modeDistortions),
         ),
         PopupMenuItem(
           value: GameMode.attribution,
-          child: Text('Attribution Mode'),
+          child: Text(t.modeAttribution),
         ),
       ],
     );
   }
 
-  Widget _levelToggle({required bool isAsq}) {
-    // Unified level menu that adapts to mode
-    return PopupMenuButton<int>(
-      icon: const Icon(Icons.flag),
-      onSelected: (lvl) {
-        if (!isAsq) {
-          if (lvl <= _highestUnlocked) {
-            setState(() => _selectedLevel = lvl);
-            _startRound();
-          }
-        } else {
-          if (lvl <= _highestUnlockedAsq) {
-            setState(() => _selectedAsqLevel = lvl);
-            _startRound();
-          }
-        }
-      },
-      itemBuilder: (ctx) {
-        final count = isAsq ? _asqLevelsCount : _levelsCount;
-        final highest = isAsq ? _highestUnlockedAsq : _highestUnlocked;
-        final current = isAsq ? _selectedAsqLevel : _selectedLevel;
-
-        return List<PopupMenuEntry<int>>.generate(count, (i) {
-          final lvl = i + 1;
-          final locked = lvl > highest;
-          return PopupMenuItem<int>(
-            value: lvl,
-            enabled: !locked,
-            child: Row(
-              children: [
-                Text('Level $lvl'),
-                const SizedBox(width: 8),
-                if (locked)
-                  const Icon(Icons.lock, size: 16, color: Colors.white54),
-                if (!locked && lvl == current)
-                  const Padding(
-                    padding: EdgeInsets.only(left: 6),
-                    child: Icon(
-                      Icons.check,
-                      size: 16,
-                      color: Colors.tealAccent,
-                    ),
-                  ),
-              ],
-            ),
-          );
-        });
-      },
-    );
-  }
-
   Widget _levelHeader({required bool isAsq}) {
     final current = isAsq ? _selectedAsqLevel : _selectedLevel;
-    final highest = isAsq ? _highestUnlockedAsq : _highestUnlocked;
-    final totalLevels = isAsq ? _asqLevelsCount : _levelsCount;
-    final lockedNext = current >= highest && highest < totalLevels;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white12,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.flag, size: 16, color: Colors.white70),
-                const SizedBox(width: 6),
-                Text(
-                  'Level $current',
-                  style: const TextStyle(color: Colors.white70),
-                ),
-              ],
-            ),
+      child: InkWell(
+        onTap: () => _showLevelPicker(isAsq: isAsq),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.green,
+            borderRadius: BorderRadius.circular(20),
           ),
-          const SizedBox(width: 8),
-          if (lockedNext)
-            Row(
-              children: const [
-                Icon(Icons.lock, size: 16, color: Colors.white54),
-                SizedBox(width: 6),
-                Text(
-                  'Next level locked (≥ 50% to unlock)',
-                  style: TextStyle(color: Colors.white54),
-                ),
-              ],
-            ),
-        ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.flag, size: 16, color: Colors.white),
+              const SizedBox(width: 6),
+              Text(
+                "Level $current",
+                style: const TextStyle(color: Colors.white),
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.expand_more, size: 16, color: Colors.white54),
+            ],
+          ),
+        ),
       ),
+    );
+  }
+
+  void _showLevelPicker({required bool isAsq}) {
+    final total = isAsq ? _asqLevelsCount : _levelsCount;
+    final highest = isAsq ? _highestUnlockedAsq : _highestUnlocked;
+    final selected = isAsq ? _selectedAsqLevel : _selectedLevel;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF021515),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return ListView.builder(
+          padding: const EdgeInsets.all(8),
+          itemCount: total,
+          itemBuilder: (_, i) {
+            final level = i + 1;
+            final locked = level > highest;
+
+            return ListTile(
+              enabled: !locked,
+              onTap: locked
+                  ? null
+                  : () {
+                      Navigator.pop(ctx);
+                      setState(() {
+                        if (isAsq) {
+                          _selectedAsqLevel = level;
+                        } else {
+                          _selectedLevel = level;
+                        }
+                      });
+                      _startRound();
+                    },
+              leading: Icon(
+                locked ? Icons.lock : Icons.flag,
+                color: locked ? Colors.white24 : Colors.tealAccent,
+              ),
+              title: Text(
+                "Level $level",
+                style: TextStyle(
+                  color: locked
+                      ? Colors.white24
+                      : (selected == level ? Colors.tealAccent : Colors.white),
+                  fontWeight: selected == level
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+                ),
+              ),
+              trailing: selected == level
+                  ? const Icon(Icons.check, color: Colors.tealAccent)
+                  : null,
+            );
+          },
+        );
+      },
     );
   }
 
@@ -946,7 +1221,7 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
                   child: ElevatedButton(
                     onPressed: _selected.isEmpty ? null : _submitAnswer,
                     style: ElevatedButton.styleFrom(backgroundColor: teal3),
-                    child: const Text('Check'),
+                    child: Text(t.check),
                   ),
                 )
               : ScaleTransition(
@@ -973,7 +1248,7 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'Correct answers: ${correctAnswers.join(', ')}',
+                                '${t.correctAnswers}: ${correctAnswers.join(', ')}',
                                 style: const TextStyle(
                                   color: Colors.tealAccent,
                                 ),
@@ -996,8 +1271,8 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
                               ),
                               child: Text(
                                 _index < _cardsThisRound.length - 1
-                                    ? 'Next'
-                                    : 'Finish',
+                                    ? t.next
+                                    : t.finish,
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -1012,7 +1287,7 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
                               style: OutlinedButton.styleFrom(
                                 side: const BorderSide(color: Colors.white12),
                               ),
-                              child: const Text('Add to thought record'),
+                              child: Text(t.addToThoughtRecord),
                             ),
                           ],
                         ),
@@ -1074,7 +1349,7 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
                         ? null
                         : _submitAttribution,
                     style: ElevatedButton.styleFrom(backgroundColor: teal3),
-                    child: const Text('Submit'),
+                    child: Text(t.submit),
                   ),
                 )
               : ScaleTransition(
@@ -1093,15 +1368,15 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
                       children: [
                         const Divider(color: Colors.white12),
                         Row(
-                          children: const [
-                            Icon(
+                          children: [
+                            const Icon(
                               Icons.assessment_outlined,
                               color: Colors.tealAccent,
                             ),
-                            SizedBox(width: 8),
+                            const SizedBox(width: 8),
                             Text(
-                              'Answer recorded',
-                              style: TextStyle(color: Colors.tealAccent),
+                              t.answerRecorded,
+                              style: const TextStyle(color: Colors.tealAccent),
                             ),
                           ],
                         ),
@@ -1122,8 +1397,8 @@ class _ThoughtDetectiveGameState extends State<ThoughtDetectiveGame>
                               ),
                               child: Text(
                                 _index < _asqThisRound.length - 1
-                                    ? 'Next'
-                                    : 'Finish',
+                                    ? t.next
+                                    : t.finish,
                               ),
                             ),
                           ],
@@ -1145,6 +1420,7 @@ class AsqResultsPage extends StatelessWidget {
   final Map<String, int> totals; // sum of 1s for each dimension
   final Map<String, int> counts; // number of items seen for each dimension
   final VoidCallback onPlayAgain;
+  final _Strings strings;
 
   const AsqResultsPage({
     super.key,
@@ -1152,6 +1428,7 @@ class AsqResultsPage extends StatelessWidget {
     required this.totals,
     required this.counts,
     required this.onPlayAgain,
+    required this.strings,
   });
 
   double _pct(String k) {
@@ -1161,7 +1438,7 @@ class AsqResultsPage extends StatelessWidget {
     return t / c;
   }
 
-  // Hope Index = PmB + PvB (optimism points)
+  // Hope Index = PmB + PvB
   Map<String, dynamic> _hope() {
     final t = (totals['PmB'] ?? 0) + (totals['PvB'] ?? 0);
     final c = (counts['PmB'] ?? 0) + (counts['PvB'] ?? 0);
@@ -1175,7 +1452,7 @@ class AsqResultsPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: teal1,
-        title: const Text('Attribution Results'),
+        title: Text(strings.atResultsTitle),
       ),
       backgroundColor: const Color(0xFF021515),
       body: SingleChildScrollView(
@@ -1186,20 +1463,20 @@ class AsqResultsPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const _TitleText('Summary'),
+                  _TitleText(strings.summary),
                   const SizedBox(height: 8),
-                  _line('Items answered', '${session.cardsSeen}'),
-                  _line('Optimism points (sum of 1s)', '${session.score}'),
+                  _line(strings.itemsAnswered, '${session.cardsSeen}'),
+                  _line(strings.optimismPoints, '${session.score}'),
                   _line(
-                    'Hope Index (PmB+PvB)',
+                    strings.hopeIndex,
                     '${hope['t']}/${hope['c']}  (${(hope['pct'] * 100).toStringAsFixed(0)}%)',
                   ),
                   const SizedBox(height: 12),
-                  _band('Hope Index', hope['pct'] as double),
+                  _band(strings.hopeIndex, hope['pct'] as double),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Higher Hope means you tended to explain bad events as temporary (Permanence) and specific (Pervasiveness).',
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  Text(
+                    strings.hopeExplainer,
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                 ],
               ),
@@ -1209,15 +1486,15 @@ class AsqResultsPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const _TitleText('Bad Events (want higher %)'),
+                  _TitleText(strings.badEventsWantHigher),
                   const SizedBox(height: 10),
                   _metricRow('Permanence (PmB)', _pct('PmB')),
                   _metricRow('Pervasiveness (PvB)', _pct('PvB')),
                   _metricRow('Personalization (PsB)', _pct('PsB')),
                   const SizedBox(height: 8),
-                  const Text(
-                    'For bad events, optimistic style = Temporary (PmB), Specific (PvB), External (PsB).',
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  Text(
+                    strings.badExplainer,
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                 ],
               ),
@@ -1227,15 +1504,15 @@ class AsqResultsPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const _TitleText('Good Events (want higher %)'),
+                  _TitleText(strings.goodEventsWantHigher),
                   const SizedBox(height: 10),
                   _metricRow('Permanence (PmG)', _pct('PmG')),
                   _metricRow('Pervasiveness (PvG)', _pct('PvG')),
                   _metricRow('Personalization (PsG)', _pct('PsG')),
                   const SizedBox(height: 8),
-                  const Text(
-                    'For good events, optimistic style = Permanent (PmG), Universal (PvG), Internal (PsG).',
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  Text(
+                    strings.goodExplainer,
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                 ],
               ),
@@ -1251,7 +1528,7 @@ class AsqResultsPage extends StatelessWidget {
                       backgroundColor: teal3,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    label: const Text('Play again'),
+                    label: Text(strings.playAgain),
                   ),
                 ),
               ],
