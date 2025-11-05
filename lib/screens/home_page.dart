@@ -1,13 +1,11 @@
 // lib/screens/home_page.dart
 import 'dart:convert';
 
-import 'package:cbt_drktv/services/push_service.dart';
+import 'package:cbt_drktv/utils/logout_helper.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -1096,7 +1094,7 @@ class _HomePageState extends State<HomePage> {
                             );
                             break;
                           case 'signout':
-                            await _confirmAndSignOut();
+                            await LogoutHelper.confirmAndLogout(context);
                             break;
                           default:
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -1283,6 +1281,62 @@ class _HomePageState extends State<HomePage> {
   }
 
   // ---------------- Mood UI & local storage ----------------
+  Future<void> _startBaselineFlowFromSheet(BuildContext sheetCtx) async {
+    // Close the bottom sheet first
+    Navigator.of(sheetCtx).pop();
+
+    final auth = FirebaseAuth.instance;
+    final fs = FirebaseFirestore.instance;
+    final user = auth.currentUser;
+
+    if (user == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in to start the baseline')),
+      );
+      Navigator.pushNamed(context, '/signin');
+      return;
+    }
+
+    // Quick read of user's baseline status
+    bool alreadyDone = false;
+    try {
+      final snap = await fs.collection('users').doc(user.uid).get();
+      alreadyDone = (snap.data()?['baselineCompleted'] == true);
+    } catch (_) {}
+
+    // If already completed, confirm retake
+    if (alreadyDone && mounted) {
+      final retake = await showDialog<bool>(
+        context: context,
+        builder: (dctx) => AlertDialog(
+          title: const Text('Retake baseline?'),
+          content: const Text(
+            'You have completed the baseline earlier. Do you want to retake it now?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dctx).pop(false),
+              child: const Text('Not now'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dctx).pop(true),
+              child: const Text('Retake'),
+            ),
+          ],
+        ),
+      );
+      if (retake != true) return;
+    }
+
+    if (!mounted) return;
+    // Navigate to your Baseline page
+    // Option A: using a named route you’ve registered
+    Navigator.pushNamed(context, '/baseline');
+
+    // Option B (alternative): push the widget directly
+    // Navigator.push(context, MaterialPageRoute(builder: (_) => const BaselinePage()));
+  }
 
   Widget _buildMoodCard() {
     return InkWell(
@@ -2110,6 +2164,24 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
                 const SizedBox(height: 8),
+
+                // NEW: Baseline assessment launcher
+                ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: teal4,
+                    child: const Icon(Icons.assessment, color: Colors.white),
+                  ),
+                  title: const Text(
+                    'Baseline assessment (PHQ-9)',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  subtitle: const Text(
+                    '9 quick questions to personalize your plan',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  onTap: () => _startBaselineFlowFromSheet(ctx),
+                ),
+
                 ListTile(
                   leading: CircleAvatar(
                     backgroundColor: teal4,
@@ -2375,108 +2447,6 @@ For more, tap "View full page".''';
   }
 
   // Confirm then sign out
-  Future<void> _confirmAndSignOut() async {
-    Theme.of(context); // keeps your theme fetch (no-op)
-
-    final bool? confirm = await showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: const [
-            Icon(Icons.logout, color: Colors.teal),
-            SizedBox(width: 8),
-            Text('Sign out'),
-          ],
-        ),
-        content: const Text(
-          'Are you sure you want to sign out of your account?',
-          style: TextStyle(fontSize: 15),
-        ),
-        actionsPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            style: TextButton.styleFrom(foregroundColor: Colors.teal),
-            child: const Text('Stay signed in'),
-          ),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.exit_to_app, size: 18),
-            label: const Text('Sign out'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            onPressed: () => Navigator.of(ctx).pop(true),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
-    try {
-      // --- Remove this device's FCM token mapping first ---
-      final user = FirebaseAuth.instance.currentUser;
-      final token = await FirebaseMessaging.instance.getToken();
-
-      if (user != null && token != null) {
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-          'fcmTokens.$token': FieldValue.delete(),
-        }, SetOptions(merge: true));
-      }
-
-      // Also clear the device's cached token (forces a new one next login)
-      try {
-        await FirebaseMessaging.instance.deleteToken();
-      } catch (_) {
-        // ignore minor OEM issues
-      }
-
-      // If you created PushService, call the helper (safe even if token is already gone)
-      try {
-        await PushService.removeTokenOnLogout();
-      } catch (_) {}
-
-      // --- Sign out providers ---
-      final googleSignIn = GoogleSignIn();
-      if (await googleSignIn.isSignedIn()) {
-        await googleSignIn.signOut();
-      }
-
-      await FirebaseAuth.instance.signOut();
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Signed out successfully'),
-          backgroundColor: Colors.teal.shade600,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-
-      // Navigate to sign-in page and clear previous routes
-      Navigator.of(
-        context,
-      ).pushNamedAndRemoveUntil('/signin', (route) => false);
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to sign out: $e'),
-          backgroundColor: Colors.red.shade700,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
 
   String _timeOfDayGreeting() {
     final hour = DateTime.now().hour;

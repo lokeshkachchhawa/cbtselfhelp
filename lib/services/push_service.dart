@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:cbt_drktv/services/fcm_token_registry.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -70,26 +70,10 @@ class PushService {
     final initial = await _messaging.getInitialMessage();
     if (initial != null) _routeToChat(initial.data['route']);
 
-    await _syncToken();
-    FirebaseMessaging.instance.onTokenRefresh.listen(_saveToken);
-  }
-
-  static Future<void> _syncToken() async {
-    final token = await _messaging.getToken();
-    if (token != null) await _saveToken(token);
-  }
-
-  static Future<void> _saveToken(String token) async {
     final u = FirebaseAuth.instance.currentUser;
-    if (u == null) return;
-    await FirebaseFirestore.instance.collection('users').doc(u.uid).set({
-      'fcmTokens': {
-        token: {
-          'platform': Platform.operatingSystem,
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-      },
-    }, SetOptions(merge: true));
+    if (u != null) {
+      await FcmTokenRegistry.registerForUser(u.uid);
+    }
   }
 
   static Future<void> removeTokenOnLogout() async {

@@ -15,10 +15,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cbt_drktv/screens/abcd_worksheet.dart'
     show ABCDEStorage, ABCDEWorksheet, cardDark, colorA, colorB;
@@ -31,8 +31,6 @@ class DrKtvChatScreen extends StatefulWidget {
   State<DrKtvChatScreen> createState() => _DrktvChatScreenState();
 }
 
-enum _AiProvider { gemini }
-
 class _DrktvChatScreenState extends State<DrKtvChatScreen>
     with SingleTickerProviderStateMixin {
   final List<_ChatMessage> _messages = [];
@@ -40,7 +38,7 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
   final ScrollController _scrollCtrl = ScrollController();
   final List<TapGestureRecognizer> _linkRecognizers = [];
   late final AnimationController _ringController;
-
+  final _functions = FirebaseFunctions.instanceFor(region: 'asia-south1');
   bool _loading = false; // AI is generating
   bool _consentAccepted = false;
   SharedPreferences? _prefs;
@@ -82,6 +80,35 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
   // ---------------------------
   // Attach sheet: show worksheet summary cards (then detail dialog)
   // ---------------------------
+  Future<String> _callGeminiCF({
+    required String prompt,
+    String? system,
+    double temperature = 0.7,
+    int maxOutputTokens = 800,
+    String mimeType = 'text', // or 'json'
+  }) async {
+    try {
+      final callable = _functions.httpsCallable('geminiGenerate');
+      final resp = await callable.call(<String, dynamic>{
+        'prompt': prompt,
+        if (system != null && system.isNotEmpty) 'system': system,
+        'temperature': temperature,
+        'maxOutputTokens': maxOutputTokens,
+        'mimeType': mimeType,
+      });
+      final data = Map<String, dynamic>.from(resp.data as Map);
+      if (data['ok'] == true) {
+        final text = (data['text'] as String?)?.trim() ?? '';
+        if (text.isNotEmpty) return text;
+      }
+      throw Exception('Gemini response missing text');
+    } on FirebaseFunctionsException catch (e) {
+      // Surface your HttpsError codes/messages from CF
+      throw Exception('Gemini error (${e.code}): ${e.message}');
+    } catch (e) {
+      throw Exception('Gemini call failed: $e');
+    }
+  }
 
   Future<void> _openAttachWorksheetSheet() async {
     try {
@@ -1045,60 +1072,6 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
     super.dispose();
   }
 
-  /// Defensive extractor for Gemini generateContent responses.
-  String _extractGeminiText(Map<String, dynamic> data) {
-    try {
-      // 1) candidates -> content -> parts -> text
-      if (data.containsKey('candidates')) {
-        final candidates = data['candidates'] as List<dynamic>;
-        if (candidates.isNotEmpty) {
-          final first = candidates.first;
-          if (first is Map<String, dynamic>) {
-            final content = first['content'];
-            if (content is Map<String, dynamic>) {
-              final parts = content['parts'];
-              if (parts is List && parts.isNotEmpty) {
-                final p0 = parts.first;
-                if (p0 is Map<String, dynamic> && p0['text'] is String) {
-                  return (p0['text'] as String).trim();
-                }
-              }
-              if (content['text'] is String)
-                return (content['text'] as String).trim();
-              if (content['output'] is String)
-                return (content['output'] as String).trim();
-            }
-          }
-          // fallback older shapes
-          if (first is Map<String, dynamic>) {
-            if (first['output'] is String)
-              return (first['output'] as String).trim();
-            if (first['content'] is String)
-              return (first['content'] as String).trim();
-            if (first['text'] is String)
-              return (first['text'] as String).trim();
-          }
-        }
-      }
-
-      // 2) top-level 'output' object
-      if (data.containsKey('output')) {
-        final out = data['output'];
-        if (out is Map<String, dynamic>) {
-          if (out['text'] is String) return (out['text'] as String).trim();
-          if (out['content'] is String)
-            return (out['content'] as String).trim();
-        }
-      }
-
-      // 3) fallback: stringify something useful
-      if (data['candidates'] != null) return jsonEncode(data['candidates']);
-      return jsonEncode(data);
-    } catch (e) {
-      return 'Error extracting Gemini text: $e';
-    }
-  }
-
   Future<void> _initPrefsAndHistory() async {
     _prefs = await SharedPreferences.getInstance();
     final consent = _prefs?.getBool(_prefsConsentKey) ?? false;
@@ -1340,23 +1313,13 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
   }
 
   // --- API key resolution (dart-define first, then dotenv) ---
-  Future<String?> _getApiKey(_AiProvider forProvider) async {
-    // Keep param for compatibility; we only support GEMINI now.
-    const compileTimeApiKey = String.fromEnvironment(
-      'GEMINI_API_KEY',
-      defaultValue: '',
-    );
-    if (compileTimeApiKey.isNotEmpty) return compileTimeApiKey;
+  // ---------------------------------------------------------
+  // ✅ NEW — No API-key lookup needed on client anymore
+  // ---------------------------------------------------------
 
-    try {
-      final dot = dotenv.env['GEMINI_API_KEY'];
-      if (dot != null && dot.trim().isNotEmpty) return dot.trim();
-    } catch (e) {
-      debugPrint('dotenv lookup failed: $e');
-    }
-    return null;
-  }
-
+  // ---------------------------------------------------------
+  // ✅ Keep system prompt as-is
+  // ---------------------------------------------------------
   String _systemPromptForCBT() {
     return '''
 You are Dr. Kanhaiya (DrKtv) — an empathetic AI psychiatrist who replies in a concise, 
@@ -1372,81 +1335,6 @@ Adapt your style:
 
 End each reply with an encouraging or reflective question inviting follow-up.
 ''';
-  }
-
-  // --- OpenAI call (UTF-8 safe + defensive API key) ---
-
-  // --- Gemini call (Generative Language HTTP REST) ---
-  Future<String> _queryGemini(String prompt, String apiKey) async {
-    if (apiKey.trim().isEmpty) {
-      throw Exception('Gemini API key not set.');
-    }
-
-    final model = dotenv.env['GEMINI_MODEL'] ?? 'gemini-2.5-flash-lite';
-    final base =
-        'https://generativelanguage.googleapis.com/v1/models/$model:generateContent';
-
-    final body = jsonEncode({
-      'contents': [
-        {
-          'role': 'user',
-          'parts': [
-            {'text': '${_systemPromptForCBT()}\n\nUser: $prompt\nAssistant:'},
-          ],
-        },
-      ],
-      'generation_config': {'temperature': 0.8, 'maxOutputTokens': 800},
-    });
-
-    // 1) Try API key in query param first (common for API keys)
-    try {
-      final keyUrl = Uri.parse('$base?key=$apiKey');
-      final resp = await http.post(
-        keyUrl,
-        headers: {'Content-Type': 'application/json'},
-        body: body,
-      );
-
-      debugPrint('Gemini (key param) status: ${resp.statusCode}');
-      debugPrint('Gemini (key param) headers: ${resp.headers}');
-      debugPrint('Gemini (key param) body: ${utf8.decode(resp.bodyBytes)}');
-
-      if (resp.statusCode < 400) {
-        final utf8Body = utf8.decode(resp.bodyBytes);
-        final data = jsonDecode(utf8Body) as Map<String, dynamic>;
-        return _extractGeminiText(data);
-      }
-    } catch (e) {
-      debugPrint('Gemini key-param attempt failed: $e');
-    }
-
-    // 2) Try Bearer auth (useful if apiKey is an OAuth access token)
-    try {
-      final bearerUrl = Uri.parse(base);
-      final resp = await http.post(
-        bearerUrl,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $apiKey',
-        },
-        body: body,
-      );
-
-      debugPrint('Gemini (bearer) status: ${resp.statusCode}');
-      debugPrint('Gemini (bearer) headers: ${resp.headers}');
-      debugPrint('Gemini (bearer) body: ${utf8.decode(resp.bodyBytes)}');
-
-      if (resp.statusCode < 400) {
-        final utf8Body = utf8.decode(resp.bodyBytes);
-        final data = jsonDecode(utf8Body) as Map<String, dynamic>;
-        return _extractGeminiText(data);
-      } else {
-        final safe = utf8.decode(resp.bodyBytes);
-        throw Exception('Gemini error ${resp.statusCode}: $safe');
-      }
-    } catch (e) {
-      throw Exception('Gemini request failed: $e');
-    }
   }
 
   // New helper: ensure chatIndex doc exists and update pending count/lastMessage
@@ -1586,17 +1474,17 @@ ${worksheetMap['dispute'] ?? ''}
       );
 
     try {
-      // Use Gemini only
-      final apiKey = await _getApiKey(_AiProvider.gemini);
-      if (apiKey == null) throw Exception('Gemini API key not configured');
-      final reply = await _queryGemini(prompt.toString(), apiKey);
+      final reply = await _callGeminiCF(
+        prompt: prompt.toString(),
+        system: _systemPromptForCBT(),
+        temperature: 0.8,
+        maxOutputTokens: 800,
+      );
 
       final ts = DateTime.now().millisecondsSinceEpoch;
-      // write assistant reply as not-approved (or auto-approved if short)
       await _writeAiReplyToFirestore(reply, ts, parentMessageId);
     } catch (e) {
       debugPrint('AI review generation failed: $e');
-      // don't rethrow — the share still succeeded
     }
   }
 
@@ -1768,11 +1656,16 @@ ${worksheetMap['dispute'] ?? ''}
     try {
       // Query AI provider
       // Query Gemini only
-      final apiKey = await _getApiKey(_AiProvider.gemini);
-      if (apiKey == null) throw Exception('Gemini API key not found.');
-      final reply = await _queryGemini(text, apiKey);
+      // Query Gemini via Cloud Function (no API key needed on client)
+      final reply = await _callGeminiCF(
+        prompt: text,
+        system: _systemPromptForCBT(),
+        temperature: 0.8,
+        maxOutputTokens: 800,
+        mimeType: 'text',
+      );
 
-      // Write AI reply to Firestore as approved:false so doctor can review/edit/approve
+      // Write AI reply to Firestore as pending for doctor approval
       final ts = DateTime.now().millisecondsSinceEpoch;
       await _writeAiReplyToFirestore(reply, ts, userMsg.id);
 

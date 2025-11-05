@@ -6,6 +6,15 @@ const { onDocumentUpdated } = require('firebase-functions/v2/firestore');
 const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
+// ---------- Gemini (Google Generative AI) ----------
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+
+// If you like, you can also import defineString; using env fallback is fine too.
+
+const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
+// Optional: keep model in env, default to a quick model you listed:
+const GEMINI_MODEL = () => process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+
 
 try { admin.app(); } catch { admin.initializeApp(); }
 
@@ -283,3 +292,67 @@ exports.razorpayWebhook = onRequest(
 // Notes:
 // - Client must call FirebaseFunctions.instanceFor(region: 'asia-south1').
 // - Plans must be same MODE as keys (both Test or both Live).
+
+
+// Generate with Gemini (callable)
+// req.data: { prompt: string, system?: string, temperature?: number, maxOutputTokens?: number, mimeType?: 'text'|'json' }
+exports.geminiGenerate = onCall(
+  { region: 'asia-south1', secrets: [GEMINI_API_KEY], timeoutSeconds: 30, memory: '256MiB' },
+  async (req) => {
+    try {
+      if (!req.auth) throw new HttpsError('unauthenticated', 'Sign in required');
+
+      const {
+        prompt = '',
+        system = '',
+        temperature = 0.7,
+        maxOutputTokens = 1024,
+        mimeType = 'text',
+      } = req.data || {};
+
+      if (!prompt || typeof prompt !== 'string') {
+        throw new HttpsError('invalid-argument', 'Provide a non-empty "prompt" string');
+      }
+
+      const apiKey = GEMINI_API_KEY.value();
+      const modelName = GEMINI_MODEL();
+
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        // System instruction is optional; you can omit if not needed
+        ...(system ? { systemInstruction: system } : {}),
+      });
+
+      // You can pass contents or simple text. Using the structured format:
+      const generationConfig = {
+        temperature,
+        maxOutputTokens,
+        // If you expect JSON, hint with response_mime_type
+        ...(mimeType === 'json' ? { responseMimeType: 'application/json' } : {}),
+      };
+
+      const result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }]}],
+        generationConfig,
+      });
+
+      const response = result?.response;
+      if (!response) throw new HttpsError('internal', 'No response from model');
+
+      // Prefer .text(), but if mimeType=json you might want raw candidates
+      const text = response.text();
+      return {
+        ok: true,
+        model: modelName,
+        mimeType,
+        text,                  // main text output
+        // raw: response,      // avoid returning the whole raw object (can be huge); uncomment only for debugging
+      };
+    } catch (err) {
+      console.error('geminiGenerate error:', err?.message || err);
+      if (err instanceof HttpsError) throw err;
+      throw new HttpsError('internal', err?.message || 'Unknown server error');
+    }
+  }
+);

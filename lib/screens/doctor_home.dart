@@ -1,8 +1,7 @@
 import 'package:cbt_drktv/screens/doctor_chat_screen.dart';
+import 'package:cbt_drktv/utils/logout_helper.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:characters/characters.dart';
 
 // Remove these if you already define them in a shared theme and import instead:
 const Color teal3 = Color(0xFF008F89);
@@ -17,7 +16,6 @@ class DoctorHome extends StatefulWidget {
 
 class _DoctorHomeState extends State<DoctorHome> {
   final _firestore = FirebaseFirestore.instance;
-  final _auth = FirebaseAuth.instance;
   final _searchCtrl = TextEditingController();
   String _searchQuery = '';
 
@@ -28,12 +26,6 @@ class _DoctorHomeState extends State<DoctorHome> {
   void dispose() {
     _searchCtrl.dispose();
     super.dispose();
-  }
-
-  void _signOut() async {
-    await _auth.signOut();
-    if (!mounted) return;
-    Navigator.pushReplacementNamed(context, '/signin');
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> _chatStream() {
@@ -122,8 +114,9 @@ class _DoctorHomeState extends State<DoctorHome> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            tooltip: 'Sign out',
-            onPressed: _signOut,
+            onPressed: () {
+              LogoutHelper.confirmAndLogout(context);
+            },
           ),
         ],
       ),

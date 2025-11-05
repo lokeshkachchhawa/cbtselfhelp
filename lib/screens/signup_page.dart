@@ -1,11 +1,10 @@
 // lib/screens/signup_page.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import '../utils/auth_router.dart';
+import 'package:cbt_drktv/services/fcm_token_registry.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -29,36 +28,6 @@ class _SignUpPageState extends State<SignUpPage> {
   String? _errorMessage;
 
   // --- NEW: FCM token registration (same as SignIn) ---
-  Future<void> _registerFcmToken(User user) async {
-    try {
-      if (kIsWeb) return;
-      await FirebaseMessaging.instance.requestPermission();
-      final token = await FirebaseMessaging.instance.getToken();
-      if (token == null) return;
-
-      final platformStr = Theme.of(context).platform == TargetPlatform.iOS
-          ? 'ios'
-          : 'android';
-
-      await _firestore.collection('users').doc(user.uid).set({
-        'fcmTokens.$token': {
-          'platform': platformStr,
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-      }, SetOptions(merge: true));
-
-      FirebaseMessaging.instance.onTokenRefresh.listen((t) {
-        _firestore.collection('users').doc(user.uid).set({
-          'fcmTokens.$t': {
-            'platform': platformStr,
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-        }, SetOptions(merge: true));
-      });
-    } catch (e) {
-      debugPrint('FCM token registration failed: $e');
-    }
-  }
 
   @override
   void dispose() {
@@ -146,7 +115,7 @@ class _SignUpPageState extends State<SignUpPage> {
       await _createOrUpdateFirestoreUser(user);
 
       // NEW: register token for fresh account
-      await _registerFcmToken(user);
+      await FcmTokenRegistry.registerForUser(user.uid);
 
       try {
         await user.sendEmailVerification();
@@ -193,7 +162,7 @@ class _SignUpPageState extends State<SignUpPage> {
       await _createOrUpdateFirestoreUser(user);
 
       // NEW: register FCM token
-      await _registerFcmToken(user);
+      await FcmTokenRegistry.registerForUser(user.uid);
 
       if (!mounted) return;
       await navigateAfterSignIn(context, user: user);
