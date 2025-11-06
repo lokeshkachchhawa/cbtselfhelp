@@ -122,7 +122,8 @@ class _HomePageState extends State<HomePage> {
           style: TextStyle(color: Colors.white70),
         ),
         trailing: ElevatedButton(
-          onPressed: () => Navigator.pushNamed(context, '/thought_game'),
+          onPressed: () => Navigator.pushNamed(context, "/cbt-game"),
+
           style: ElevatedButton.styleFrom(backgroundColor: teal3),
           child: const Text('Play'),
         ),

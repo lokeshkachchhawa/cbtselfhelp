@@ -1,183 +1,620 @@
-[
+
+  [
     {
       "id": "td_001",
-      "text": "If I speak up I will look foolish.",
-      "answers": ["Mind reading", "Catastrophising"],
-      "explanation": "Assuming others judge you negatively is mind reading; it often exaggerates outcomes."
+      "text": "रीना ऑफिस में प्रेजेंटेशन दे रही थी। कुछ लोग मोबाइल देख रहे थे — उसने सोचा कि सब बोर हो रहे हैं।",
+      "answers": ["Mind reading"],
+      "explanation": "रीना बिना प्रमाण के दूसरों के मन की बात मान लेती है। वह अनुमान लगा रही है कि लोग उसे बोरिंग समझ रहे हैं, जबकि इसके कई अन्य कारण हो सकते हैं।"
     },
     {
       "id": "td_002",
-      "text": "I always mess things up.",
-      "answers": ["Overgeneralisation"],
-      "explanation": "Using “always” is overgeneralisation — one or few events do not mean always."
+      "text": "राहुल ने दोस्त को मैसेज किया, जवाब नहीं मिला — उसने माना कि अब दोस्त बात नहीं करना चाहता।",
+      "answers": ["Mind reading"],
+      "explanation": "जवाब न आने के कई कारण हो सकते हैं, लेकिन राहुल सीधे नकारात्मक इरादा मान लेता है। यह बिना सबूत दूसरों की सोच तय करने जैसा है।"
     },
     {
       "id": "td_003",
-      "text": "They didn’t reply — they must be angry with me.",
-      "answers": ["Mind reading", "Catastrophising"],
-      "explanation": "Guessing others’ feelings without evidence is mind reading; jumping to the worst outcome is catastrophising."
+      "text": "टीचर उसे देख रही थीं — उसने सोचा कि शायद उसने गलत बोला।",
+      "answers": ["Mind reading"],
+      "explanation": "राहुल मान लेता है कि टीचर उसके बारे में नकारात्मक सोच रही हैं। यह अनुमानों पर आधारित सोच है, तथ्य पर नहीं।"
     },
     {
       "id": "td_004",
-      "text": "If I can’t finish perfectly, there’s no point starting.",
-      "answers": ["All-or-nothing", "Catastrophising"],
-      "explanation": "Seeing only perfect vs. failure is all-or-nothing; predicting disaster if it’s not perfect is catastrophising."
+      "text": "पार्टी में लोग हँस रहे थे — शालिनी ने सोचा कि वे उसके कपड़ों का मज़ाक उड़ा रहे हैं।",
+      "answers": ["Mind reading"],
+      "explanation": "हँसी किसी भी बात पर हो सकती है, लेकिन शालिनी मान लेती है कि यह उसी पर है। वह बिना सबूत उनके विचार तय कर रही है।"
     },
     {
       "id": "td_005",
-      "text": "One awkward meeting means I’m terrible at socializing.",
-      "answers": ["Overgeneralisation", "Emotional reasoning"],
-      "explanation": "Making a broad rule from one event is overgeneralisation; using a feeling as proof is emotional reasoning."
+      "text": "ऑफिस में बॉस चुप रहे — राज ने सोचा कि उसका आइडिया बेकार था।",
+      "answers": ["Mind reading"],
+      "explanation": "राज अनुमान लगा लेता है कि बॉस ने उसके आइडिया को नकारात्मक रूप से लिया। चुप रहना कई कारणों से हो सकता है।"
     },
     {
       "id": "td_006",
-      "text": "My friend yawned; I must be boring.",
-      "answers": ["Mind reading", "Emotional reasoning"],
-      "explanation": "You can’t know their reason (mind reading); feeling insecure doesn’t prove the belief (emotional reasoning)."
+      "text": "सोशल मीडिया पोस्ट पर लाइक्स कम आए — नीलम ने सोचा कि किसी को उसकी परवाह नहीं।",
+      "answers": ["Mind reading"],
+      "explanation": "वह दूसरों की भावनाएँ बिना तथ्य के तय कर लेती है। कम लाइक कई कारणों से हो सकते हैं।"
     },
     {
       "id": "td_007",
-      "text": "I felt anxious in the interview, so I definitely failed.",
-      "answers": ["Emotional reasoning", "Catastrophising"],
-      "explanation": "Feelings aren’t facts; anxiety doesn’t mean failure. Predicting the worst is catastrophising."
+      "text": "प्रेजेंटेशन में अमित ने सोचा — सब लोग सोच रहे हैं कि मैं नर्वस हूँ।",
+      "answers": ["Mind reading"],
+      "explanation": "अमित बिना प्रमाण के दूसरों के विचार पढ़ रहा है। वास्तविकता में लोग शायद अपनी बातों में व्यस्त हों।"
     },
     {
       "id": "td_008",
-      "text": "They corrected my work — I’m useless.",
-      "answers": ["Overgeneralisation", "All-or-nothing"],
-      "explanation": "One correction doesn’t define your whole ability; seeing yourself as ‘useless’ is all-or-nothing."
+      "text": "अंकिता ने पति को चुप देखा, सोचा कि वह उससे नाराज़ हैं।",
+      "answers": ["Mind reading"],
+      "explanation": "वह चुप रहने का कारण अपने ऊपर ले लेती है और दूसरों की भावना को मान लेती है, जबकि असल वजह कुछ और हो सकती है।"
     },
     {
       "id": "td_009",
-      "text": "If I make a mistake, everyone will judge me forever.",
-      "answers": ["Catastrophising", "Mind reading", "Overgeneralisation"],
-      "explanation": "Predicting extreme, lasting judgment is catastrophising and overgeneralising; assuming others’ thoughts is mind reading."
+      "text": "दोस्त ने जवाब नहीं दिया — प्रिया ने सोचा कि उसने कुछ गलत बोल दिया।",
+      "answers": ["Mind reading"],
+      "explanation": "वह बिना प्रमाण मान लेती है कि दोस्त की चुप्पी उसकी गलती की वजह से है। यह दूसरों के इरादों का अनुमान है।"
     },
     {
       "id": "td_010",
-      "text": "They didn’t invite me this time; nobody likes me.",
-      "answers": ["Overgeneralisation", "Catastrophising"],
-      "explanation": "Turning one event into ‘nobody’ is overgeneralisation; imagining the worst is catastrophising."
+      "text": "इंटरव्यू के बाद रवि ने सोचा — इंटरव्यूअर ने मुस्कुराया नहीं, पक्का मुझे reject कर देगा।",
+      "answers": ["Mind reading"],
+      "explanation": "रवि इंटरव्यूअर की सोच का अनुमान लगाता है। चेहरे का भाव rejection का प्रमाण नहीं होता।"
     },
+  
+  
+
+  
     {
       "id": "td_011",
-      "text": "I’m feeling low, so my future will always be like this.",
-      "answers": ["Emotional reasoning", "Overgeneralisation"],
-      "explanation": "Using mood as evidence (emotional reasoning) and projecting it into ‘always’ is overgeneralisation."
+      "text": "रुचि को इंटरव्यू में चयन नहीं हुआ — उसने सोचा कि वह कभी किसी नौकरी के लायक नहीं होगी।",
+      "answers": ["Overgeneralisation"],
+      "explanation": "एक असफलता से पूरे भविष्य का नकारात्मक निष्कर्ष निकालना।"
     },
     {
       "id": "td_012",
-      "text": "If they don’t text back in 10 minutes, the relationship is over.",
-      "answers": ["Catastrophising", "All-or-nothing"],
-      "explanation": "Jumping to breakup is catastrophising; ‘all or nothing’ ignores middle ground."
+      "text": "एक प्रेजेंटेशन में गलती हुई — अमित ने सोच लिया कि वह हमेशा खराब प्रेजेंटेशन देगा।",
+      "answers": ["Overgeneralisation"],
+      "explanation": "एक घटना को ‘हमेशा’ वाली सच्चाई मान लेना।"
     },
     {
       "id": "td_013",
-      "text": "I stumbled over a word — I’m a terrible speaker.",
-      "answers": ["Overgeneralisation", "All-or-nothing"],
-      "explanation": "One stumble ≠ ‘terrible.’ That’s overgeneralisation and black-and-white thinking."
+      "text": "एक दोस्त ने मना किया — उसने मान लिया कि कोई भी उसकी मदद नहीं करता।",
+      "answers": ["Overgeneralisation"],
+      "explanation": "एक अनुभव को पूरे समूह पर लागू करना।"
     },
     {
       "id": "td_014",
-      "text": "They looked away while I spoke; they don’t respect me.",
-      "answers": ["Mind reading"],
-      "explanation": "Assuming intent from a glance is mind reading; there could be many neutral reasons."
+      "text": "रीडिंग में कम नंबर आए — उसने मान लिया कि वह पढ़ाई में कभी अच्छा नहीं हो सकता।",
+      "answers": ["Overgeneralisation"],
+      "explanation": "एक घटना से लंबे-समय का निष्कर्ष।"
     },
     {
       "id": "td_015",
-      "text": "If I can’t control every detail, everything will go wrong.",
-      "answers": ["Catastrophising", "All-or-nothing"],
-      "explanation": "Predicting total failure is catastrophising; ‘every detail or nothing’ is all-or-nothing."
+      "text": "दो बार जिम मिस किया — उसने कहा कि वह कभी consistent नहीं रह सकता।",
+      "answers": ["Overgeneralisation"],
+      "explanation": "कुछ घटनाओं से ‘कभी नहीं’ वाला निष्कर्ष।"
     },
     {
       "id": "td_016",
-      "text": "I felt nervous giving feedback, so it must have been bad.",
-      "answers": ["Emotional reasoning"],
-      "explanation": "Feeling nervous doesn’t prove the feedback was bad; feelings aren’t the same as outcomes."
+      "text": "पहली बार खाना खराब बना — उसने सोचा कि वह कभी अच्छा खाना नहीं बना सकेगा।",
+      "answers": ["Overgeneralisation"],
+      "explanation": "सिर्फ एक बार खराब होने से भविष्य तय कर देना।"
     },
     {
       "id": "td_017",
-      "text": "They cancelled our plan once; I can’t trust them anymore.",
-      "answers": ["Overgeneralisation", "All-or-nothing"],
-      "explanation": "From one instance to ‘never trust’ is overgeneralisation and black-and-white thinking."
+      "text": "एक मित्र से बहस हो गई — उसने माना कि उसके रिश्ते कभी नहीं टिकते।",
+      "answers": ["Overgeneralisation"],
+      "explanation": "एक अनुभव से सभी रिश्तों को जज करना।"
     },
     {
       "id": "td_018",
-      "text": "I didn’t answer perfectly; they’ll think I’m incompetent.",
-      "answers": ["Mind reading", "Catastrophising"],
-      "explanation": "Assuming others’ harsh judgment is mind reading; jumping to ‘incompetent’ is catastrophising."
+      "text": "दो बार running में खराब परफॉर्म किया — उसने सोचा कि वह खेलों के लिए बना ही नहीं।",
+      "answers": ["Overgeneralisation"],
+      "explanation": "कुछ घटनाओं से sweeping conclusion निकालना।"
     },
     {
       "id": "td_019",
-      "text": "I’m worried about this symptom, so it’s probably something serious.",
-      "answers": ["Emotional reasoning", "Catastrophising"],
-      "explanation": "Worry ≠ evidence; leaping to worst-case is catastrophising."
+      "text": "किसी ने उसके जोक पर नहीं हँसा — उसने सोचा कि वह बिल्कुल भी मज़ेदार नहीं है।",
+      "answers": ["Overgeneralisation"],
+      "explanation": "एक बार के अनुभव से व्यक्तित्व का निष्कर्ष।"
     },
     {
       "id": "td_020",
-      "text": "I didn’t go to the gym twice — I’ll never be consistent.",
+      "text": "एक बार bike का balance बिगड़ा — उसने कहा कि वह कभी bike नहीं चला पाएगा।",
       "answers": ["Overgeneralisation"],
-      "explanation": "Two misses do not predict ‘never’; that’s overgeneralising from a small sample."
+      "explanation": "एक घटना → हमेशा असमर्थ मान लेना।"
     },
-    {
-      "id": "td_021",
-      "text": "They praised others and not me — I must be doing badly.",
-      "answers": ["Mind reading", "Emotional reasoning"],
-      "explanation": "Assuming the reason behind others’ praise is mind reading; feeling overlooked doesn’t prove poor performance."
-    },
-    {
-      "id": "td_022",
-      "text": "If I feel unsure, I should avoid it — it will go badly.",
-      "answers": ["Emotional reasoning", "Catastrophising"],
-      "explanation": "Using uncertainty as proof is emotional reasoning; predicting a bad outcome is catastrophising."
-    },
-    {
-      "id": "td_023",
-      "text": "I failed this task — I fail at everything.",
-      "answers": ["Overgeneralisation", "All-or-nothing"],
-      "explanation": "Expanding one failure to ‘everything’ is overgeneralisation and black-and-white thinking."
-    },
-    {
-      "id": "td_024",
-      "text": "They whispered during my talk; they were criticizing me.",
-      "answers": ["Mind reading", "Catastrophising"],
-      "explanation": "You can’t know what was said (mind reading); assuming criticism is catastrophising."
-    },
-    {
-      "id": "td_025",
-      "text": "Unless I feel 100% confident, I’ll mess it up.",
-      "answers": ["All-or-nothing", "Emotional reasoning"],
-      "explanation": "Requiring 100% confidence is black-and-white; treating anxiety as failure is emotional reasoning."
-    },
-    {
-      "id": "td_026",
-      "text": "A stranger didn’t smile back — people are unfriendly these days.",
-      "answers": ["Overgeneralisation", "Mind reading"],
-      "explanation": "Generalising from one moment is overgeneralisation; assuming their motive is mind reading."
-    },
-    {
-      "id": "td_027",
-      "text": "I had one binge, so my progress is ruined.",
-      "answers": ["All-or-nothing", "Catastrophising"],
-      "explanation": "Seeing one lapse as ‘ruin’ is black-and-white and catastrophising."
-    },
-    {
-      "id": "td_028",
-      "text": "My heart is racing — something is definitely wrong with me.",
-      "answers": ["Emotional reasoning", "Catastrophising"],
-      "explanation": "A sensation can have many causes; assuming danger is emotional reasoning and catastrophising."
-    },
-    {
-      "id": "td_029",
-      "text": "They didn’t laugh at my joke — I’m not funny at all.",
-      "answers": ["Overgeneralisation", "All-or-nothing"],
-      "explanation": "One reaction doesn’t define your humor; ‘not funny at all’ is black-and-white."
-    },
-    {
-      "id": "td_030",
-      "text": "If I rest today, I’ll become lazy.",
-      "answers": ["Overgeneralisation", "Catastrophising"],
-      "explanation": "One rest day doesn’t predict a trait; leaping to ‘lazy’ is catastrophising and overgeneralising."
-    }
+    
+      {
+        "id": "td_021",
+        "text": "घर का माहौल खराब दिख रहा था — नेहा ने सोचा यह सब उसकी वजह से है।",
+        "answers": ["Personalisation"],
+           "explanation": "वह किसी भी समस्या को सीधे अपने ऊपर लेती है, बिना प्रमाण के।"
+      },
+      {
+        "id": "td_022",
+        "text": "दोस्त का मूड खराब था — अर्जुन ने माना कि उसने ही कुछ गलत किया होगा।",
+        "answers": ["Personalisation"],
+        "explanation": "दोस्त की स्थिति को अपनी गलती मान लेना।"
+      },
+      {
+        "id": "td_023",
+        "text": "कंपनी में प्रोजेक्ट नाकाम रहा — राहुल ने कहा कि सब उसकी गलती है, जबकि वह केवल एक हिस्सा था।",
+        "answers": ["Personalisation"],
+        "explanation": "पूरी जिम्मेदारी अपने ऊपर ले लेना।"
+      },
+      {
+        "id": "td_024",
+        "text": "पार्टी में किसी ने बात नहीं की — सपना ने सोचा कि लोग उसे नापसंद करते हैं।",
+        "answers": ["Personalisation"],
+        "explanation": "दूसरों के व्यवहार का नकारात्मक अर्थ अपने बारे में लगा लेना।"
+      },
+      {
+        "id": "td_025",
+        "text": "बस लेट हुई — उसने सोचा कि शायद वह समय पर घर से नहीं निकली इसलिए सबको देर हुई।",
+        "answers": ["Personalisation"],
+        "explanation": "बाहरी कारण होने पर भी गलती खुद पर लेना।"
+      },
+      {
+        "id": "td_026",
+        "text": "दोस्तों ने बिना बताए प्लान कर लिया — आयुष ने सोचा कि यह इसलिए हुआ क्योंकि वह अच्छा दोस्त नहीं।",
+        "answers": ["Personalisation"],
+        "explanation": "दूसरों के फैसले को अपने मूल्य से जोड़ना।"
+      },
+      {
+        "id": "id_027",
+        "text": "किसी परिचित को प्रमोशन मिला — रोहित ने सोचा कि उसकी कमियों की वजह से वह पीछे रह गया।",
+        "answers": ["Personalisation"],
+        "explanation": "दूसरों की सफलता को अपनी गलती समझना।"
+      },
+      {
+        "id": "td_028",
+        "text": "घर में बहस हुई — सीमा ने मान लिया कि उसका ही व्यवहार गलत होगा।",
+        "answers": ["Personalisation"],
+        "explanation": "किसी भी तनाव की जिम्मेदारी अपने ऊपर लेना।"
+      },
+      {
+        "id": "td_029",
+        "text": "मौसम खराब हो गया — उसने कहा कि शायद यह उसकी वजह से हो रहा है।",
+        "answers": ["Personalisation"],
+        "explanation": "पूरी तरह असंबंधित घटनाओं को अपने से जोड़ लेना।"
+      },
+      {
+        "id": "td_030",
+        "text": "बच्चा स्कूल में अच्छा न कर पाया — माँ ने सोचा कि वह ही खराब माता-पिता है।",
+        "answers": ["Personalisation"],
+        "explanation": "दूसरों के कार्यों की जिम्मेदारी खुद पर लेना।"
+      },
+    
+      
+        {
+          "id": "td_031",
+          "text": "पढ़ाई में खराब नंबर आए — उसने सोचा कि वह जीवनभर कमजोर ही रहेगा।",
+          "answers": ["Permanent Thinking"],
+          "explanation": "एक समय की समस्या को स्थायी मान लेना।"
+        },
+        {
+          "id": "td_032",
+          "text": "दोस्त ने बात करना कम कर दिया — उसने सोचा कि अब उसकी दोस्ती हमेशा के लिए खत्म हो गई।",
+          "answers": ["Permanent Thinking"],
+          "explanation": "वर्तमान बदलाव को ‘हमेशा’ मान लेना।"
+        },
+        {
+          "id": "td_033",
+          "text": "जॉब नहीं मिली — उसने माना कि वह कभी भी नौकरी नहीं पा सकेगा।",
+          "answers": ["Permanent Thinking"],
+          "explanation": "एक असफलता को स्थायी भविष्य में बदल देना।"
+        },
+        {
+          "id": "td_034",
+          "text": "एक रिश्ते में धोखा मिला — उसने कहा कि रिश्ते उसके जीवन में कभी सफल ही नहीं होंगे।",
+          "answers": ["Permanent Thinking"],
+          "explanation": "एक अनुभव → पूरे जीवन के लिए निष्कर्ष।"
+        },
+        {
+          "id": "td_035",
+          "text": "उसे anxiety हुई — उसने सोचा कि जीवनभर उसे ऐसे ही डर लगता रहेगा।",
+          "answers": ["Permanent Thinking"],
+          "explanation": "वर्तमान भावना को स्थायी मान लेना।"
+        },
+        {
+          "id": "td_036",
+          "text": "उसका बिज़नेस एक बार फेल हुआ — उसने सोचा कि वह कभी सफल नहीं होगा।",
+          "answers": ["Permanent Thinking"],
+          "explanation": "एक फेल्योर को हमेशा के लिए सत्य मान लेना।"
+        },
+        {
+          "id": "td_037",
+          "text": "नई जगह में अकेलापन लगा — उसने माना कि वह हमेशा अकेला ही महसूस करेगा।",
+          "answers": ["Permanent Thinking"],
+          "explanation": "अस्थायी अनुभव को स्थायी रूप से देखना।"
+        },
+        {
+          "id": "td_038",
+          "text": "वजन बढ़ गया — उसने कहा कि वह कभी फिट नहीं हो पाएगा।",
+          "answers": ["Permanent Thinking"],
+          "explanation": "सुधार की संभावना को नजरअंदाज करके स्थायी निष्कर्ष।"
+        },
+        {
+          "id": "td_039",
+          "text": "गिटार सीखने में दिक्कत आई — उसने सोचा कि वह कभी नहीं सीख पाएगा।",
+          "answers": ["Permanent Thinking"],
+          "explanation": "समय और अभ्यास की संभावना को नकार देना।"
+        },
+        {
+          "id": "td_040",
+          "text": "एक इंटरव्यू में नर्वस हो गया — उसने सोचा कि वह हमेशा ऐसे ही रहेगा।",
+          "answers": ["Permanent Thinking"],
+          "explanation": "वर्तमान अवस्था को स्थायी पहचान देना।"
+        },
+      
+        
+          {
+            "id": "td_041",
+            "text": "काम पर आलोचना मिली — उसने सोचा कि उसकी पूरी जिंदगी ही बेकार है।",
+            "answers": ["Pervasive Thinking"],
+            "explanation": "एक क्षेत्र की समस्या को पूरे जीवन पर फैलाना।"
+          },
+          {
+            "id": "td_042",
+            "text": "रिश्ता टूट गया — उसने माना कि अब उसकी पूरी जिंदगी खराब हो गई।",
+            "answers": ["Pervasive Thinking"],
+            "explanation": "एक क्षेत्र की असफलता → संपूर्ण जीवन पर असर का मानना।"
+          },
+          {
+            "id": "td_043",
+            "text": "एक दोस्त साथ नहीं आया — उसने सोचा कि किसी भी क्षेत्र में उसे साथ नहीं मिलेगा।",
+            "answers": ["Pervasive Thinking"],
+            "explanation": "एक सामाजिक घटना को सभी रिश्तों पर लागू करना।"
+          },
+          {
+            "id": "td_044",
+            "text": "एक दिन का बुरा मूड — उसने माना कि उसका पूरा जीवन खराब है।",
+            "answers": ["Pervasive Thinking"],
+            "explanation": "क्षणिक अनुभव → पूरे जीवन का निष्कर्ष।"
+          },
+          {
+            "id": "td_045",
+            "text": "परीक्षा में खराब प्रदर्शन — उसने सोचा कि वह जीवन में किसी भी चीज़ में अच्छा नहीं है।",
+            "answers": ["Pervasive Thinking"],
+            "explanation": "एक कौशल की कमी को पूरे व्यक्तित्व पर फैलाना।"
+          },
+          {
+            "id": "td_046",
+            "text": "उसकी शादी में दिक्कतें आईं — उसने सोचा कि उसका पूरा जीवन असफल है।",
+            "answers": ["Pervasive Thinking"],
+            "explanation": "एक रिश्ते की समस्या को सम्पूर्ण जीवन पर लागू करना।"
+          },
+          {
+            "id": "td_047",
+            "text": "फाइनेंशियल प्रॉब्लम हुई — उसने माना कि जीवन के बाकी सारे हिस्से भी खराब हो जाएंगे।",
+            "answers": ["Pervasive Thinking"],
+            "explanation": "एक क्षेत्र का असर अन्य क्षेत्रों पर अनिवार्य मानना।"
+          },
+          {
+            "id": "td_048",
+            "text": "एक दोस्त ने उसे समझा नहीं — उसने सोच लिया कि उसे कोई भी समझ नहीं सकता।",
+            "answers": ["Pervasive Thinking"],
+            "explanation": "एक अनुभव → सभी पर लागू।"
+          },
+          {
+            "id": "td_049",
+            "text": "ऑफिस में दिन खराब गया — उसने सोचा कि उसका पूरा जीवन खराब है।",
+            "answers": ["Pervasive Thinking"],
+            "explanation": "एक घटना को संपूर्ण जीवन का प्रतिबिंब मान लेना।"
+          },
+          {
+            "id": "td_050",
+            "text": "एक काम में असफल हुआ — उसने कहा कि वह किसी भी क्षेत्र में सफल नहीं हो सकता।",
+            "answers": ["Pervasive Thinking"],
+            "explanation": "एक असफलता को सभी क्षेत्रों पर लागू करना।"
+          },
+          
+            {
+              "id": "td_051",
+              "text": "रवि सोचता है कि अगर वह लाल टी-शर्ट पहनेगा तो इंटरव्यू ज़रूर क्लियर हो जाएगा।",
+              "answers": ["Magical Thinking"],
+              "explanation": "कपड़ों के रंग को नतीजे से जोड़ना।"
+            },
+            {
+              "id": "td_052",
+              "text": "सीमा मानती है कि अगर वह सोच ले कि आज कुछ बुरा होगा, तो सच में बुरा हो जाएगा।",
+              "answers": ["Magical Thinking"],
+              "explanation": "सोच को वास्तविक घटना का कारण मानना।"
+            },
+            {
+              "id": "td_053",
+              "text": "शक्ति मानता है कि कोई खास नंबर बोलने से उसके एग्जाम में भाग्य अच्छा होगा।",
+              "answers": ["Magical Thinking"],
+              "explanation": "असंभव कारण–परिणाम संबंध बनाना।"
+            },
+            {
+              "id": "td_054",
+              "text": "नीलम सोचती है कि अगर वह किसी को शुभकामनाएँ न दे पाए तो उसके साथ बुरा हो जाएगा।",
+              "answers": ["Magical Thinking"],
+              "explanation": "अपने विचारों को दूसरों के भविष्य से जोड़ना।"
+            },
+            {
+              "id": "td_055",
+              "text": "अंकित को लगता है कि अगर उसने अपनी lucky ring न पहनी तो उसका दिन खराब जाएगा।",
+              "answers": ["Magical Thinking"],
+              "explanation": "बाहरी वस्तु को परिणाम नियंत्रित करने वाला मानना।"
+            },
+            {
+              "id": "td_056",
+              "text": "अमित मानता है कि किसी बुरे व्यक्ति का नाम लेने से बुरी घटना हो सकती है।",
+              "answers": ["Magical Thinking"],
+              "explanation": "सिर्फ नाम लेने को नुकसान से जोड़ना।"
+            },
+            {
+              "id": "td_057",
+              "text": "रिया सोचती है कि अगर वह मंदिर नहीं गई तो उसके परिवार के साथ कुछ गलत होगा।",
+              "answers": ["Magical Thinking"],
+              "explanation": "धार्मिक क्रिया को सीधे घटनाओं से जोड़ना।"
+            },
+            {
+              "id": "td_058",
+              "text": "कर्मा सोचता है कि परीक्षा से पहले किसी विशेष गीत को सुनना उसे अच्छे नंबर दिलाएगा।",
+              "answers": ["Magical Thinking"],
+              "explanation": "अनुचित कारण–असफलता/सफलता संबंध।"
+            },
+            {
+              "id": "td_059",
+              "text": "सोनू को लगता है कि अगर वह मन में किसी को बुरा कहेगा तो उन्हें नुकसान पहुँच जाएगा।",
+              "answers": ["Magical Thinking"],
+              "explanation": "अपने विचारों को वास्तविक शक्ति मानना।"
+            },
+            {
+              "id": "td_060",
+              "text": "रीमा सोचती है कि अगर वह रात को पैर उत्तर दिशा में रखकर सोएगी तो जीवन में परेशानी आएगी।",
+              "answers": ["Magical Thinking"],
+              "explanation": "दिशा में सोने को जीवन की घटनाओं से जोड़ना।"
+            },
+            
+              {
+                "id": "td_061",
+                "text": "उसे महसूस हुआ कि वह नाकाम है — इसलिए उसने मान लिया कि वह सच में नाकाम है।",
+                "answers": ["Emotional Reasoning"],
+                "explanation": "भावना को तथ्य समझ लेना।"
+              },
+              {
+                "id": "td_062",
+                "text": "इंटरव्यू से पहले डर लग रहा था — उसने माना कि वह जरूर असफल होगा।",
+                "answers": ["Emotional Reasoning"],
+                "explanation": "डर को भविष्य का प्रमाण मानना।"
+              },
+              {
+                "id": "td_063",
+                "text": "सोशल गेदरिंग में असहज महसूस हुआ — उसने सोचा कि लोग उसे पसंद नहीं करते।",
+                "answers": ["Emotional Reasoning"],
+                "explanation": "भावना से दूसरों का विचार जानना।"
+              },
+              {
+                "id": "td_064",
+                "text": "उसे guilt महसूस हुआ — उसने मान लिया कि उसने गलत किया होगा।",
+                "answers": ["Emotional Reasoning"],
+                "explanation": "गिल्ट को सत्य मान लेना।"
+              },
+              {
+                "id": "td_065",
+                "text": "क्लास में शर्मिंदगी महसूस हुई — उसने सोचा कि सब उसे जज कर रहे हैं।",
+                "answers": ["Emotional Reasoning"],
+                "explanation": "शर्म → तथ्य मान लेना।"
+              },
+              {
+                "id": "td_066",
+                "text": "वह दुखी महसूस कर रही थी — उसने तय किया कि उसका भविष्य भी उदास होगा।",
+                "answers": ["Emotional Reasoning"],
+                "explanation": "भावना को भविष्य की सच्चाई मान लेना।"
+              },
+              {
+                "id": "td_067",
+                "text": "उसे लगा कि वह अच्छा माता-पिता नहीं है — इसलिए उसने मान लिया कि वह खराब माता-पिता है।",
+                "answers": ["Emotional Reasoning"],
+                "explanation": "अहसास को वास्तविकता समझना।"
+              },
+              {
+                "id": "td_068",
+                "text": "उसे गुस्सा आया — उसने सोचा कि सामने वाला गलत होगा।",
+                "answers": ["Emotional Reasoning"],
+                "explanation": "भावना → निष्कर्ष।"
+              },
+              {
+                "id": "td_069",
+                "text": "उसने असुरक्षित महसूस किया — उसने माना कि वह खतरे में है।",
+                "answers": ["Emotional Reasoning"],
+                "explanation": "असुरक्षा → खतरे का प्रमाण मानना।"
+              },
+              {
+                "id": "td_070",
+                "text": "वह खुद को असहाय महसूस कर रहा था — इसलिए उसने मान लिया कि वह कुछ नहीं कर सकता।",
+                "answers": ["Emotional Reasoning"],
+                "explanation": "असहाय भावना को अपनी क्षमता का सच मान लेना।"
+              },
+            
+              
+                {
+                  "id": "td_071",
+                  "text": "एक बार प्रोजेक्ट में गलती होने पर उसने कहा — 'मैं तो निकम्मा हूँ।'",
+                  "answers": ["Labeling"],
+                  "explanation": "एक गलती के आधार पर पूरी पहचान तय कर देना।"
+                },
+                {
+                  "id": "td_072",
+                  "text": "मीटिंग में कम बोला — उसने सोचा कि वह बेकार इंसान है।",
+                  "answers": ["Labeling"],
+                  "explanation": "एक व्यवहार से खुद को पूरी तरह जज करना।"
+                },
+                {
+                  "id": "td_073",
+                  "text": "दोस्त ने मदद नहीं की — उसने उसे 'स्वार्थी' कह दिया।",
+                  "answers": ["Labeling"],
+                  "explanation": "एक घटना से स्थायी नेगेटिव लेबल।"
+                },
+                {
+                  "id": "td_074",
+                  "text": "परीक्षा में कम नंबर आए — उसने कहा कि वह बेवकूफ है।",
+                  "answers": ["Labeling"],
+                  "explanation": "परिणाम को पहचान बना देना।"
+                },
+                {
+                  "id": "td_075",
+                  "text": "गाड़ी का एक्सीडेंट हुआ — उसने खुद को बदकिस्मत कह दिया।",
+                  "answers": ["Labeling"],
+                  "explanation": "घटना → पहचान।"
+                },
+                {
+                  "id": "td_076",
+                  "text": "टीचर ने डांटा — उसने माना कि वह बिल्कुल बेकार छात्र है।",
+                  "answers": ["Labeling"],
+                  "explanation": "टिप्पणी को पहचान का आधार बनाना।"
+                },
+                {
+                  "id": "td_077",
+                  "text": "दो बार देर हो गई — उसने कहा कि वह पूरी तरह non-reliable है।",
+                  "answers": ["Labeling"],
+                  "explanation": "कुछ चूकों से संपूर्ण identity बना देना।"
+                },
+                {
+                  "id": "td_078",
+                  "text": "भाई से झगड़ा हुआ — उसने कहा कि भाई बहुत बुरा इंसान है।",
+                  "answers": ["Labeling"],
+                  "explanation": "घटना → character judgment।"
+                },
+                {
+                  "id": "td_079",
+                  "text": "सामान खो गया — उसने खुद को careless इंसान घोषित कर दिया।",
+                  "answers": ["Labeling"],
+                  "explanation": "इकाई व्यवहार → स्थायी लेबल।"
+                },
+                {
+                  "id": "td_080",
+                  "text": "नौकरी नहीं मिली — उसने कहा कि वह जिंदगी में कुछ नहीं कर सकता।",
+                  "answers": ["Labeling"],
+                  "explanation": "एक परिणाम → global self-label।"
+                },
+                
+                  {
+                    "id": "td_081",
+                    "text": "एक बार प्रोजेक्ट देर से जमा होने पर उसने कहा — 'मैं पूरी तरह असफल हूँ।'",
+                    "answers": ["All-or-None Thinking"],
+                    "explanation": "एक गलती → पूर्ण असफलता जैसा सोचना।"
+                  },
+                  {
+                    "id": "td_082",
+                    "text": "अगर वह exam में टॉप नहीं करे — तो वह मानता है कि वह पूरी तरह बेकार है।",
+                    "answers": ["All-or-None Thinking"],
+                    "explanation": "मध्य परिणाम को मान्यता नहीं।"
+                  },
+                  {
+                    "id": "td_083",
+                    "text": "डाइट एक दिन टूट गई — उसने सोचा कि अब उसकी सारी मेहनत बेकार हो गई।",
+                    "answers": ["All-or-None Thinking"],
+                    "explanation": "एक चूक → पूरा प्रयास बेकार।"
+                  },
+                  {
+                    "id": "td_084",
+                    "text": "एक बहस में गलत साबित होने पर उसने कहा — 'मैं तो कुछ जानता ही नहीं।'",
+                    "answers": ["All-or-None Thinking"],
+                    "explanation": "एक घटना → स्थायी क्षमता जजमेंट।"
+                  },
+                  {
+                    "id": "td_085",
+                    "text": "अगर वह perfect तरीके से exercise नहीं कर पाया — उसने छोड़ दिया।",
+                    "answers": ["All-or-None Thinking"],
+                    "explanation": "परफेक्शन न मिले → कुछ नहीं।"
+                  },
+                  {
+                    "id": "td_086",
+                    "text": "दोस्त ने एक दिन फोन नहीं उठाया — उसने सोचा कि वह अब बिल्कुल भी दोस्त नहीं रहा।",
+                    "answers": ["All-or-None Thinking"],
+                    "explanation": "एक घटना → संबंध की पूरी परिभाषा।"
+                  },
+                  {
+                    "id": "td_087",
+                    "text": "किसी ने उसकी तारीफ नहीं की — उसने माना कि वह बिल्कुल भी अच्छा नहीं है।",
+                    "answers": ["All-or-None Thinking"],
+                    "explanation": "कोई बीच का स्तर मान्य नहीं।"
+                  },
+                  {
+                    "id": "td_088",
+                    "text": "एक इंटरव्यू खराब गया — उसने सोचा कि उसके करियर की कोई उम्मीद नहीं।",
+                    "answers": ["All-or-None Thinking"],
+                    "explanation": "एक घटना → पूरा फ्यूचर पर लागू।"
+                  },
+                  {
+                    "id": "td_089",
+                    "text": "अगर उसने सब काम नहीं किया — उसे लगा कि उसने कुछ भी नहीं किया।",
+                    "answers": ["All-or-None Thinking"],
+                    "explanation": "आंशिक सफलता की अनदेखी।"
+                  },
+                  {
+                    "id": "td_090",
+                    "text": "एक रिश्ते में समस्या आने पर — उसने सोचा कि रिश्ता पूरी तरह खराब है।",
+                    "answers": ["All-or-None Thinking"],
+                    "explanation": "कुछ समस्या → पूरा रिश्ता खराब।"
+                  },
+                  
+                    {
+                      "id": "td_091",
+                      "text": "टीचर ने उसकी तारीफ की — उसने कहा कि यह तो बस किस्मत थी।",
+                      "answers": ["Disqualifying the Positive"],
+                      "explanation": "सकारात्मक प्रतिक्रिया को नकार देना।"
+                    },
+                    {
+                      "id": "td_092",
+                      "text": "प्रमोशन मिला — उसने माना कि यह सिर्फ मैनेजर की दया है।",
+                      "answers": ["Disqualifying the Positive"],
+                      "explanation": "अपनी मेहनत को अनदेखा करना।"
+                    },
+                    {
+                      "id": "td_093",
+                      "text": "दोस्तों ने उसके भोजन की तारीफ की — उसने कहा कि वे मजाक कर रहे होंगे।",
+                      "answers": ["Disqualifying the Positive"],
+                      "explanation": "प्रशंसा को सच नहीं मानना।"
+                    },
+                    {
+                      "id": "td_094",
+                      "text": "लगातार अच्छे नंबर आए — उसने सोचा कि पेपर आसान था, इसलिए आए।",
+                      "answers": ["Disqualifying the Positive"],
+                      "explanation": "सफलता को बाहरी कारणों से जोड़कर अस्वीकार करना।"
+                    },
+                    {
+                      "id": "td_095",
+                      "text": "उसने एक कठिन प्रोजेक्ट पूरा किया — पर कहा कि यह बड़ी बात नहीं है।",
+                      "answers": ["Disqualifying the Positive"],
+                      "explanation": "अपनी उपलब्धि को कम आंकना।"
+                    },
+                    {
+                      "id": "td_096",
+                      "text": "उसकी ड्राइंग की तारीफ हुई — उसने कहा कि यह तो बस संयोग है।",
+                      "answers": ["Disqualifying the Positive"],
+                      "explanation": "कौशल को मान्यता न देना।"
+                    },
+                    {
+                      "id": "td_097",
+                      "text": "किसी ने कहा कि वह अच्छा इंसान है — उसने कहा कि लोग बस औपचारिकता निभा रहे हैं।",
+                      "answers": ["Disqualifying the Positive"],
+                      "explanation": "सकारात्मक बात को सच न मानना।"
+                    },
+                    {
+                      "id": "td_098",
+                      "text": "मार्केटिंग में अच्छा प्रदर्शन किया — उसने कहा कि यह भाग्य का साथ था।",
+                      "answers": ["Disqualifying the Positive"],
+                      "explanation": "कौशल/मेहनत को अनदेखा करना।"
+                    },
+                    {
+                      "id": "td_099",
+                      "text": "भाई ने कहा कि वह अच्छा कर रहा है — उसने कहा कि वह बस दिलासा दे रहा है।",
+                      "answers": ["Disqualifying the Positive"],
+                      "explanation": "सकारात्मक टिप्पणी को अर्थहीन मानना।"
+                    },
+                    {
+                      "id": "td_100",
+                      "text": "उसे बताया गया कि वह बेहतर हो रहा है — उसने कहा कि लोग उसे खुश करने की कोशिश कर रहे हैं।",
+                      "answers": ["Disqualifying the Positive"],
+                      "explanation": "सकारात्मक प्रगति को स्वीकार न करना।"
+                    }  
   ]
   
+

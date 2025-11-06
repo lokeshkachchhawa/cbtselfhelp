@@ -1,4 +1,5 @@
 import 'package:cbt_drktv/screens/doctor_chat_screen.dart';
+import 'package:cbt_drktv/screens/quiz_creator_screen.dart';
 import 'package:cbt_drktv/utils/logout_helper.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -112,6 +113,16 @@ class _DoctorHomeState extends State<DoctorHome> {
         backgroundColor: teal4,
         title: const Text('Doctor Dashboard — Chats'),
         actions: [
+          IconButton(
+            tooltip: 'Create Quiz',
+            icon: const Icon(Icons.post_add),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const QuizCreatorScreen()),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () {
