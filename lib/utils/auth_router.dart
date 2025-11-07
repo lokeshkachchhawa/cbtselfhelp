@@ -81,11 +81,22 @@ Future<void> navigateAfterSignIn(BuildContext context, {User? user}) async {
   }
 
   // ---------- ✅ STEP 3 — SUBSCRIPTION CHECK ----------
-  final sub = Map<String, dynamic>.from((data['subscription'] ?? {}));
-  final isActive = (sub['status'] ?? '') == 'active';
+  // ---------- ✅ STEP 3 — SUBSCRIPTION CHECK ----------
+  final Map<String, dynamic> sub = (data['subscription'] is Map)
+      ? Map<String, dynamic>.from(data['subscription'])
+      : {};
 
-  if (!isActive) {
-    debugPrint('→ Subscription inactive → paywall');
+  final String status = (sub['status'] ?? '').toString().toLowerCase();
+  // allow access if active OR cancel is scheduled (access continues until period end)
+  final bool allowAccess = status == 'active' || status == 'cancel_scheduled';
+
+  // (optional) you may also want to read an "accessUntil" timestamp if you store it:
+  // final Timestamp? accessUntilTs = sub['accessUntil'] as Timestamp?;
+  // final bool notExpired = accessUntilTs == null || accessUntilTs.toDate().isAfter(DateTime.now());
+  // final bool allowAccess = (status == 'active') || (status == 'cancel_scheduled' && notExpired);
+
+  if (!allowAccess) {
+    debugPrint('→ Subscription not eligible (status: $status) → paywall');
     Navigator.pushReplacementNamed(context, '/paywall');
     return;
   }

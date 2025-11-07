@@ -201,28 +201,68 @@ exports.subsVerify = onCall(
 );
 
 // Cancel subscription (optional)
+// Cancel subscription (updates both sub-collection AND top-level users/{uid}.subscription)
 exports.subsCancel = onCall(
   { region: 'asia-south1', secrets: [RZP_KEY_ID, RZP_KEY_SECRET], timeoutSeconds: 30, memory: '256MiB' },
   async (req) => {
     try {
       if (!req.auth) throw new HttpsError('unauthenticated', 'Sign in required');
-      const { subscriptionId, cancelAtCycleEnd } = req.data || {};
+      const { subscriptionId, cancelAtCycleEnd = true } = req.data || {};
       if (!subscriptionId) throw new HttpsError('invalid-argument', 'subscriptionId required');
 
+      const uid = req.auth.uid;
       const keyId = RZP_KEY_ID.value();
       const keySecret = RZP_KEY_SECRET.value();
-
       const rzp = rzpClient(keyId, keySecret);
+
+      // Cancel at Razorpay
+      // When cancelAtCycleEnd=true, Razorpay schedules cancellation for the end of the current cycle.
       const res = await rzp.subscriptions.cancel(subscriptionId, !!cancelAtCycleEnd);
 
-      await admin.firestore().collection('users').doc(req.auth.uid)
-        .collection('subscriptions').doc(subscriptionId)
-        .set({
-          canceledAt: admin.firestore.FieldValue.serverTimestamp(),
-          status: res.status,
-        }, { merge: true });
+      // Fetch the latest subscription entity to pick dates like current_end
+      const sub = await rzp.subscriptions.fetch(subscriptionId).catch(() => null);
 
-      return { ok: true, status: res.status };
+      // Timestamps (secs) -> Firestore Timestamp later via JS Date
+      const currentEndSec = sub?.current_end || res?.current_end || null;
+      const currentEndDate = currentEndSec ? new Date(currentEndSec * 1000) : null;
+
+      // Decide a user-friendly status to show in app immediately
+      // Razorpay may keep status as 'active' until cycle end if scheduled.
+      const derivedStatus = cancelAtCycleEnd
+        ? 'cancel_scheduled' // custom app label
+        : (res?.status || 'inactive');
+
+      const userRef = admin.firestore().collection('users').doc(uid);
+
+      // Update sub-collection doc (history)
+      await userRef.collection('subscriptions').doc(subscriptionId).set({
+        canceledAt: admin.firestore.FieldValue.serverTimestamp(),
+        status: res?.status || derivedStatus,
+        cancelAtCycleEnd: !!cancelAtCycleEnd,
+        currentEndAt: currentEndDate ? admin.firestore.Timestamp.fromDate(currentEndDate) : null,
+        raw: {
+          status: res?.status || null,
+          has_scheduled_changes: sub?.has_scheduled_changes ?? null,
+        },
+      }, { merge: true });
+
+      // Update top-level snapshot used by UI
+      const topLevel = {
+        status: derivedStatus,               // 'cancel_scheduled' or 'inactive'
+        subscriptionId,
+        cancelAtCycleEnd: !!cancelAtCycleEnd,
+        canceledAt: admin.firestore.FieldValue.serverTimestamp(),
+        nextRenewalEndsAt: currentEndDate ? admin.firestore.Timestamp.fromDate(currentEndDate) : null,
+        lastWebhookAt: admin.firestore.FieldValue.serverTimestamp(), // optional heartbeat
+      };
+      await userRef.set({ subscription: topLevel }, { merge: true });
+
+      return {
+        ok: true,
+        status: derivedStatus,
+        nextRenewalEndsAt: currentEndSec || null,
+        rawStatus: res?.status || null,
+      };
     } catch (err) {
       console.error('subsCancel error:', err?.message || err);
       if (err instanceof HttpsError) throw err;
@@ -230,6 +270,7 @@ exports.subsCancel = onCall(
     }
   }
 );
+
 
 // Webhook (verify HMAC using your dashboard "Secret")
 exports.razorpayWebhook = onRequest(

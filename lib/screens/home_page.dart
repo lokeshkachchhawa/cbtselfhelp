@@ -1070,6 +1070,10 @@ class _HomePageState extends State<HomePage> {
                       ),
                       onSelected: (value) async {
                         switch (value) {
+                          case 'subscription':
+                            // open the cancel subscription page
+                            Navigator.pushNamed(context, '/cancel');
+                            break;
                           case 'privacy':
                             _showSettingsInfo('privacy');
                             break;
@@ -1104,6 +1108,19 @@ class _HomePageState extends State<HomePage> {
                         }
                       },
                       itemBuilder: (ctx) => [
+                        PopupMenuItem(
+                          value: 'subscription',
+                          child: Row(
+                            children: const [
+                              Icon(Icons.cancel, color: Colors.white, size: 18),
+                              SizedBox(width: 10),
+                              Text(
+                                'Cancel Subscription',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ],
+                          ),
+                        ),
                         const PopupMenuItem(
                           value: 'privacy',
                           child: Text(

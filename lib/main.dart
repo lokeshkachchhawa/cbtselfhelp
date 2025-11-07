@@ -6,6 +6,7 @@ import 'package:cbt_drktv/relax/mini_meditation_timer.dart';
 import 'package:cbt_drktv/relax/relax_breath_page.dart';
 import 'package:cbt_drktv/relax/relax_pmr_page.dart';
 import 'package:cbt_drktv/screens/abcd_worksheet.dart';
+import 'package:cbt_drktv/screens/cancel_subscription_screen.dart';
 import 'package:cbt_drktv/screens/cbt_game.dart';
 import 'package:cbt_drktv/screens/doctor_home.dart';
 import 'package:cbt_drktv/screens/drktv_chat_screen.dart';
@@ -114,6 +115,7 @@ class MyApp extends StatelessWidget {
           '/thought_game': (context) => const ThoughtDetectiveGame(),
           '/paywall': (_) => const PaywallScreen(), // <-- ADD THIS
           "/cbt-game": (_) => const CBTGameScreen(),
+          '/cancel': (_) => const CancelSubscriptionScreen(),
         },
       ),
     );
