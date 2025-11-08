@@ -284,7 +284,7 @@ class _BaselinePageState extends State<BaselinePage> {
                           children: [
                             Expanded(
                               child: _buildLanguageOption(
-                                'English',
+                                'Eng',
                                 '🇬🇧',
                                 tempLang == AppLang.en,
                                 () {
@@ -393,7 +393,7 @@ class _BaselinePageState extends State<BaselinePage> {
                             ),
                           ),
                           child: Text(
-                            _lang == AppLang.en ? 'Skip for now' : 'अभी छोड़ें',
+                            _lang == AppLang.en ? ' Skip ' : ' अभी छोड़ें ',
                             style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,

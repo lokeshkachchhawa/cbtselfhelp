@@ -22,6 +22,9 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cbt_drktv/screens/abcd_worksheet.dart'
     show ABCDEStorage, ABCDEWorksheet, cardDark, colorA, colorB;
+// ADD — import Thought Record model/storage + read-only tile
+import 'package:cbt_drktv/screens/thought_record_page.dart'
+    show ThoughtRecord, ThoughtStorage, ReadOnlyColoredFieldTile;
 
 /// DrKtv Chat Screen — polished UI with wide script support (Noto Sans).
 class DrKtvChatScreen extends StatefulWidget {
@@ -80,6 +83,424 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
   // ---------------------------
   // Attach sheet: show worksheet summary cards (then detail dialog)
   // ---------------------------
+  // ADD — full detail dialog (styled similar to ABCDE)
+  Future<void> _showThoughtDetailDialog(
+    ThoughtRecord item, {
+    BuildContext? fromSheetContext,
+  }) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dctx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 24,
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 720,
+              maxHeight: MediaQuery.of(context).size.height * 0.86,
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: cardDark,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.45),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+                border: Border.all(color: Colors.white10),
+              ),
+              child: Column(
+                children: [
+                  // Header
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(16),
+                      ),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          const Color(0xFF003E3D).withOpacity(0.08),
+                          const Color(0xFF003E3D).withOpacity(0.04),
+                        ],
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.lightBlueAccent.withOpacity(0.12),
+                                Colors.greenAccent.withOpacity(0.08),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            border: Border.all(color: Colors.white12),
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.menu_book_outlined,
+                              color: Colors.tealAccent,
+                              size: 26,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Thought Record Detail',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                item.situation.isNotEmpty
+                                    ? (item.situation.length > 100
+                                          ? '${item.situation.substring(0, 100)}…'
+                                          : item.situation)
+                                    : 'Saved Thought Record',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Close',
+                          icon: const Icon(Icons.close, color: Colors.white70),
+                          onPressed: () => Navigator.of(dctx).pop(),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const Divider(color: Colors.white10, height: 1),
+
+                  // Content
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          ReadOnlyColoredFieldTile(
+                            label: 'Situation',
+                            value: item.situation,
+                            startColor: Colors.redAccent,
+                            endColor: Colors.amber,
+                            icon: Icons.location_on_outlined,
+                          ),
+                          ReadOnlyColoredFieldTile(
+                            label: 'Automatic thought',
+                            value: item.automaticThought,
+                            startColor: Colors.lightBlue,
+                            endColor: Colors.lightBlueAccent,
+                            icon: Icons.psychology_outlined,
+                          ),
+                          ReadOnlyColoredFieldTile(
+                            label: 'Evidence FOR',
+                            value: item.evidenceFor,
+                            startColor: Colors.green,
+                            endColor: Colors.greenAccent,
+                            icon: Icons.thumb_up_alt_outlined,
+                          ),
+                          ReadOnlyColoredFieldTile(
+                            label: 'Evidence AGAINST',
+                            value: item.evidenceAgainst,
+                            startColor: Colors.amber,
+                            endColor: Colors.orange,
+                            icon: Icons.thumb_down_alt_outlined,
+                          ),
+                          ReadOnlyColoredFieldTile(
+                            label: 'Alternative thought',
+                            value: item.alternativeThought,
+                            startColor: Colors.lightBlue,
+                            endColor: Colors.green,
+                            icon: Icons.lightbulb_outline,
+                          ),
+                          if (item.note.isNotEmpty)
+                            ReadOnlyColoredFieldTile(
+                              label: 'Note',
+                              value: item.note,
+                              startColor: Colors.white30,
+                              endColor: Colors.white10,
+                              icon: Icons.sticky_note_2_outlined,
+                            ),
+                          const SizedBox(height: 10),
+                          // Mood row
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: cardDark.withOpacity(0.9),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.white10),
+                            ),
+                            child: Text(
+                              'Mood: Before ${item.beforeMood}/10 → After ${item.afterMood}/10',
+                              style: const TextStyle(color: Colors.white70),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Sticky action: Share with Doctor
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: cardDark.withOpacity(0.9),
+                      borderRadius: const BorderRadius.vertical(
+                        bottom: Radius.circular(16),
+                      ),
+                      border: const Border(
+                        top: BorderSide(color: Colors.white10),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              final confirm = await showDialog<bool>(
+                                context: dctx,
+                                builder: (confirmCtx) => AlertDialog(
+                                  backgroundColor: cardDark,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  title: const Text(
+                                    'Share thought record?',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                  content: const Text(
+                                    'Share this Thought Record with your doctor? It will appear in the chat.',
+                                    style: TextStyle(color: Colors.white70),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(confirmCtx).pop(false),
+                                      child: const Text(
+                                        'Cancel',
+                                        style: TextStyle(color: Colors.white70),
+                                      ),
+                                    ),
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Color(0xFF008F89),
+                                      ),
+                                      onPressed: () =>
+                                          Navigator.of(confirmCtx).pop(true),
+                                      child: const Text('Share'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirm != true) return;
+
+                              Navigator.of(dctx).pop();
+                              if (fromSheetContext != null) {
+                                try {
+                                  Navigator.of(fromSheetContext).pop();
+                                } catch (_) {}
+                              }
+
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Sharing thought record...'),
+                                  ),
+                                );
+                              }
+                              try {
+                                await sendThoughtRecordToDoctor(item);
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Thought record shared'),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Failed to share: $e'),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.send, color: Colors.white),
+                            label: const Text(
+                              'Share with Doctor',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Colors.white),
+                              backgroundColor: Colors.green,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ADD — parallel to sendAbcdeWorksheetToDoctor()
+  Future<void> sendThoughtRecordToDoctor(
+    ThoughtRecord tr, {
+    bool requestAiReview = true,
+  }) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return;
+
+      final chatId = user.uid;
+      final messagesRef = _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages');
+
+      // Nicely formatted summary (markdown-like)
+      final summary =
+          '''
+🧠 *Thought Record Shared by User*
+
+*Situation:*
+${tr.situation}
+
+*Automatic Thought:*
+${tr.automaticThought}
+
+*Evidence FOR:*
+${tr.evidenceFor}
+
+*Evidence AGAINST:*
+${tr.evidenceAgainst}
+
+*Alternative Thought:*
+${tr.alternativeThought}
+
+*Mood:* Before ${tr.beforeMood}/10 → After ${tr.afterMood}/10
+
+📝 *Note:* ${tr.note.isEmpty ? '—' : tr.note}
+''';
+
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      final docId = const Uuid().v4();
+
+      await messagesRef.doc(docId).set({
+        'sender': 'user',
+        'text': summary,
+        'timestamp': ts,
+        'approved': true,
+        'type': 'worksheet',
+        'worksheetType': 'THOUGHT_RECORD', // KEY
+        'worksheet': tr.toMap(), // structured map
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      await _firestore.collection('chatIndex').doc(chatId).set({
+        'userId': chatId,
+        'userName': user.displayName ?? user.email ?? '',
+        'lastMessage': 'Shared a Thought Record',
+        'lastUpdated': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      if (requestAiReview) {
+        try {
+          await _generateThoughtRecordReviewAndWrite(
+            tr,
+            parentMessageId: docId,
+          );
+        } catch (e) {
+          debugPrint('TR AI review failed: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error sharing Thought Record: $e');
+      rethrow;
+    }
+  }
+
+  // ADD — mirrors _generateWorksheetReviewAndWrite() but for TR
+  Future<void> _generateThoughtRecordReviewAndWrite(
+    ThoughtRecord tr, {
+    required String parentMessageId,
+  }) async {
+    final prompt = StringBuffer()
+      ..writeln('Provide a brief CBT-style review of this Thought Record.')
+      ..writeln('Keep it practical: 3–6 short bullet points.')
+      ..writeln(
+        'Include 1–2 simple behavioral steps and one reflective question.',
+      )
+      ..writeln()
+      ..writeln('Situation: ${tr.situation}')
+      ..writeln('Automatic thought: ${tr.automaticThought}')
+      ..writeln('Evidence FOR: ${tr.evidenceFor}')
+      ..writeln('Evidence AGAINST: ${tr.evidenceAgainst}')
+      ..writeln('Alternative thought: ${tr.alternativeThought}')
+      ..writeln('Mood: Before ${tr.beforeMood}/10 → After ${tr.afterMood}/10')
+      ..writeln('Note: ${tr.note}')
+      ..writeln();
+
+    try {
+      final reply = await _callGeminiCF(
+        prompt: prompt.toString(),
+        system: _systemPromptForCBT(),
+        temperature: 0.8,
+        maxOutputTokens: 800,
+      );
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      await _writeAiReplyToFirestore(reply, ts, parentMessageId);
+    } catch (e) {
+      debugPrint('AI review (TR) generation failed: $e');
+    }
+  }
+
   Future<String> _callGeminiCF({
     required String prompt,
     String? system,
@@ -110,6 +531,7 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
     }
   }
 
+  // REPLACE — _openAttachWorksheetSheet() with combined sheet
   Future<void> _openAttachWorksheetSheet() async {
     try {
       FocusScope.of(context).unfocus();
@@ -117,15 +539,39 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
     await Future.delayed(const Duration(milliseconds: 120));
     if (!mounted) return;
 
-    final storage = ABCDEStorage();
-    List<ABCDEWorksheet> items = [];
+    final abcdeStore = ABCDEStorage();
+    final thoughtStore = ThoughtStorage();
+
+    List<ABCDEWorksheet> abcde = [];
+    List<ThoughtRecord> thoughts = [];
+
     try {
-      items = await storage.loadAll();
+      // Prefer user-only list (examples hidden). If not available, fallback filter.
+      abcde = await abcdeStore.loadUserOnly();
     } catch (e) {
-      debugPrint('Failed to load worksheets: $e');
+      debugPrint('ABCDE load: $e');
     }
 
-    if (!mounted) return;
+    try {
+      // Thought records typically don't have examples. Keep as-is.
+      thoughts = await thoughtStore.loadAll();
+      // If you ever add examples for thoughts, add a similar filter here.
+    } catch (e) {
+      debugPrint('Thought load: $e');
+    }
+
+    // Merge into a single view-model list with type tags
+    final items = <_AttachItem>[];
+
+    for (final w in abcde) {
+      items.add(_AttachItem.abcd(w.createdAt, 'ABCDE', data: w));
+    }
+    for (final t in thoughts) {
+      items.add(_AttachItem.thought(t.createdAt, 'THOUGHT_RECORD', data: t));
+    }
+
+    // Newest first
+    items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     await showModalBottomSheet<void>(
       context: context,
@@ -176,7 +622,7 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
                     Expanded(
                       child: Center(
                         child: Text(
-                          'No saved worksheets.\nCreate one from the Worksheets screen first.',
+                          'No saved worksheets.\nCreate from Worksheets/Thoughts screen first.',
                           textAlign: TextAlign.center,
                           style: _textStyle().copyWith(color: Colors.white54),
                         ),
@@ -189,8 +635,18 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
                         itemCount: items.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 10),
                         itemBuilder: (ctx2, i) {
-                          final w = items[i];
-                          return _worksheetSummaryCard(w, sheetContext: ctx);
+                          final it = items[i];
+                          if (it.kind == 'ABCDE') {
+                            return _worksheetSummaryCard(
+                              it.data as ABCDEWorksheet,
+                              sheetContext: ctx,
+                            );
+                          } else {
+                            return _thoughtSummaryCard(
+                              it.data as ThoughtRecord,
+                              sheetContext: ctx,
+                            );
+                          }
                         },
                       ),
                     ),
@@ -200,6 +656,120 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
           ),
         );
       },
+    );
+  }
+
+  // ADD — like _worksheetSummaryCard but for ThoughtRecord
+  Widget _thoughtSummaryCard(
+    ThoughtRecord item, {
+    required BuildContext sheetContext,
+  }) {
+    String firstLine(String s, {int max = 120}) {
+      final t = s.trim();
+      if (t.isEmpty) return '';
+      final fl = t.split(RegExp(r'\r?\n')).first.trim();
+      if (fl.length <= max) return fl;
+      return '${fl.substring(0, max - 1).trim()}…';
+    }
+
+    final titleText = item.situation.isNotEmpty
+        ? item.situation
+        : 'Thought Record';
+    final subtitle = firstLine(item.automaticThought, max: 80);
+    final dateStr = MaterialLocalizations.of(
+      context,
+    ).formatFullDate(item.createdAt);
+
+    return Card(
+      color: cardDark,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: Colors.white10, width: 0.8),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () =>
+            _showThoughtDetailDialog(item, fromSheetContext: sheetContext),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+          child: Row(
+            children: [
+              // left colored stripe (blue-ish for thought)
+              Container(
+                width: 6,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: Colors.lightBlueAccent.withOpacity(0.95),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    bottomLeft: Radius.circular(12),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title + badge
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            titleText,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: _textStyle(
+                              weight: FontWeight.w800,
+                            ).copyWith(color: Colors.teal.shade100),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white12,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text('Thought', style: _textStyle(size: 11)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    if (subtitle.isNotEmpty)
+                      Text(
+                        subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: _textStyle(
+                          size: 13,
+                        ).copyWith(color: Colors.white70),
+                      ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const SizedBox(width: 8),
+                        Text(
+                          dateStr,
+                          style: _textStyle(
+                            size: 11,
+                          ).copyWith(color: Colors.white38),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right, color: Colors.white54),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -862,11 +1432,13 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
                 ? (data['timestamp'] as Timestamp).millisecondsSinceEpoch
                 : DateTime.now().millisecondsSinceEpoch);
 
+      // CHANGE — in _processMessagesSnapshot(), where user messages are read:
       if (sender == 'user') {
         final mType = data['type'] as String?;
         final ws = data['worksheet'] != null
             ? Map<String, dynamic>.from(data['worksheet'] as Map)
             : null;
+        final wsType = data['worksheetType'] as String?; // ADD
 
         userMsgs.add(
           _ChatMessage._withId(
@@ -876,6 +1448,7 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
             timestamp: ts,
             type: mType,
             worksheet: ws,
+            worksheetType: wsType, // ADD
           ),
         );
       } else if (sender == 'assistant') {
@@ -1932,7 +2505,7 @@ ${worksheetMap['dispute'] ?? ''}
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Dr. Kanhaiya (AI)',
+                    'Dr. Kanhaiya',
                     overflow: TextOverflow.ellipsis,
                     softWrap: false,
                     maxLines: 1,
@@ -1940,7 +2513,7 @@ ${worksheetMap['dispute'] ?? ''}
                   ),
                   if (!_consentAccepted)
                     Text(
-                      'Tap the info for disclaimer',
+                      'Reply by Dr.Kanhiaya/team',
                       overflow: TextOverflow.ellipsis,
                       softWrap: false,
                       maxLines: 1,
@@ -2640,24 +3213,226 @@ ${worksheetMap['dispute'] ?? ''}
     // -------------------------------
     // Show the same summary card UI as on the worksheet page when the message
     // represents an attached worksheet.
+    // -------------------------------
+    // Worksheet summary card in stream (ABCDE or Thought Record)
+    // -------------------------------
     if (m.type == 'worksheet' && m.worksheet != null) {
       final wsMap = m.worksheet!;
-      // Defensive parse: try to convert to ABCDEWorksheet; otherwise show raw data
-      ABCDEWorksheet? parsed;
-      try {
-        parsed = ABCDEWorksheet.fromMap(wsMap);
-      } catch (_) {
-        parsed = null;
-      }
+      // Prefer explicit type from message; fallback to map; final fallback = heuristic
+      final String? wsTypeRaw =
+          (m as dynamic).worksheetType ?? wsMap['worksheetType'] as String?;
+      final String wsType = (wsTypeRaw ?? '').toUpperCase();
 
-      // helper to extract short subtitle (first line of belief or activating event)
+      // Helpers
       String firstLine(String? s, {int max = 80}) {
         if (s == null) return '';
         final t = s.trim();
         if (t.isEmpty) return '';
         final fl = t.split(RegExp(r'\r?\n')).first.trim();
         if (fl.length <= max) return fl;
-        return fl.substring(0, max - 1).trim() + '…';
+        return '${fl.substring(0, max - 1).trim()}…';
+      }
+
+      bool looksLikeThoughtRecord(Map m) =>
+          m.containsKey('automaticThought') ||
+          m.containsKey('evidenceFor') ||
+          m.containsKey('evidenceAgainst') ||
+          m.containsKey('alternativeThought');
+
+      // === THOUGHT RECORD PATH ===
+      if (wsType == 'THOUGHT_RECORD' ||
+          (wsType.isEmpty && looksLikeThoughtRecord(wsMap))) {
+        ThoughtRecord? tr;
+        try {
+          tr = ThoughtRecord.fromMap(wsMap);
+        } catch (_) {
+          tr = null;
+        }
+
+        final titleText = tr?.situation.isNotEmpty == true
+            ? tr!.situation
+            : (wsMap['situation'] as String?)?.trim().isNotEmpty == true
+            ? (wsMap['situation'] as String)
+            : 'Thought Record';
+
+        final subtitle = firstLine(
+          tr?.automaticThought ?? (wsMap['automaticThought'] as String?),
+        );
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Align(
+            alignment: alignment,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.82,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () {
+                      if (tr != null) {
+                        _showThoughtDetailDialog(tr);
+                      } else {
+                        showDialog<void>(
+                          context: context,
+                          builder: (dctx) => AlertDialog(
+                            backgroundColor: cardDark,
+                            title: Text(
+                              'Thought Record',
+                              style: _textStyle(weight: FontWeight.w700),
+                            ),
+                            content: SingleChildScrollView(
+                              child: Text(
+                                wsMap.toString(),
+                                style: _textStyle(),
+                              ),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(dctx).pop(),
+                                child: Text('Close', style: _textStyle()),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                    },
+                    child: Card(
+                      color: cardDark,
+                      margin: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: const BorderSide(color: Colors.white10),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          children: [
+                            // Blue accent for Thought Record
+                            Container(
+                              width: 6,
+                              height: 56,
+                              decoration: BoxDecoration(
+                                color: Colors.lightBlueAccent.withOpacity(0.95),
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(10),
+                                  bottomLeft: Radius.circular(10),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Title + badge
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          titleText,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: _textStyle(
+                                            weight: FontWeight.w800,
+                                          ).copyWith(color: Colors.white),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white12,
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Thought',
+                                          style: _textStyle(size: 11),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  if (subtitle.isNotEmpty)
+                                    Text(
+                                      subtitle,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: _textStyle(
+                                        size: 13,
+                                      ).copyWith(color: Colors.white70),
+                                    ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      const Spacer(),
+                                      Text(
+                                        _formatTimestamp(m.timestamp),
+                                        style: _textStyle(
+                                          size: 11,
+                                        ).copyWith(color: Colors.white38),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(
+                              Icons.chevron_right,
+                              color: Colors.white54,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.02),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Please review this CBT practice by me',
+                            style: _textStyle(
+                              size: 13,
+                            ).copyWith(color: Colors.white70),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+
+      // === ABCDE PATH (default) ===
+      // Defensive parse: try to convert to ABCDEWorksheet; otherwise show raw data
+      ABCDEWorksheet? parsed;
+      try {
+        parsed = ABCDEWorksheet.fromMap(wsMap);
+      } catch (_) {
+        parsed = null;
       }
 
       final titleText =
@@ -2668,6 +3443,7 @@ ${worksheetMap['dispute'] ?? ''}
           ? (parsed?.activatingEvent ??
                 (wsMap['activatingEvent'] as String? ?? ''))
           : 'ABCDE worksheet';
+
       final subtitle = firstLine(
         parsed?.belief ?? (wsMap['belief'] as String?),
       );
@@ -2690,8 +3466,6 @@ ${worksheetMap['dispute'] ?? ''}
                     if (parsed != null) {
                       _showWorksheetDetailDialog(parsed);
                     } else {
-                      // If parsing failed, create a fallback ABCDEWorksheet-like object
-                      // or show raw contents in a simple dialog.
                       showDialog<void>(
                         context: context,
                         builder: (dctx) => AlertDialog(
@@ -2740,13 +3514,35 @@ ${worksheetMap['dispute'] ?? ''}
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  titleText,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: _textStyle(
-                                    weight: FontWeight.w800,
-                                  ).copyWith(color: Colors.white),
+                                // Title + badge
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        titleText,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: _textStyle(
+                                          weight: FontWeight.w800,
+                                        ).copyWith(color: Colors.white),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white12,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        'ABCDE',
+                                        style: _textStyle(size: 11),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 const SizedBox(height: 6),
                                 if (subtitle.isNotEmpty)
@@ -2762,7 +3558,6 @@ ${worksheetMap['dispute'] ?? ''}
                                 Row(
                                   children: [
                                     const Spacer(),
-                                    // show timestamp of this message if desired
                                     Text(
                                       _formatTimestamp(m.timestamp),
                                       style: _textStyle(
@@ -2786,8 +3581,6 @@ ${worksheetMap['dispute'] ?? ''}
                 ),
 
                 const SizedBox(height: 8),
-
-                // Optional small "attach/ask review" hint (tap card to view + share)
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -2988,6 +3781,8 @@ class _ChatMessageWithMeta {
 }
 
 /// Internal message model (keeps your existing constructors)
+// CHANGE — class _ChatMessage: नया फील्ड
+/// Internal message model (keeps simple named factories for convenience)
 class _ChatMessage {
   final String id;
   final String text;
@@ -2995,14 +3790,15 @@ class _ChatMessage {
   final bool isSystem;
   final int timestamp;
 
-  // New fields
-  final bool isPending; // true when assistant msg is awaiting doctor approval
-  final String? preview; // short preview to show user while pending
-  final bool isApproved; // convenience
+  // Assistant-approval flow
+  final bool isPending; // assistant msg awaiting doctor approval
+  final String? preview; // short preview while pending
+  final bool isApproved;
 
-  // New: type and worksheet map (nullable)
-  final String? type; // e.g. 'worksheet', 'worksheet_composer', etc.
+  // Worksheet embedding
+  final String? type; // e.g. 'worksheet'
   final Map<String, dynamic>? worksheet;
+  final String? worksheetType; // 'ABCDE' | 'THOUGHT_RECORD'
 
   _ChatMessage._({
     required this.id,
@@ -3015,19 +3811,48 @@ class _ChatMessage {
     this.isApproved = true,
     this.type,
     this.worksheet,
+    this.worksheetType,
   }) : timestamp = timestamp ?? DateTime.now().millisecondsSinceEpoch;
 
-  factory _ChatMessage.user(String t) =>
-      _ChatMessage._(id: const Uuid().v4(), text: t, isUser: true);
+  /// Create a user-authored message (visible immediately).
+  factory _ChatMessage.user(
+    String t, {
+    String? type,
+    Map<String, dynamic>? worksheet,
+    String? worksheetType,
+  }) => _ChatMessage._(
+    id: const Uuid().v4(),
+    text: t,
+    isUser: true,
+    isApproved: true,
+    isPending: false,
+    type: type,
+    worksheet: worksheet,
+    worksheetType: worksheetType,
+  );
 
-  factory _ChatMessage.assistant(String t) => _ChatMessage._(
+  /// Create an assistant message (defaults to approved=true, pending=false).
+  factory _ChatMessage.assistant(
+    String t, {
+    bool isApproved = true,
+    bool isPending = false,
+    String? preview,
+    String? type,
+    Map<String, dynamic>? worksheet,
+    String? worksheetType,
+  }) => _ChatMessage._(
     id: const Uuid().v4(),
     text: t,
     isUser: false,
-    isApproved: true,
+    isApproved: isApproved,
+    isPending: isPending,
+    preview: preview,
+    type: type,
+    worksheet: worksheet,
+    worksheetType: worksheetType,
   );
 
-  // Exposed private ctor to create message with explicit id (used for incoming firestore messages)
+  /// Construct with explicit id (used for incoming Firestore messages).
   factory _ChatMessage._withId(
     String id,
     String t, {
@@ -3038,6 +3863,7 @@ class _ChatMessage {
     bool isApproved = true,
     String? type,
     Map<String, dynamic>? worksheet,
+    String? worksheetType,
   }) => _ChatMessage._(
     id: id,
     text: t,
@@ -3048,6 +3874,7 @@ class _ChatMessage {
     isApproved: isApproved,
     type: type,
     worksheet: worksheet,
+    worksheetType: worksheetType,
   );
 
   Map<String, dynamic> toMap() => {
@@ -3061,6 +3888,7 @@ class _ChatMessage {
     'isApproved': isApproved,
     'type': type,
     'worksheet': worksheet,
+    'worksheetType': worksheetType,
   };
 
   factory _ChatMessage.fromMap(Map<String, dynamic> m) => _ChatMessage._(
@@ -3076,6 +3904,7 @@ class _ChatMessage {
     worksheet: m['worksheet'] != null
         ? Map<String, dynamic>.from(m['worksheet'] as Map)
         : null,
+    worksheetType: m['worksheetType'] as String?,
   );
 }
 
@@ -3084,4 +3913,20 @@ class _ActionItem {
   final String route;
   final IconData icon;
   _ActionItem({required this.label, required this.route, required this.icon});
+}
+
+// ADD — small helper model for attach items
+class _AttachItem {
+  final DateTime createdAt;
+  final String kind; // 'ABCDE' | 'THOUGHT_RECORD'
+  final Object data;
+  _AttachItem(this.createdAt, this.kind, this.data);
+
+  factory _AttachItem.abcd(DateTime dt, String kind, {required Object data}) =>
+      _AttachItem(dt, kind, data);
+  factory _AttachItem.thought(
+    DateTime dt,
+    String kind, {
+    required Object data,
+  }) => _AttachItem(dt, kind, data);
 }

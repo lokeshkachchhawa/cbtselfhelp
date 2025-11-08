@@ -110,11 +110,11 @@ class _HomePageState extends State<HomePage> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: teal4,
+          backgroundColor: Colors.orange,
           child: const Icon(Icons.psychology, color: Colors.white),
         ),
         title: const Text(
-          'Thought Detective',
+          'CBT Quiz Game',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         subtitle: const Text(
@@ -124,7 +124,7 @@ class _HomePageState extends State<HomePage> {
         trailing: ElevatedButton(
           onPressed: () => Navigator.pushNamed(context, "/cbt-game"),
 
-          style: ElevatedButton.styleFrom(backgroundColor: teal3),
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
           child: const Text('Play'),
         ),
       ),
@@ -339,7 +339,7 @@ class _HomePageState extends State<HomePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Dr. Kanhaiya (AI)',
+                    'Dr. Kanhaiya (Assistant)',
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
@@ -349,7 +349,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    'AI CBT Companion • Mind & Mood Coach',
+                    'CBT Companion • Mind & Mood Coach',
                     style: TextStyle(
                       color: Colors.tealAccent.shade100,
                       fontSize: 13,
@@ -377,7 +377,7 @@ class _HomePageState extends State<HomePage> {
                         icon: const Icon(Icons.chat_bubble_outline, size: 18),
                         label: const Text('Start Chat'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: teal3,
+                          backgroundColor: Colors.green,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,
                             vertical: 10,
@@ -487,7 +487,7 @@ class _HomePageState extends State<HomePage> {
 
                 // --- Title ---
                 const Text(
-                  'About this AI Chat',
+                  'About this Chat',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -499,7 +499,7 @@ class _HomePageState extends State<HomePage> {
 
                 // --- Description ---
                 Text(
-                  'The digital avatar of Dr. Kanhaiya provides informational guidance using CBT principles to support emotional wellbeing.\n\n'
+                  'The is team of Dr. Kanhaiya provides informational guidance using CBT principles to support emotional wellbeing.\n\n'
                   '⚠️ This chat is not a replacement for professional diagnosis or emergency care.\n'
                   'If you are in crisis, please use the “Get Help” option or contact local services.',
                   style: TextStyle(
@@ -615,9 +615,9 @@ class _HomePageState extends State<HomePage> {
           builder: (ctx, setState) {
             final Map<String, Map<String, String>> L = {
               'English': {
-                'title': 'Dr. Kanhaiya — AI Avatar (DrKtv)',
+                'title': 'Dr. Kanhaiya - (DrKtv)',
                 'desc':
-                    'An AI assistant trained to provide CBT-informed guidance and practical coping tools. It does not replace clinical care or crisis help.',
+                    'By team of Dr. Kanhaiya assistants trained to provide CBT-informed guidance and practical coping tools. It does not replace clinical care or crisis help.',
                 'how': 'How to use',
                 'step1':
                     '1️⃣  Ask a short question about your mood, thought, or worry.',
@@ -635,9 +635,9 @@ class _HomePageState extends State<HomePage> {
                 'copied': 'Copied to clipboard',
               },
               'हिन्दी': {
-                'title': 'डॉ. कन्हैया — एआई अवतार (DrKtv)',
+                'title': 'डॉ. कन्हैया — (DrKtv)',
                 'desc':
-                    'यह एक एआई सहायक है जो CBT-आधारित मार्गदर्शन और व्यावहारिक सहयोग रणनीतियाँ देता है। यह चिकित्सकीय सलाह या आपातकालीन सहायता का विकल्प नहीं है।',
+                    'यह एक सहायक है जो CBT-आधारित मार्गदर्शन और व्यावहारिक सहयोग रणनीतियाँ देता है। यह चिकित्सकीय सलाह या आपातकालीन सहायता का विकल्प नहीं है।',
                 'how': 'कैसे उपयोग करें',
                 'step1':
                     '1️⃣  अपने मूड, विचार या चिंता से जुड़ा छोटा प्रश्न पूछें।',
@@ -1206,8 +1206,9 @@ class _HomePageState extends State<HomePage> {
 
                       const SizedBox(height: 12),
                       _buildDrKanhaiyaChatCard(),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 10),
                       _buildThoughtDetectiveCard(),
+                      const SizedBox(height: 10),
                       _buildCoursesSection(),
                       const SizedBox(height: 16),
                       // Programs carousel (simple horizontal list)
@@ -1706,14 +1707,23 @@ class _HomePageState extends State<HomePage> {
     final tools = [
       {'icon': Icons.note_alt, 'label': 'Thought', 'route': '/thought'},
       {'icon': Icons.rule, 'label': 'ABCD', 'route': '/abcd'},
-
       {'icon': Icons.self_improvement, 'label': 'Relax', 'route': '/relax'},
-      {'icon': Icons.psychology, 'label': 'CBT Game', 'route': '/thought_game'},
+      {'icon': Icons.psychology, 'label': 'CBT Game', 'route': '/cbt-game'},
+    ];
+
+    // ✅ Different avatar background colors
+    final avatarColors = [
+      Colors.orange, // Thought
+      Colors.purple, // ABCD
+      Colors.blue, // Relax
+      Colors.green, // CBT Game
     ];
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: tools.map((t) {
+      children: List.generate(tools.length, (i) {
+        final t = tools[i];
+
         return Expanded(
           child: GestureDetector(
             onTap: () => Navigator.pushNamed(context, t['route'] as String),
@@ -1728,7 +1738,7 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   CircleAvatar(
                     radius: 20,
-                    backgroundColor: teal4,
+                    backgroundColor: avatarColors[i], // ✅ per-tool color
                     child: Icon(t['icon'] as IconData, color: Colors.white),
                   ),
                   const SizedBox(height: 8),
@@ -1741,7 +1751,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         );
-      }).toList(),
+      }),
     );
   }
 

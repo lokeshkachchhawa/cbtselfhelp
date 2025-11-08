@@ -12,7 +12,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.cbt_drktv"
+    namespace = "com.drktv.cbt_drktv"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "27.0.12077973"
 
@@ -34,7 +34,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.cbt_drktv" // <- change if needed
+        applicationId = "com.drktv.cbt_drktv" // <- change if needed
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

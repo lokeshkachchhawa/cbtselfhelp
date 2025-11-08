@@ -1,4 +1,4 @@
-package com.example.cbt_drktv
+package com.drktv.cbt_drktv
 
 import io.flutter.embedding.android.FlutterActivity
 

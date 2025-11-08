@@ -109,26 +109,21 @@ class AppTextField extends StatelessWidget {
 class ABCDEWorksheet {
   final String id;
   final String activatingEvent;
-
-  // B — Belief (single field now)
   final String belief;
-
-  // C — Consequences (four types)
   final String consequencesEmotional;
   final String consequencesPsychological;
   final String consequencesPhysical;
   final String consequencesBehavioural;
-
   final String dispute;
-
-  // E — Effects (four types)
   final String emotionalEffect;
   final String psychologicalEffect;
   final String physicalEffect;
   final String behaviouralEffect;
-
   final String note;
   final DateTime createdAt;
+
+  // NEW
+  final bool isExample;
 
   ABCDEWorksheet({
     required this.id,
@@ -145,6 +140,7 @@ class ABCDEWorksheet {
     required this.behaviouralEffect,
     required this.note,
     required this.createdAt,
+    this.isExample = false, // default: user-created
   });
 
   ABCDEWorksheet copyWith({
@@ -160,6 +156,7 @@ class ABCDEWorksheet {
     String? physicalEffect,
     String? behaviouralEffect,
     String? note,
+    bool? isExample, // NEW
   }) {
     return ABCDEWorksheet(
       id: id,
@@ -179,6 +176,7 @@ class ABCDEWorksheet {
       behaviouralEffect: behaviouralEffect ?? this.behaviouralEffect,
       note: note ?? this.note,
       createdAt: createdAt,
+      isExample: isExample ?? this.isExample,
     );
   }
 
@@ -197,10 +195,11 @@ class ABCDEWorksheet {
     'behaviouralEffect': behaviouralEffect,
     'note': note,
     'createdAt': createdAt.toIso8601String(),
+    'isExample': isExample, // NEW
   };
 
   static ABCDEWorksheet fromMap(Map<String, dynamic> m) {
-    // Support legacy fields:
+    // …your legacy compose code stays the same…
     final legacyBelEmo = m['beliefEmotional'] as String?;
     final legacyBelPsy = m['beliefPsychological'] as String?;
     final legacyBelPhy = m['beliefPhysical'] as String?;
@@ -239,6 +238,8 @@ class ABCDEWorksheet {
       note: m['note'] as String? ?? '',
       createdAt:
           DateTime.tryParse(m['createdAt'] as String? ?? '') ?? DateTime.now(),
+      isExample:
+          (m['isExample'] as bool?) ?? false, // NEW (defaults to user item)
     );
   }
 }
@@ -285,6 +286,11 @@ class ABCDEStorage {
     final all = await loadAll();
     all.removeWhere((e) => e.id == id);
     await saveAll(all);
+  }
+
+  Future<List<ABCDEWorksheet>> loadUserOnly() async {
+    final all = await loadAll();
+    return all.where((w) => !w.isExample).toList();
   }
 }
 
@@ -384,13 +390,39 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
   }
 
   // Helper: build an ABCDEWorksheet from JSON map ensuring id & createdAt exist
-  ABCDEWorksheet _worksheetFromJsonMap(Map<String, dynamic> m) {
+  // Helper: build an ABCDEWorksheet from JSON map ensuring id & createdAt exist
+  ABCDEWorksheet _worksheetFromJsonMap(
+    Map<String, dynamic> m, {
+    bool asExample = false,
+  }) {
     final id = (m['id'] as String?) ?? _uuid.v4();
     final mapCopy = Map<String, dynamic>.from(m);
     mapCopy['id'] = id;
     mapCopy['createdAt'] =
         mapCopy['createdAt'] ?? DateTime.now().toIso8601String();
+    mapCopy['isExample'] = asExample; // NEW
     return ABCDEWorksheet.fromMap(mapCopy);
+  }
+
+  void _startNewWithPrefill(ABCDEWorksheet from) {
+    setState(() {
+      _editing = null; // important: new item, not editing!
+      _activatingCtrl.text = from.activatingEvent;
+      _beliefCtrl.text = from.belief;
+      _consecEmoCtrl.text = from.consequencesEmotional;
+      _consecPsyCtrl.text = from.consequencesPsychological;
+      _consecPhyCtrl.text = from.consequencesPhysical;
+      _consecBehCtrl.text = from.consequencesBehavioural;
+      _disputeCtrl.text = from.dispute;
+      _noteCtrl.text = from.note;
+      _emoCtrl.text = from.emotionalEffect;
+      _psyCtrl.text = from.psychologicalEffect;
+      _phyCtrl.text = from.physicalEffect;
+      _behCtrl.text = from.behaviouralEffect;
+      _effectsTabController.index = 0;
+      _consequencesTabController.index = 0;
+    });
+    _showFormSheet();
   }
 
   /// Import examples from asset JSON once (idempotent)
@@ -409,7 +441,10 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
       final List<dynamic> list = json.decode(jsonStr) as List<dynamic>;
       final examples = list
           .map(
-            (e) => _worksheetFromJsonMap(Map<String, dynamic>.from(e as Map)),
+            (e) => _worksheetFromJsonMap(
+              Map<String, dynamic>.from(e as Map),
+              asExample: true,
+            ),
           )
           .toList();
 
@@ -492,6 +527,12 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
   }
 
   void _startEdit(ABCDEWorksheet item) {
+    if (item.isExample) {
+      // Use example → create a fresh, user-owned draft
+      _startNewWithPrefill(item);
+      return;
+    }
+    // normal edit for user-owned items
     setState(() {
       _editing = item;
       _activatingCtrl.text = item.activatingEvent;

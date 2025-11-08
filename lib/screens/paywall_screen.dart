@@ -1,7 +1,9 @@
 // lib/screens/paywall_screen.dart
+import 'dart:async';
+
 import 'package:cbt_drktv/widgets/help_sheet.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart'; // <-- for Callable Functions
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 // ignore: depend_on_referenced_packages
@@ -26,16 +28,52 @@ class _PaywallScreenState extends State<PaywallScreen> {
   // Track which plan was tapped to show inline spinner on that button.
   String? _pendingKind;
 
+  // 🔔 Live gate: send home if status is active or cancel_scheduled
+  Stream<DocumentSnapshot<Map<String, dynamic>>>? _userStream;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _sub;
+  bool _checkingGate = true;
+
   @override
   void initState() {
     super.initState();
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _onPaymentSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _onPaymentError);
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, (_) {});
+
+    // Start a snapshot listener to bypass paywall when allowed
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      _userStream = FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .snapshots();
+      _sub = _userStream!.listen(
+        (snap) {
+          final data = snap.data() ?? {};
+          final sub = Map<String, dynamic>.from(data['subscription'] ?? {});
+          final status = (sub['status'] ?? '').toString();
+          final allowed = status == 'active' || status == 'cancel_scheduled';
+          if (allowed && mounted) {
+            // Avoid double navigations
+            _sub?.cancel();
+            _sub = null;
+            Navigator.pushReplacementNamed(context, '/home');
+          } else {
+            if (mounted && _checkingGate) setState(() => _checkingGate = false);
+          }
+        },
+        onError: (_) {
+          if (mounted && _checkingGate) setState(() => _checkingGate = false);
+        },
+      );
+    } else {
+      _checkingGate = false;
+    }
   }
 
   @override
   void dispose() {
+    _sub?.cancel();
     _razorpay.clear();
     super.dispose();
   }
@@ -140,6 +178,19 @@ class _PaywallScreenState extends State<PaywallScreen> {
     final bgTop = const Color(0xFFE6F4F3);
     final bgBottom = Colors.teal.shade50;
 
+    // ⏳ First paint: wait for subscription gate once
+    if (_checkingGate) {
+      return Scaffold(
+        backgroundColor: bgBottom,
+        appBar: AppBar(
+          elevation: 0,
+          backgroundColor: Colors.teal,
+          title: const Text('Subscribe for Access'),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       floatingActionButton: const WhatsAppButton(),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
@@ -220,8 +271,6 @@ class _PaywallScreenState extends State<PaywallScreen> {
                                   ],
                                 ),
                                 const SizedBox(height: 12),
-
-                                // Highlighted text with RichText
                                 RichText(
                                   textAlign: TextAlign.center,
                                   text: TextSpan(
@@ -256,7 +305,6 @@ class _PaywallScreenState extends State<PaywallScreen> {
                                     ],
                                   ),
                                 ),
-
                                 const SizedBox(height: 4),
                               ],
                             ),
@@ -304,7 +352,6 @@ class _PaywallScreenState extends State<PaywallScreen> {
                         const FaqSection(),
 
                         const SizedBox(height: 12),
-
                         Opacity(
                           opacity: 0.7,
                           child: Text(
@@ -496,6 +543,9 @@ class _PlanCard extends StatelessWidget {
                                   color: Colors.green,
                                 ),
                                 children: [
+                                  const TextSpan(
+                                    text: '', // price added below
+                                  ),
                                   TextSpan(
                                     text: price,
                                     style: const TextStyle(
@@ -703,8 +753,6 @@ class FaqSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-
-          // FAQ List
           ...faqs.map(
             (f) => Container(
               margin: const EdgeInsets.only(bottom: 10),
@@ -758,9 +806,7 @@ class WhatsAppButton extends StatelessWidget {
   Future<void> _openWhatsApp() async {
     final url =
         "https://wa.me/917976171908?text=${Uri.encodeComponent(message)}";
-
     final uri = Uri.parse(url);
-
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
