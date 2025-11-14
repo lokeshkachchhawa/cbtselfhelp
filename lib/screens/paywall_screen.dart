@@ -248,7 +248,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                             borderRadius: BorderRadius.circular(18),
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+                            padding: const EdgeInsets.fromLTRB(18, 12, 18, 14),
                             child: Column(
                               children: [
                                 Row(
@@ -310,6 +310,8 @@ class _PaywallScreenState extends State<PaywallScreen> {
                             ),
                           ),
                         ),
+
+                        // --- add this right after the Header Card (before _PlanCard calls) ---
                         const SizedBox(height: 8),
 
                         // Plans
@@ -346,8 +348,22 @@ class _PaywallScreenState extends State<PaywallScreen> {
                               ? null
                               : () => _start(kind: 'yearly'),
                         ),
-                        const SizedBox(height: 24),
-
+                        const SizedBox(height: 12),
+                        ScreenshotCarousel(
+                          imagePaths: [
+                            'images/s1.png',
+                            'images/s2.png',
+                            'images/s3.png',
+                            'images/s4.png',
+                            'images/s5.png',
+                            'images/s6.png',
+                          ],
+                          autoPlay:
+                              true, // change to false if you don't want autoplay
+                          height:
+                              420, // tweak to fit your layout (on narrow screens it scales)
+                        ),
+                        const SizedBox(height: 12),
                         // FAQ section below plans
                         const FaqSection(),
 
@@ -792,6 +808,243 @@ class FaqSection extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class ScreenshotCarousel extends StatefulWidget {
+  final List<String> imagePaths;
+  final bool autoPlay;
+  final Duration autoPlayInterval;
+  final double height;
+
+  const ScreenshotCarousel({
+    super.key,
+    required this.imagePaths,
+    this.autoPlay = true,
+    this.autoPlayInterval = const Duration(seconds: 4),
+    this.height = 420,
+  });
+
+  @override
+  State<ScreenshotCarousel> createState() => _ScreenshotCarouselState();
+}
+
+class _ScreenshotCarouselState extends State<ScreenshotCarousel> {
+  late final PageController _pageController;
+  int _current = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: 0.72, initialPage: 0);
+
+    if (widget.autoPlay && widget.imagePaths.length > 1) {
+      _timer = Timer.periodic(widget.autoPlayInterval, (_) {
+        if (!mounted) return;
+        final next = (_current + 1) % widget.imagePaths.length;
+        _pageController.animateToPage(
+          next,
+          duration: const Duration(milliseconds: 420),
+          curve: Curves.easeInOut,
+        );
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _openFullscreen(BuildContext context, String path, int index) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return GestureDetector(
+          onTap: () => Navigator.of(context).pop(),
+          child: Container(
+            color: Colors.black.withOpacity(0.9),
+            child: Center(
+              child: Hero(
+                tag: 'screenshot_$index',
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 24.0,
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: InteractiveViewer(
+                        panEnabled: true,
+                        scaleEnabled: true,
+                        child: Image.asset(
+                          path,
+                          fit: BoxFit.contain,
+                          errorBuilder: (c, e, s) => Container(
+                            width: 300,
+                            height: 600,
+                            color: Colors.grey.shade900,
+                            child: const Center(
+                              child: Icon(
+                                Icons.broken_image,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final images = widget.imagePaths;
+    final height = widget.height;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+          child: Text(
+            'See inside the app',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: Colors.teal.shade800,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: height,
+          child: PageView.builder(
+            controller: _pageController,
+            itemCount: images.length,
+            onPageChanged: (i) => setState(() => _current = i),
+            itemBuilder: (context, index) {
+              final path = images[index];
+              return AnimatedBuilder(
+                animation: _pageController,
+                builder: (context, child) {
+                  double value = 0;
+                  try {
+                    if (_pageController.position.haveDimensions) {
+                      value = _pageController.page! - index;
+                    } else {
+                      value = (_pageController.initialPage - index).toDouble();
+                    }
+                  } catch (_) {
+                    value = 0;
+                  }
+                  // clamp and invert
+                  value = (1 - (value.abs() * 0.15)).clamp(0.85, 1.0);
+                  final scale = Curves.easeOut.transform(value);
+                  final angle = (_pageController.hasClients)
+                      ? (_pageController.page ?? _pageController.initialPage) -
+                            index
+                      : 0.0;
+                  final tilt = (angle * 0.02).clamp(-0.03, 0.03);
+
+                  return Center(
+                    child: Transform(
+                      transform: Matrix4.identity()
+                        ..translate(0.0, (1 - scale) * 24)
+                        ..scale(scale, scale)
+                        ..setEntry(3, 2, 0.001)
+                        ..rotateY(tilt),
+                      alignment: Alignment.center,
+                      child: child,
+                    ),
+                  );
+                },
+                child: GestureDetector(
+                  onTap: () => _openFullscreen(context, path, index),
+                  child: Hero(
+                    tag: 'screenshot_$index',
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.20),
+                            blurRadius: 18,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: AspectRatio(
+                          aspectRatio: 9 / 18,
+                          child: Image.asset(
+                            path,
+                            fit: BoxFit.cover,
+                            errorBuilder: (c, e, s) => Container(
+                              color: Colors.grey.shade200,
+                              child: Center(
+                                child: Icon(
+                                  Icons.broken_image,
+                                  color: Colors.grey.shade400,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // Dots indicator
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(images.length, (i) {
+            final active = i == _current;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              width: active ? 22 : 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: active ? Colors.teal : Colors.teal.shade100,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  if (active)
+                    BoxShadow(
+                      color: Colors.teal.withOpacity(0.18),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                ],
+              ),
+            );
+          }),
+        ),
+      ],
     );
   }
 }

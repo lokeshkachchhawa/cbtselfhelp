@@ -1901,125 +1901,52 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
                     child: Row(
                       children: [
                         Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () async {
-                              // Confirm then share (keeps same confirmation & snackbar behavior)
-                              final confirm = await showDialog<bool>(
-                                context: dctx,
-                                builder: (confirmCtx) => AlertDialog(
-                                  backgroundColor: cardDark,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  title: const Text(
-                                    'Share worksheet?',
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                  content: const Text(
-                                    'Share this ABCDE worksheet with your doctor? This will send the worksheet to the doctor\'s chat.',
-                                    style: TextStyle(color: Colors.white70),
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.of(confirmCtx).pop(false),
-                                      child: const Text(
-                                        'Cancel',
-                                        style: TextStyle(color: Colors.white70),
-                                      ),
-                                    ),
-                                    ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(
-                                          0xFF008F89,
-                                        ),
-                                      ),
-                                      onPressed: () =>
-                                          Navigator.of(confirmCtx).pop(true),
-                                      child: const Text('Share'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                              if (confirm != true) return;
-                              Navigator.of(dctx).pop(); // close dialog quickly
-                              if (mounted) {
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              // Close the parent dialog/sheet (using the dialog context `dctx`)
+                              try {
+                                Navigator.of(dctx).pop();
+                              } catch (_) {
+                                // fallback: if dctx isn't available or pop fails, try current context
+                                try {
+                                  Navigator.of(context).pop();
+                                } catch (_) {}
+                              }
+
+                              // Call your existing Edit handler
+                              _startEdit(item);
+
+                              // Optional: show a small confirmation snackbar
+                              if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text(
-                                      'Sharing worksheet with your doctor...',
-                                    ),
+                                    content: Text('Opening editor...'),
+                                    backgroundColor: Color(0xFF007A78), // teal4
                                   ),
                                 );
                               }
-                              try {
-                                await ChatShare.sendAbcdeWorksheetToDoctor(
-                                  item.toMap(),
-                                );
-                                if (mounted) {
-                                  final sb = SnackBar(
-                                    content: const Text(
-                                      'Worksheet shared with doctor',
-                                    ),
-                                    action: SnackBarAction(
-                                      label: 'View in chat',
-                                      textColor: Colors.tealAccent,
-                                      onPressed: () {
-                                        try {
-                                          Navigator.of(
-                                            context,
-                                          ).pushNamed('/drktv_chat');
-                                        } catch (_) {}
-                                      },
-                                    ),
-                                  );
-                                  ScaffoldMessenger.of(
-                                    context,
-                                  ).showSnackBar(sb);
-                                }
-                              } catch (e) {
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Failed to share with doctor: $e',
-                                      ),
-                                    ),
-                                  );
-                                }
-                              }
                             },
-                            icon: const Icon(Icons.send, color: Colors.white),
+                            icon: const Icon(Icons.edit, color: Colors.white),
                             label: const Text(
-                              'Share with Doctor',
-                              style: TextStyle(color: Colors.white),
+                              'Edit',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Colors.white),
-                              backgroundColor: Colors.green,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color.fromARGB(
+                                255,
+                                0,
+                                174,
+                                55,
+                              ), // teal3
+                              foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 14),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.of(dctx).pop();
-                            _startEdit(item);
-                          },
-                          icon: const Icon(Icons.edit, color: Colors.black),
-                          label: const Text(
-                            'Edit',
-                            style: TextStyle(color: Colors.black),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: colorA,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 2,
                             ),
                           ),
                         ),
@@ -2313,12 +2240,27 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
         ),
       ),
 
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _startNew,
-        icon: const Icon(Icons.add),
-        label: const Text('New worksheet'),
-        backgroundColor: teal3,
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [
+              Colors.green, // teal3
+              Color(0xFF007A78), // teal4
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(30), // must match FAB shape
+        ),
+        child: FloatingActionButton.extended(
+          onPressed: _startNew,
+          icon: const Icon(Icons.add),
+          label: const Text('New worksheet'),
+          backgroundColor: Colors.transparent, // IMPORTANT
+          elevation: 0, // looks cleaner
+        ),
       ),
+
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
 
       body: Column(
