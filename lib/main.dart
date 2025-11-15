@@ -107,7 +107,7 @@ class MyApp extends StatelessWidget {
           '/relax/breath': (_) => const RelaxBreathPage(),
           '/relax_pmr': (_) => const RelaxPmrPage(),
           '/grounding': (_) => const RelaxGroundingPage(),
-          '/minimeditation': (_) => const MiniMeditationTimer(),
+          '/minimeditation': (_) => const GuidedMeditationPlayer(),
           '/sounds': (_) => const RelaxSoundsPage(),
           '/programs': (_) => const ProgramsPage(),
           '/drktv_chat': (ctx) => const DrKtvChatScreen(),

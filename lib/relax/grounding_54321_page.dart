@@ -243,7 +243,7 @@ class _RelaxGroundingPageState extends State<RelaxGroundingPage> {
     } catch (_) {}
 
     try {
-      if (await Vibration.hasVibrator() ?? false) {
+      if (await Vibration.hasVibrator()) {
         Vibration.vibrate(duration: 36);
       }
     } catch (_) {}

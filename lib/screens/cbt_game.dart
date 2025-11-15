@@ -133,6 +133,21 @@ Map<String, IconData> categoryIcons = {
   "Random Mix (100)": Icons.shuffle,
 };
 
+// === per-category color palette (place near categoryIcons) ===
+final Map<String, Color> categoryColors = {
+  "Mind Reading": Color(0xFF6C5CE7), // purple
+  "Overgeneralisation": Color.fromARGB(255, 240, 232, 0), // mint green
+  "Personalisation": Color(0xFF0984E3), // bright blue
+  "Permanent Thinking": Color(0xFFFD79A8), // pink
+  "Pervasive Thinking": Color(0xFFF6C85F), // warm yellow
+  "Magical Thinking": Color(0xFFAA00FF), // vivid violet
+  "Emotional Reasoning": Color(0xFFFE7F2D), // orange
+  "Labeling": Color(0xFF00CED1), // turquoise
+  "All-or-None Thinking": Color(0xFF2D9CDB), // soft azure
+  "Disqualifying the Positive": Color(0xFFEF476F),
+  "Random Mix (100)": Color(0xFF4CAF50), // green
+};
+
 List<String> buildOptions(String correct) {
   final others = kDistortionLabels.where((e) => e != correct).toList()
     ..shuffle();
@@ -366,13 +381,18 @@ class _CBTGameScreenState extends State<CBTGameScreen>
     return Scaffold(
       backgroundColor: teal6,
       appBar: AppBar(
-        backgroundColor: teal3,
+        title: const Text('Thought Detactive'),
         elevation: 0,
-        title: const Text(
-          "Thought Detective",
-          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20),
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [teal6, teal4],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
         ),
-        centerTitle: true,
       ),
       body: loaded
           ? FadeTransition(
@@ -384,7 +404,11 @@ class _CBTGameScreenState extends State<CBTGameScreen>
                     width: double.infinity,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [teal3, teal4],
+                        colors: [
+                          const Color.fromARGB(255, 7, 123, 111),
+                          const Color.fromARGB(255, 1, 25, 21),
+                          const Color.fromARGB(255, 2, 55, 47),
+                        ],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                       ),
@@ -509,7 +533,9 @@ class _CategoryCardState extends State<_CategoryCard>
   @override
   Widget build(BuildContext context) {
     final icon = categoryIcons[widget.category.title] ?? Icons.psychology_alt;
-
+    final Color baseColor =
+        categoryColors[widget.category.title] ?? teal3; // fallback
+    final Color iconColor = Colors.white;
     return GestureDetector(
       onTapDown: (_) {
         setState(() => _isPressed = true);
@@ -551,60 +577,98 @@ class _CategoryCardState extends State<_CategoryCard>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // Icon with animated background
+              // --- Modern per-category icon (replace previous Container) ---
               Container(
-                width: 56,
-                height: 56,
+                width: 64,
+                height: 64,
                 decoration: BoxDecoration(
-                  color: teal3.withOpacity(0.3),
                   shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      baseColor.withOpacity(0.22),
+                      baseColor.withOpacity(0.10),
+                    ],
+                    center: Alignment(0.0, 0.0),
+                    radius: 0.9,
+                  ),
+                  boxShadow: [
+                    // gentle colored glow
+                    BoxShadow(
+                      color: baseColor,
+                      blurRadius: 18,
+                      spreadRadius: 1,
+                      offset: const Offset(0, 2),
+                    ),
+                    // subtle elevation shadow
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.25),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                   border: Border.all(
-                    color: Colors.white.withOpacity(0.2),
-                    width: 2,
+                    color: baseColor.withOpacity(0.18),
+                    width: 1.5,
                   ),
                 ),
-                child: Icon(icon, color: Colors.white, size: 28),
+                child: Center(child: Icon(icon, color: iconColor, size: 28)),
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
 
               // Title
-              Flexible(
-                child: Text(
-                  widget.category.title,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                    height: 1.2,
-                    letterSpacing: 0.2,
+              // --- FIXED TITLE + PILL (PREVENT OVERFLOW) ---
+              Column(
+                mainAxisSize: MainAxisSize.min, // <<< ADD THIS ONE LINE
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Title (max 2 lines always)
+                  Text(
+                    widget.category.title,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                      height: 1.2,
+                    ),
                   ),
-                ),
-              ),
 
-              const SizedBox(height: 12),
+                  const SizedBox(height: 5),
 
-              // Question count badge
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: teal2.withOpacity(0.25),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: teal2.withOpacity(0.4), width: 1),
-                ),
-                child: Text(
-                  "${widget.category.questions.length} Questions",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
+                  // Question Count Pill (never pushes or gets pushed)
+                  FittedBox(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color.fromARGB(
+                          255,
+                          0,
+                          135,
+                          47,
+                        ).withOpacity(0.8),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: teal2.withOpacity(0.4),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        "${widget.category.questions.length} Questions",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
           ),

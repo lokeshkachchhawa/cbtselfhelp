@@ -2,14 +2,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// RelaxPage: hub for relaxation tools (cards for each feature).
-/// Dark theme, teal palette (team theme), roomy cards, subtle gradients.
-/// Added small staggered entrance animations for cards (fade + slide).
+/// Enhanced RelaxPage with improved UI/UX:
+/// - Vibrant per-feature colors with glowing effects
+/// - Smooth press animations on cards
+/// - Better visual hierarchy and spacing
+/// - Enhanced typography and shadows
+/// - Improved accessibility with better touch targets
 
-const Color teal1 = Color(0xFF016C6C); // deep teal (primary)
-const Color teal2 = Color(0xFF79C2BF); // light accent
-const Color teal3 = Color(0xFF008F89); // primary accent
-const Color teal4 = Color(0xFF007A78); // darker accent
+const Color teal1 = Color(0xFF016C6C);
+const Color teal2 = Color(0xFF79C2BF);
+const Color teal3 = Color(0xFF008F89);
+const Color teal4 = Color(0xFF007A78);
 const Color teal5 = Color(0xFF005E5C);
 const Color teal6 = Color(0xFF004E4D);
 
@@ -17,6 +20,12 @@ const Color surfaceDark = Color(0xFF081015);
 const Color cardDark = Color(0xFF092426);
 const Color mutedText = Color(0xFFBFDCDC);
 const Color dimText = Color(0xFFA3CFCB);
+
+// Vibrant colors for each feature
+const Color breathBlue = Color(0xFF3B82F6); // bright blue
+const Color muscleViolet = Color(0xFF8B5CF6); // purple
+const Color groundGreen = Color(0xFF10B981); // emerald
+const Color meditationAmber = Color(0xFFF59E0B); // warm amber
 
 class RelaxPage extends StatefulWidget {
   const RelaxPage({super.key});
@@ -28,38 +37,36 @@ class RelaxPage extends StatefulWidget {
 class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
   late final AnimationController _controller;
 
-  // animation timing - tweak these to get faster/slower or wider spacing
   final Duration singleDuration = const Duration(milliseconds: 450);
-  final double staggerDelay = 0.08; // fraction of total: lower = more overlap
+  final double staggerDelay = 0.08;
 
-  // list of feature card data so we can easily map indexes to animation intervals
   final List<_Feature> _features = [
     _Feature(
       title: 'Breathing Exercises',
-      subtitle: 'Guided inhale/exhale circle animation. Adjustable duration.',
-      icon: Icons.air,
-      color: teal3,
+      subtitle: 'Guided inhale/exhale with calming circle animation',
+      icon: Icons.air_rounded,
+      color: breathBlue,
       route: '/relax/breath',
     ),
     _Feature(
       title: 'Progressive Muscle Relaxation',
-      subtitle: 'Step-by-step tensing & releasing with audio & text guidance.',
-      icon: Icons.self_improvement,
-      color: teal5,
+      subtitle: 'Release tension step-by-step with audio guidance',
+      icon: Icons.self_improvement_rounded,
+      color: muscleViolet,
       route: '/relax_pmr',
     ),
     _Feature(
       title: 'Grounding (5-4-3-2-1)',
-      subtitle: 'Interactive exercise to quickly ground you in the present.',
-      icon: Icons.filter_5,
-      color: teal4,
+      subtitle: 'Ground yourself in the present moment instantly',
+      icon: Icons.spa_rounded,
+      color: groundGreen,
       route: '/grounding',
     ),
     _Feature(
       title: 'Mini Meditation Timer',
-      subtitle: 'Timer with gentle background sounds. Start/stop and duration.',
-      icon: Icons.timer,
-      color: teal2,
+      subtitle: 'Timed sessions with peaceful background sounds',
+      icon: Icons.timer_rounded,
+      color: meditationAmber,
       route: '/minimeditation',
     ),
   ];
@@ -68,8 +75,7 @@ class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    // total duration: singleDuration + stagger per item
-    final int items = _features.length + 1; // +1 for the tips card
+    final int items = _features.length + 1;
     final double totalSeconds =
         singleDuration.inMilliseconds / 1000 + (items * staggerDelay);
     _controller = AnimationController(
@@ -77,7 +83,6 @@ class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
       duration: Duration(milliseconds: (totalSeconds * 1000).round()),
     );
 
-    // play automatically
     _controller.forward();
   }
 
@@ -87,9 +92,8 @@ class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  // build a per-index animation that returns a CurvedAnimation with an Interval
   Animation<double> _buildInterval(int index) {
-    final int items = _features.length + 1; // +1 for tips
+    final int items = _features.length + 1;
     final double start =
         (index * staggerDelay) /
         (singleDuration.inMilliseconds / 1000 + items * staggerDelay);
@@ -112,14 +116,17 @@ class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
     return Scaffold(
       backgroundColor: surfaceDark,
       appBar: AppBar(
-        title: const Text('Relax'),
+        title: const Text(
+          'Relax',
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20),
+        ),
         elevation: 0,
         systemOverlayStyle: SystemUiOverlayStyle.light,
         backgroundColor: Colors.transparent,
         flexibleSpace: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [teal4, teal1],
+              colors: [teal3, teal5],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -128,35 +135,30 @@ class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _header(),
-              const SizedBox(height: 12),
-              _searchHint(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
               // Feature cards with staggered animation
               ...List.generate(_features.length, (i) {
                 final feature = _features[i];
-
                 final animation = _buildInterval(i);
-
-                // slide from slightly below + fade in
                 final slideTween = Tween<Offset>(
                   begin: const Offset(0, 0.06),
                   end: Offset.zero,
                 );
 
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.only(bottom: 14),
                   child: FadeTransition(
                     opacity: animation,
                     child: SlideTransition(
                       position: slideTween.animate(animation),
-                      child: _featureCard(
-                        context,
+                      child: _EnhancedFeatureCard(
                         title: feature.title,
                         subtitle: feature.subtitle,
                         icon: feature.icon,
@@ -170,7 +172,7 @@ class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
 
               const SizedBox(height: 20),
 
-              // Tips card (animate as last item)
+              // Tips card
               AnimatedBuilder(
                 animation: _controller,
                 builder: (context, child) {
@@ -189,40 +191,7 @@ class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
                     ),
                   );
                 },
-                child: Card(
-                  color: cardDark,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 6,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          'Quick tips',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFFFFFFFF),
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          '• Use breathing exercises for 1–5 minutes when anxious.\n'
-                          '• Progressive muscle relaxation works well before sleep.\n'
-                          '• Grounding helps during panic or high anxiety.\n'
-                          '• Try the mini meditation daily — consistency helps.',
-                          style: TextStyle(color: Color(0xFFA3CFCB)),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                child: _TipsCard(),
               ),
 
               const SizedBox(height: 40),
@@ -234,149 +203,322 @@ class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
   }
 
   Widget _header() {
-    return Row(
-      children: [
-        Container(
-          width: 58,
-          height: 58,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [teal3, teal4],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 8),
-            ],
-          ),
-          child: const Icon(
-            Icons.self_improvement,
-            color: Colors.white,
-            size: 34,
-          ),
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [teal4.withOpacity(0.3), teal6.withOpacity(0.2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text(
-                'Relax & Reset',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: teal3.withOpacity(0.3), width: 1.5),
+      ),
+      child: Row(
+        children: [
+          // Circular icon with teal glow
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  teal3.withOpacity(0.35),
+                  teal3.withOpacity(0.15),
+                  Colors.transparent,
+                ],
+                center: const Alignment(-0.3, -0.3),
+                radius: 1.0,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: teal3.withOpacity(0.5),
+                  blurRadius: 28,
+                  spreadRadius: 4,
+                  offset: const Offset(0, 6),
+                ),
+                BoxShadow(
+                  color: teal3.withOpacity(0.3),
+                  blurRadius: 16,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 4),
+                ),
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+              border: Border.all(color: teal3.withOpacity(0.3), width: 2),
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [teal3.withOpacity(0.2), teal4.withOpacity(0.1)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
-              SizedBox(height: 4),
-              Text(
-                'Short practices to help calm your body and mind',
-                style: TextStyle(color: Color(0xFF9FCFC7)),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _searchHint() {
-    return GestureDetector(
-      onTap: () {
-        // placeholder: later add search or filter
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        decoration: BoxDecoration(
-          color: cardDark,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.transparent),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.35), blurRadius: 6),
-          ],
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.search, color: mutedText),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Search exercises (coming soon)',
-                style: TextStyle(color: mutedText.withOpacity(0.9)),
+              child: Icon(
+                Icons.spa_rounded,
+                color: Colors.white,
+                size: 32,
+                shadows: [
+                  Shadow(
+                    color: teal3.withOpacity(0.8),
+                    blurRadius: 12,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Relax & Reset',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Quick practices to calm your body and mind',
+                  style: TextStyle(
+                    color: mutedText,
+                    fontSize: 13.5,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
+}
 
-  Widget _featureCard(
-    BuildContext context, {
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color color,
-    required String route,
-  }) {
-    return InkWell(
-      onTap: () {
-        Navigator.pushNamed(context, route);
+// Enhanced feature card with press animation
+class _EnhancedFeatureCard extends StatefulWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final String route;
+
+  const _EnhancedFeatureCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.route,
+  });
+
+  @override
+  State<_EnhancedFeatureCard> createState() => _EnhancedFeatureCardState();
+}
+
+class _EnhancedFeatureCardState extends State<_EnhancedFeatureCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pressController;
+  late Animation<double> _scaleAnimation;
+  bool _isPressed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pressController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 120),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.97).animate(
+      CurvedAnimation(parent: _pressController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pressController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) {
+        setState(() => _isPressed = true);
+        _pressController.forward();
       },
-      borderRadius: BorderRadius.circular(14),
-      child: Card(
-        color: cardDark,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        elevation: 4,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      onTapUp: (_) {
+        setState(() => _isPressed = false);
+        _pressController.reverse();
+        Future.delayed(
+          const Duration(milliseconds: 120),
+          () => Navigator.pushNamed(context, widget.route),
+        );
+      },
+      onTapCancel: () {
+        setState(() => _isPressed = false);
+        _pressController.reverse();
+      },
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [cardDark, cardDark.withOpacity(0.8)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: _isPressed
+                  ? widget.color.withOpacity(0.5)
+                  : Colors.white.withOpacity(0.08),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: _isPressed
+                    ? widget.color.withOpacity(0.2)
+                    : Colors.black.withOpacity(0.3),
+                blurRadius: _isPressed ? 16 : 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.all(16),
           child: Row(
             children: [
+              // Glowing icon container
               Container(
-                width: 62,
-                height: 62,
+                width: 70,
+                height: 70,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [color.withOpacity(0.95), color],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      widget.color.withOpacity(0.35),
+                      widget.color.withOpacity(0.15),
+                      Colors.transparent,
+                    ],
+                    center: const Alignment(-0.3, -0.3),
+                    radius: 1.0,
                   ),
-                  borderRadius: BorderRadius.circular(12),
                   boxShadow: [
+                    // Primary colored glow
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.4),
+                      color: widget.color.withOpacity(0.45),
+                      blurRadius: 32,
+                      spreadRadius: 4,
+                      offset: const Offset(0, 8),
+                    ),
+                    // Secondary glow layer
+                    BoxShadow(
+                      color: widget.color.withOpacity(0.25),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                      offset: const Offset(0, 4),
+                    ),
+                    // Inner highlight
+                    BoxShadow(
+                      color: Colors.white.withOpacity(0.15),
                       blurRadius: 8,
+                      spreadRadius: -2,
+                      offset: const Offset(0, -2),
                     ),
                   ],
+                  border: Border.all(
+                    color: widget.color.withOpacity(0.3),
+                    width: 2,
+                  ),
                 ),
-                child: Icon(icon, color: Colors.white, size: 34),
+                child: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [
+                        widget.color.withOpacity(0.2),
+                        widget.color.withOpacity(0.05),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: Icon(
+                    widget.icon,
+                    color: Colors.white,
+                    size: 32,
+                    shadows: [
+                      Shadow(
+                        color: widget.color,
+                        blurRadius: 12,
+                        offset: const Offset(0, 2),
+                      ),
+                      Shadow(
+                        color: Colors.black.withOpacity(0.4),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              const SizedBox(width: 12),
+
+              const SizedBox(width: 16),
+
+              // Text content
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      title,
+                      widget.title,
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 16.5,
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
+                        letterSpacing: 0.2,
+                        height: 1.3,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 7),
                     Text(
-                      subtitle,
-                      style: const TextStyle(
-                        color: Color(0xFFA3CFCB),
-                        fontSize: 13,
+                      widget.subtitle,
+                      style: TextStyle(
+                        color: mutedText.withOpacity(0.9),
+                        fontSize: 13.5,
+                        height: 1.4,
                       ),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: dimText),
+
+              const SizedBox(width: 8),
+
+              // Chevron with subtle glow
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: widget.color.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  color: widget.color.withOpacity(0.8),
+                  size: 16,
+                ),
+              ),
             ],
           ),
         ),
@@ -385,7 +527,121 @@ class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
   }
 }
 
-// small data holder for features
+// Enhanced tips card
+class _TipsCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [teal6.withOpacity(0.4), teal5.withOpacity(0.3)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: teal4.withOpacity(0.3), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: teal3.withOpacity(0.25),
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: teal3.withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  Icons.lightbulb_outline_rounded,
+                  color: teal2,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Quick Tips',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _TipItem(
+            text: 'Use breathing exercises for 1–5 minutes when anxious',
+            icon: Icons.circle,
+          ),
+          _TipItem(
+            text: 'Progressive muscle relaxation works well before sleep',
+            icon: Icons.circle,
+          ),
+          _TipItem(
+            text: 'Grounding helps during panic or high anxiety',
+            icon: Icons.circle,
+          ),
+          _TipItem(
+            text: 'Try meditation daily — consistency builds calm',
+            icon: Icons.circle,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TipItem extends StatelessWidget {
+  final String text;
+  final IconData icon;
+
+  const _TipItem({required this.text, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Icon(icon, size: 6, color: teal2),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: mutedText.withOpacity(0.95),
+                fontSize: 13.5,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Feature {
   final String title;
   final String subtitle;

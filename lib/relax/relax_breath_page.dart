@@ -38,7 +38,7 @@ class _RelaxBreathPageState extends State<RelaxBreathPage>
   //  - _phaseController animates shape scale from 0..1 for inhale/exhale
   //  - _breathPulseController drives a gentle continuous micro-pulse (subtle)
   late AnimationController _phaseController;
-  late Animation<double> _phaseScaleAnim; // maps 0..1 -> scale
+  // maps 0..1 -> scale
   late AnimationController _breathPulseController;
   late Animation<double> _breathPulseAnim;
 
@@ -82,10 +82,6 @@ class _RelaxBreathPageState extends State<RelaxBreathPage>
     );
 
     // phaseScaleAnim uses an eased curve for smooth grow/shrink
-    _phaseScaleAnim = CurvedAnimation(
-      parent: _phaseController,
-      curve: Curves.easeInOut,
-    );
 
     // subtle pulse (very gentle, continuous) to make the circle feel alive
     _breathPulseController = AnimationController(
@@ -150,7 +146,7 @@ class _RelaxBreathPageState extends State<RelaxBreathPage>
     }
 
     try {
-      if (await Vibration.hasVibrator() ?? false) {
+      if (await Vibration.hasVibrator()) {
         Vibration.vibrate(duration: 28);
       }
     } catch (_) {}
@@ -169,7 +165,6 @@ class _RelaxBreathPageState extends State<RelaxBreathPage>
       case BreathPhase.exhale:
         return _exhaleSec;
       case BreathPhase.finished:
-      default:
         return 0;
     }
   }
@@ -241,9 +236,7 @@ class _RelaxBreathPageState extends State<RelaxBreathPage>
     // Configure animation depending on phase:
     if (p == BreathPhase.inhale) {
       // scale from 0..1 (we map later to visual range)
-      _phaseController.duration = Duration(
-        seconds: _inhaleSec.clamp(1, 600) as int,
-      );
+      _phaseController.duration = Duration(seconds: _inhaleSec.clamp(1, 600));
       // animate to 1.0 (grow)
       _phaseController.animateTo(1.0, curve: Curves.easeOut);
     } else if (p == BreathPhase.hold) {
@@ -251,9 +244,7 @@ class _RelaxBreathPageState extends State<RelaxBreathPage>
       _phaseController.stop(canceled: false);
       _phaseController.value = 1.0;
     } else if (p == BreathPhase.exhale) {
-      _phaseController.duration = Duration(
-        seconds: _exhaleSec.clamp(1, 600) as int,
-      );
+      _phaseController.duration = Duration(seconds: _exhaleSec.clamp(1, 600));
       // animate back to 0.0 (shrink)
       _phaseController.animateTo(0.0, curve: Curves.easeIn);
     }
@@ -290,21 +281,10 @@ class _RelaxBreathPageState extends State<RelaxBreathPage>
           }
           break;
         case BreathPhase.finished:
-        default:
           _endSession();
           break;
       }
     });
-  }
-
-  void _pauseOrResume() {
-    if (!_isRunning) return;
-    // Pause timers & animation. For simplicity resume starts fresh.
-    _sessionTimer?.cancel();
-    _phaseTickTimer?.cancel();
-    _phaseEndTimer?.cancel();
-    _phaseController.stop();
-    setState(() => _isRunning = false);
   }
 
   String _phaseLabel() {
@@ -316,7 +296,6 @@ class _RelaxBreathPageState extends State<RelaxBreathPage>
       case BreathPhase.exhale:
         return 'Exhale';
       case BreathPhase.finished:
-      default:
         return '';
     }
   }
@@ -365,7 +344,6 @@ class _RelaxBreathPageState extends State<RelaxBreathPage>
               : 'Exhale for ${_exhaleSec} seconds';
           break;
         case BreathPhase.finished:
-        default:
           text = isHindi ? 'सत्र समाप्त' : 'Session finished';
           break;
       }
@@ -693,7 +671,7 @@ class _RelaxBreathPageState extends State<RelaxBreathPage>
     // Text colors for dark theme
     const primaryText = Colors.white;
     final secondaryText = Colors.white.withOpacity(0.78);
-    final subtleText = Colors.white.withOpacity(0.56);
+    Colors.white.withOpacity(0.56);
 
     return Scaffold(
       appBar: AppBar(
@@ -833,7 +811,12 @@ class _RelaxBreathPageState extends State<RelaxBreathPage>
                                     spreadRadius: 2 * glowAlpha,
                                   ),
                                   BoxShadow(
-                                    color: teal2.withOpacity(0.14 * glowAlpha),
+                                    color: const Color.fromARGB(
+                                      255,
+                                      77,
+                                      124,
+                                      254,
+                                    ).withOpacity(0.14 * glowAlpha),
                                     blurRadius: 22 * glowAlpha,
                                     spreadRadius: 2 * glowAlpha,
                                   ),
@@ -849,8 +832,18 @@ class _RelaxBreathPageState extends State<RelaxBreathPage>
                                 shape: BoxShape.circle,
                                 gradient: RadialGradient(
                                   colors: [
-                                    teal3.withOpacity(0.98),
-                                    teal2.withOpacity(0.88),
+                                    const Color.fromARGB(
+                                      255,
+                                      4,
+                                      64,
+                                      148,
+                                    ).withOpacity(0.98),
+                                    const Color.fromARGB(
+                                      255,
+                                      18,
+                                      122,
+                                      233,
+                                    ).withOpacity(0.88),
                                     Colors.black.withOpacity(0.08),
                                   ],
                                   center: const Alignment(-0.2, -0.2),
