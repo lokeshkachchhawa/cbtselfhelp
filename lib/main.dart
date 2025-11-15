@@ -12,7 +12,7 @@ import 'package:cbt_drktv/screens/doctor_home.dart';
 import 'package:cbt_drktv/screens/drktv_chat_screen.dart';
 import 'package:cbt_drktv/screens/home_page.dart';
 import 'package:cbt_drktv/screens/relax_page.dart';
-import 'package:cbt_drktv/screens/thought_detective_game.dart';
+
 import 'package:cbt_drktv/screens/thought_record_page.dart';
 import 'package:cbt_drktv/screens/safety_page.dart';
 import 'package:cbt_drktv/services/push_service.dart';
@@ -112,7 +112,7 @@ class MyApp extends StatelessWidget {
           '/programs': (_) => const ProgramsPage(),
           '/drktv_chat': (ctx) => const DrKtvChatScreen(),
           '/doctor/home': (ctx) => const DoctorHome(),
-          '/thought_game': (context) => const ThoughtDetectiveGame(),
+
           '/paywall': (_) => const PaywallScreen(), // <-- ADD THIS
           "/cbt-game": (_) => const CBTGameScreen(),
           '/cancel': (_) => const CancelSubscriptionScreen(),

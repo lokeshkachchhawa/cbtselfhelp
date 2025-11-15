@@ -93,37 +93,36 @@ Future<void> showAbcdTutorialSheet(
                     const SizedBox(height: 10),
 
                     // Responsive video that never exceeds available space
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        // constraints.maxHeight is the available height inside the sheet above the ListView
-                        final available = constraints.maxHeight;
-                        // pick a video height that:
-                        // - never larger than 230,
-                        // - never smaller than 120 (so controls remain tappable),
-                        // - and scales with available height when sheet is small.
-                        final videoHeight = math.min(
-                          230.0,
-                          math.max(120.0, available * 0.45),
-                        );
+                    // LayoutBuilder(
+                    //   builder: (context, constraints) {
+                    //     // constraints.maxHeight is the available height inside the sheet above the ListView
+                    //     final available = constraints.maxHeight;
+                    //     // pick a video height that:
+                    //     // - never larger than 230,
+                    //     // - never smaller than 120 (so controls remain tappable),
+                    //     // - and scales with available height when sheet is small.
+                    //     final videoHeight = math.min(
+                    //       230.0,
+                    //       math.max(120.0, available * 0.45),
+                    //     );
 
-                        // NOTE: removed AnimatedSize to avoid relayout thrash while dragging.
-                        return ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: SizedBox(
-                            height: videoHeight,
-                            width: double.infinity,
-                            child: TutorialYoutubePlayer(
-                              videoUrl: 'https://youtu.be/BKBBTY44UU8',
-                              height: videoHeight,
-                              autoPlay: false,
-                              startMuted: false,
-                              showControls: true,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-
+                    //     // NOTE: removed AnimatedSize to avoid relayout thrash while dragging.
+                    //     return ClipRRect(
+                    //       borderRadius: BorderRadius.circular(8),
+                    //       child: SizedBox(
+                    //         height: videoHeight,
+                    //         width: double.infinity,
+                    //         child: TutorialYoutubePlayer(
+                    //           videoUrl: 'https://youtu.be/BKBBTY44UU8',
+                    //           height: videoHeight,
+                    //           autoPlay: false,
+                    //           startMuted: false,
+                    //           showControls: true,
+                    //         ),
+                    //       ),
+                    //     );
+                    //   },
+                    // ),
                     const SizedBox(height: 16),
 
                     // Scrollable content
