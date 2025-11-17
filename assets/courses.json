@@ -1,0 +1,228 @@
+{
+    "courses": {
+      "cbt_course": {
+        "title": "CBT Course by DrKtv",
+        "description": "A structured Cognitive Behavioral Therapy video course.",
+        "sessions": [
+          {
+            "id": "session1",
+            "title": "CBT Session 1",
+            "youtubeUrl": "https://www.youtube.com/embed/e7PiLfx3HRU",
+            "thumb": "https://img.youtube.com/vi/e7PiLfx3HRU/hqdefault.jpg",
+            "order": 1
+          },
+          {
+            "id": "session2",
+            "title": "CBT Session 2",
+            "youtubeUrl": "https://youtu.be/_jhAwzQ0IK8",
+            "thumb": "https://img.youtube.com/vi/_jhAwzQ0IK8/hqdefault.jpg",
+            "order": 2
+          },
+          {
+            "id": "session3",
+            "title": "CBT Session 3",
+            "youtubeUrl": "https://youtu.be/qPQl7h8BM2M",
+            "thumb": "https://img.youtube.com/vi/qPQl7h8BM2M/hqdefault.jpg",
+            "order": 3
+          },
+          {
+            "id": "session4",
+            "title": "CBT Session 4",
+            "youtubeUrl": "https://youtu.be/hFu8HbTeDR4",
+            "thumb": "https://img.youtube.com/vi/hFu8HbTeDR4/hqdefault.jpg",
+            "order": 4
+          },
+          {
+            "id": "session5",
+            "title": "CBT Session 5",
+            "youtubeUrl": "https://www.youtube.com/embed/b6tInq7sFoE",
+            "thumb": "https://img.youtube.com/vi/b6tInq7sFoE/hqdefault.jpg",
+            "order": 5
+          },
+          {
+            "id": "session6",
+            "title": "CBT Session 6",
+            "youtubeUrl": "https://www.youtube.com/embed/94CL5wedxDo",
+            "thumb": "https://img.youtube.com/vi/94CL5wedxDo/hqdefault.jpg",
+            "order": 6
+          },
+          {
+            "id": "session7",
+            "title": "CBT Session 7",
+            "youtubeUrl": "https://www.youtube.com/embed/5nt8Ay83TVI",
+            "thumb": "https://img.youtube.com/vi/5nt8Ay83TVI/hqdefault.jpg",
+            "order": 7
+          },
+          {
+            "id": "session8",
+            "title": "CBT Session 8",
+            "youtubeUrl": "https://www.youtube.com/embed/hNxiXAqtjvQ",
+            "thumb": "https://img.youtube.com/vi/hNxiXAqtjvQ/hqdefault.jpg",
+            "order": 8
+          },
+          {
+            "id": "session9",
+            "title": "CBT Session 9",
+            "youtubeUrl": "https://www.youtube.com/embed/BYE0HwMJSLE",
+            "thumb": "https://img.youtube.com/vi/BYE0HwMJSLE/hqdefault.jpg",
+            "order": 9
+          },
+          {
+            "id": "session10",
+            "title": "CBT Session 10",
+            "youtubeUrl": "https://www.youtube.com/embed/gTn6RKlrgfw",
+            "thumb": "https://img.youtube.com/vi/gTn6RKlrgfw/hqdefault.jpg",
+            "order": 10
+          },
+          {
+            "id": "session11",
+            "title": "CBT Session 11",
+            "youtubeUrl": "https://www.youtube.com/embed/iaRfkc79PgI",
+            "thumb": "https://img.youtube.com/vi/iaRfkc79PgI/hqdefault.jpg",
+            "order": 11
+          },
+          {
+            "id": "session12",
+            "title": "CBT Session 12",
+            "youtubeUrl": "https://www.youtube.com/embed/gsokLT8rr8U",
+            "thumb": "https://img.youtube.com/vi/gsokLT8rr8U/hqdefault.jpg",
+            "order": 12
+          },
+          {
+            "id": "session13",
+            "title": "CBT Session 13",
+            "youtubeUrl": "https://www.youtube.com/embed/jyj6hF5-Szo",
+            "thumb": "https://img.youtube.com/vi/jyj6hF5-Szo/hqdefault.jpg",
+            "order": 13
+          },
+          {
+            "id": "session14",
+            "title": "CBT Session 14",
+            "youtubeUrl": "https://www.youtube.com/embed/B-qomiBRkjc",
+            "thumb": "https://img.youtube.com/vi/B-qomiBRkjc/hqdefault.jpg",
+            "order": 14
+          },
+          {
+            "id": "session15",
+            "title": "CBT Session 15",
+            "youtubeUrl": "https://www.youtube.com/embed/nveah02vjXw",
+            "thumb": "https://img.youtube.com/vi/nveah02vjXw/hqdefault.jpg",
+            "order": 15
+          },
+          {
+            "id": "session16",
+            "title": "CBT Session 16",
+            "youtubeUrl": "https://www.youtube.com/embed/POm84OvHwP4",
+            "thumb": "https://img.youtube.com/vi/POm84OvHwP4/hqdefault.jpg",
+            "order": 16
+          },
+          {
+            "id": "session17",
+            "title": "CBT Session 17",
+            "youtubeUrl": "https://www.youtube.com/embed/yXP_NGN5WIk",
+            "thumb": "https://img.youtube.com/vi/yXP_NGN5WIk/hqdefault.jpg",
+            "order": 17
+          },
+          {
+            "id": "session18",
+            "title": "CBT Session 18",
+            "youtubeUrl": "https://www.youtube.com/embed/CZH0_AbASfU",
+            "thumb": "https://img.youtube.com/vi/CZH0_AbASfU/hqdefault.jpg",
+            "order": 18
+          },
+          {
+            "id": "session19",
+            "title": "CBT Session 19",
+            "youtubeUrl": "https://www.youtube.com/watch?v=vl7YIoKszrY&ab_channel=LOKESHYogi",
+            "thumb": "https://img.youtube.com/vi/vl7YIoKszrY/hqdefault.jpg",
+            "order": 19
+          },
+          {
+            "id": "session20",
+            "title": "CBT Session 20",
+            "youtubeUrl": "https://www.youtube.com/embed/bOZw-7BS5Bs",
+            "thumb": "https://img.youtube.com/vi/bOZw-7BS5Bs/hqdefault.jpg",
+            "order": 20
+          },
+          {
+            "id": "session21",
+            "title": "CBT Session 21",
+            "youtubeUrl": "https://www.youtube.com/embed/GZyF_0j31Mg",
+            "thumb": "https://img.youtube.com/vi/GZyF_0j31Mg/hqdefault.jpg",
+            "order": 21
+          },
+          {
+            "id": "session22",
+            "title": "CBT Session 22",
+            "youtubeUrl": "https://www.youtube.com/embed/Ob244HJBOPg",
+            "thumb": "https://img.youtube.com/vi/Ob244HJBOPg/hqdefault.jpg",
+            "order": 22
+          },
+          {
+            "id": "session23",
+            "title": "CBT Session 23",
+            "youtubeUrl": "https://www.youtube.com/embed/MewdfuJwRlY",
+            "thumb": "https://img.youtube.com/vi/MewdfuJwRlY/hqdefault.jpg",
+            "order": 23
+          },
+          {
+            "id": "session24",
+            "title": "CBT Session 24",
+            "youtubeUrl": "https://www.youtube.com/embed/bpLqb597nMM",
+            "thumb": "https://img.youtube.com/vi/bpLqb597nMM/hqdefault.jpg",
+            "order": 24
+          },
+          {
+            "id": "session25",
+            "title": "CBT Session 25",
+            "youtubeUrl": "https://www.youtube.com/embed/Yh6BE7DONO0",
+            "thumb": "https://img.youtube.com/vi/Yh6BE7DONO0/hqdefault.jpg",
+            "order": 25
+          },
+          {
+            "id": "session26",
+            "title": "CBT Session 26",
+            "youtubeUrl": "https://www.youtube.com/embed/MoWhK0yLNdc",
+            "thumb": "https://img.youtube.com/vi/MoWhK0yLNdc/hqdefault.jpg",
+            "order": 26
+          },
+          {
+            "id": "session27",
+            "title": "CBT Session 27",
+            "youtubeUrl": "https://www.youtube.com/embed/8-m4Tk2yZIM",
+            "thumb": "https://img.youtube.com/vi/8-m4Tk2yZIM/hqdefault.jpg",
+            "order": 27
+          },
+          {
+            "id": "session28",
+            "title": "CBT Session 28",
+            "youtubeUrl": "https://www.youtube.com/embed/gGOeJVYNKLA",
+            "thumb": "https://img.youtube.com/vi/gGOeJVYNKLA/hqdefault.jpg",
+            "order": 28
+          },
+          {
+            "id": "session29",
+            "title": "CBT Session 29",
+            "youtubeUrl": "https://www.youtube.com/embed/2hQQglXG-nE",
+            "thumb": "https://img.youtube.com/vi/2hQQglXG-nE/hqdefault.jpg",
+            "order": 29
+          },
+          {
+            "id": "session30",
+            "title": "CBT Session 30",
+            "youtubeUrl": "https://www.youtube.com/embed/tJi6mEHJ9z0",
+            "thumb": "https://img.youtube.com/vi/tJi6mEHJ9z0/hqdefault.jpg",
+            "order": 30
+          },
+          {
+            "id": "session31",
+            "title": "CBT Sarthi Program",
+            "youtubeUrl": "https://www.youtube.com/embed/uqdTupGkEe8",
+            "thumb": "https://img.youtube.com/vi/uqdTupGkEe8/hqdefault.jpg",
+            "order": 31
+          }
+        ]
+      }
+    }
+  }
+  

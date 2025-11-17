@@ -8,6 +8,7 @@ import 'package:cbt_drktv/relax/relax_pmr_page.dart';
 import 'package:cbt_drktv/screens/abcd_worksheet.dart';
 import 'package:cbt_drktv/screens/cancel_subscription_screen.dart';
 import 'package:cbt_drktv/screens/cbt_game.dart';
+import 'package:cbt_drktv/screens/course_detail_page.dart';
 import 'package:cbt_drktv/screens/doctor_home.dart';
 import 'package:cbt_drktv/screens/drktv_chat_screen.dart';
 import 'package:cbt_drktv/screens/home_page.dart';
@@ -112,7 +113,16 @@ class MyApp extends StatelessWidget {
           '/programs': (_) => const ProgramsPage(),
           '/drktv_chat': (ctx) => const DrKtvChatScreen(),
           '/doctor/home': (ctx) => const DoctorHome(),
+          '/course_detail': (context) {
+            final args = ModalRoute.of(context)?.settings.arguments;
+            String? courseId;
 
+            if (args is Map && args['courseId'] is String) {
+              courseId = args['courseId'] as String;
+            }
+
+            return CourseDetailPage(courseId: courseId);
+          },
           '/paywall': (_) => const PaywallScreen(), // <-- ADD THIS
           "/cbt-game": (_) => const CBTGameScreen(),
           '/cancel': (_) => const CancelSubscriptionScreen(),

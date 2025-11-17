@@ -2,6 +2,7 @@
 import 'dart:convert';
 
 import 'package:cbt_drktv/utils/logout_helper.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -103,6 +104,112 @@ class _HomePageState extends State<HomePage> {
     _progressFuture = _loadProgressSummary();
   }
 
+  // Helper: check enrollment and navigate or show dialog
+  Future<void> _onCourseViewTap({
+    required String courseId,
+    required String websiteUrl,
+    required String title,
+  }) async {
+    // Ensure courseId exists
+    if (courseId.trim().isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Course not configured')));
+      return;
+    }
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.email == null) {
+      // Not signed in — prompt signin or open website
+      final signin = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Sign in required'),
+          content: const Text(
+            'Please sign in to check course access or open the website to purchase.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Sign in'),
+            ),
+          ],
+        ),
+      );
+      if (signin == true) {
+        Navigator.pushNamed(context, '/signin');
+      } else {
+        // still offer website
+        await _openWebsite(websiteUrl);
+      }
+      return;
+    }
+
+    final email = user.email!.toLowerCase().trim();
+
+    // Query enrollments: look for a match (courseId + email)
+    try {
+      final q = await FirebaseFirestore.instance
+          .collection('enrollments')
+          .where('email', isEqualTo: email)
+          .where('courseId', isEqualTo: courseId)
+          .limit(1)
+          .get();
+
+      if (q.docs.isNotEmpty) {
+        // user has access — navigate to course detail
+        Navigator.pushNamed(
+          context,
+          '/course_detail',
+          arguments: {'courseId': courseId},
+        );
+      } else {
+        // not enrolled — show dialog with website button
+        _showNotEnrolledDialog(courseTitle: title, websiteUrl: websiteUrl);
+      }
+    } catch (e, st) {
+      debugPrint('Error checking enrollment: $e\n$st');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to check course access')),
+      );
+    }
+  }
+
+  // Dialog shown when user is not enrolled
+  void _showNotEnrolledDialog({
+    required String courseTitle,
+    required String websiteUrl,
+  }) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text('Not enrolled in "$courseTitle"'),
+          content: const Text(
+            'You do not have access to this course in the app. Please join on our website to unlock it.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Close'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                _openWebsite(websiteUrl);
+              },
+              child: const Text('Join on website'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   // Add this method inside _HomePageState (near other _build* methods)
   Widget _buildThoughtDetectiveCard() {
     return Card(
@@ -132,15 +239,17 @@ class _HomePageState extends State<HomePage> {
   }
 
   // Add near other fields in _HomePageState
+  // Replace your existing _courses definition with this
   final List<Map<String, String>> _courses = const [
     {
+      'courseId': 'cbt_course',
       'title': 'Cognitive Behavioral Therapy (CBT) by Dr. Kanhaiya',
       'subtitle': 'Structured, practical CBT skills',
       'url': 'https://drktv.in/courses/cognitive-behavioral-therapy-course/',
-      // Optional local image asset (put an image at assets/images/cbt_course.png and add to pubspec)
       'image': 'images/cbt_course.png',
     },
     {
+      'courseId': 'ed_course',
       'title': 'Erectile Dysfunction & Premature Ejaculation Course',
       'subtitle': 'Understand sexual health, boost confidence & wellness',
       'url':
@@ -148,6 +257,7 @@ class _HomePageState extends State<HomePage> {
       'image': 'images/ed_pe_course_thumb.png',
     },
   ];
+
   // Put this method anywhere inside _HomePageState (near other _build* methods)
   Widget _buildCoursesSection() {
     if (_courses.isEmpty) return const SizedBox.shrink();
@@ -257,14 +367,18 @@ class _HomePageState extends State<HomePage> {
                               const SizedBox(height: 12),
                               Row(
                                 children: [
+                                  // Replace the button with this:
                                   ElevatedButton.icon(
-                                    onPressed: () =>
-                                        _openWebsite(c['url'] ?? ''),
+                                    onPressed: () => _onCourseViewTap(
+                                      courseId: c['courseId'] ?? '',
+                                      websiteUrl: c['url'] ?? '',
+                                      title: c['title'] ?? 'this course',
+                                    ),
                                     icon: const Icon(
                                       Icons.open_in_new,
                                       size: 18,
                                     ),
-                                    label: const Text('Join on website'),
+                                    label: const Text('View'),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.green,
                                       padding: const EdgeInsets.symmetric(
@@ -1211,6 +1325,7 @@ class _HomePageState extends State<HomePage> {
                       const SizedBox(height: 10),
                       _buildCoursesSection(),
                       const SizedBox(height: 16),
+
                       // Programs carousel (simple horizontal list)
                       const Text(
                         'Programs (Quick learning)',
