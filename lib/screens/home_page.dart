@@ -180,31 +180,218 @@ class _HomePageState extends State<HomePage> {
   }
 
   // Dialog shown when user is not enrolled
-  void _showNotEnrolledDialog({
+  Future<void> _showNotEnrolledDialog({
     required String courseTitle,
     required String websiteUrl,
   }) {
-    showDialog<void>(
+    // Local theme constants (keeps function self-contained).
+    const Color teal3 = Color(0xFF008F89);
+    const Color teal6 = Color(0xFF004E4D);
+
+    return showDialog<void>(
       context: context,
+      barrierDismissible: true,
       builder: (ctx) {
-        return AlertDialog(
-          title: Text('Not enrolled in "$courseTitle"'),
-          content: const Text(
-            'You do not have access to this course in the app. Please join on our website to unlock it.',
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 24,
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Close'),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [teal3, teal6],
+              ),
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.35),
+                  offset: const Offset(0, 12),
+                  blurRadius: 22,
+                ),
+              ],
+              border: Border.all(
+                color: Colors.white.withOpacity(0.06),
+                width: 1.0,
+              ),
             ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(ctx).pop();
-                _openWebsite(websiteUrl);
-              },
-              child: const Text('Join on website'),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 14,
+                    ),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Color(0xFF0AA7A2), // lighter teal tint
+                          Colors.transparent,
+                        ],
+                        stops: [0, 0.6],
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white24,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.lock_open,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Not enrolled in "$courseTitle"',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              height: 1.1,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Body
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'You do not have access to this course in the app.',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14.5,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Please join on our website to unlock the full course content and progress tracking.',
+                          style: TextStyle(
+                            color: Colors.white60,
+                            fontSize: 13.5,
+                            height: 1.35,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.open_in_new,
+                              color: Colors.white54,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                websiteUrl,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 12.5,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                      ],
+                    ),
+                  ),
+
+                  const Divider(color: Colors.white12, height: 1),
+
+                  // Actions
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              backgroundColor: Colors.white12,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text(
+                              'Close',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.of(ctx).pop();
+                              _openWebsite(websiteUrl);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color.fromARGB(
+                                255,
+                                0,
+                                179,
+                                18,
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              elevation: 4,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.link, size: 18, color: Colors.white),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Join on website ',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ],
+          ),
         );
       },
     );
@@ -221,11 +408,11 @@ class _HomePageState extends State<HomePage> {
           child: const Icon(Icons.psychology, color: Colors.white),
         ),
         title: const Text(
-          'CBT Quiz Game',
+          'CBT Quiz',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         subtitle: const Text(
-          'Play a CBT learning game — identify thinking traps!',
+          'Play a CBT learning Quiz — identify thinking traps!',
           style: TextStyle(color: Colors.white70),
         ),
         trailing: ElevatedButton(
@@ -282,121 +469,135 @@ class _HomePageState extends State<HomePage> {
             separatorBuilder: (_, __) => const SizedBox(width: 12),
             itemBuilder: (context, i) {
               final c = _courses[i];
-              return GestureDetector(
-                onTap: () => _openWebsite(c['url'] ?? ''),
-                child: Container(
-                  width: 300,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        teal4.withOpacity(0.85),
-                        teal5.withOpacity(0.85),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.white.withOpacity(0.08)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.18),
-                        blurRadius: 10,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      // Left: image / icon
-                      Container(
-                        width: 90,
-                        height: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.06),
-                          borderRadius: const BorderRadius.horizontal(
-                            left: Radius.circular(14),
-                          ),
-                        ),
-                        child: (c['image'] != null && c['image']!.isNotEmpty)
-                            ? ClipRRect(
-                                borderRadius: const BorderRadius.horizontal(
-                                  left: Radius.circular(14),
-                                ),
-                                child: Image.asset(
-                                  c['image']!,
-                                  fit: BoxFit.cover,
-                                ),
-                              )
-                            : Center(
-                                child: Icon(
-                                  Icons.school,
-                                  color: teal2,
-                                  size: 30,
-                                ),
-                              ),
-                      ),
+              final courseId = c['courseId'] ?? '';
+              final websiteUrl = c['url'] ?? '';
+              final title = c['title'] ?? 'this course';
 
-                      // Right: text + button
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                c['title'] ?? 'Courses by Dr. Kanhaiya',
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 15,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                c['subtitle'] ?? '',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  // Replace the button with this:
-                                  ElevatedButton.icon(
-                                    onPressed: () => _onCourseViewTap(
-                                      courseId: c['courseId'] ?? '',
-                                      websiteUrl: c['url'] ?? '',
-                                      title: c['title'] ?? 'this course',
-                                    ),
-                                    icon: const Icon(
-                                      Icons.open_in_new,
-                                      size: 18,
-                                    ),
-                                    label: const Text('View'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.green,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 10,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                    ),
+              return Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(14),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => _onCourseViewTap(
+                    courseId: courseId,
+                    websiteUrl: websiteUrl,
+                    title: title,
+                  ), // <-- now checks access first
+                  child: Container(
+                    width: 300,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          teal4.withOpacity(0.85),
+                          teal5.withOpacity(0.85),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.white.withOpacity(0.08)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.18),
+                          blurRadius: 10,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        // Left: image / icon
+                        Container(
+                          width: 90,
+                          height: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.06),
+                            borderRadius: const BorderRadius.horizontal(
+                              left: Radius.circular(14),
+                            ),
+                          ),
+                          child: (c['image'] != null && c['image']!.isNotEmpty)
+                              ? ClipRRect(
+                                  borderRadius: const BorderRadius.horizontal(
+                                    left: Radius.circular(14),
                                   ),
-                                ],
-                              ),
-                            ],
+                                  child: Image.asset(
+                                    c['image']!,
+                                    fit: BoxFit.cover,
+                                  ),
+                                )
+                              : Center(
+                                  child: Icon(
+                                    Icons.school,
+                                    color: teal2,
+                                    size: 30,
+                                  ),
+                                ),
+                        ),
+
+                        // Right: text + button
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  c['title'] ?? 'Courses by Dr. Kanhaiya',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  c['subtitle'] ?? '',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    ElevatedButton.icon(
+                                      onPressed: () => _onCourseViewTap(
+                                        courseId: courseId,
+                                        websiteUrl: websiteUrl,
+                                        title: title,
+                                      ),
+                                      icon: const Icon(
+                                        Icons.open_in_new,
+                                        size: 18,
+                                      ),
+                                      label: const Text('View'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.green,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 10,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -1208,7 +1409,7 @@ class _HomePageState extends State<HomePage> {
                             break;
                           case 'rate':
                             await _openWebsite(
-                              'https://play.google.com/store/apps/details?id=com.reportx.app',
+                              'https://play.google.com/store/apps/details?id=com.drktv.cbt_drktv',
                               preferMarketForPlayStore: true,
                             );
                             break;
@@ -1278,14 +1479,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ),
                         const PopupMenuDivider(),
-                        const PopupMenuItem(
-                          value: 'rate',
-                          child: Text(
-                            '⭐ Rate us on Play Store',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ),
-                        const PopupMenuDivider(),
+
                         const PopupMenuItem(
                           value: 'signout',
                           child: Text(
@@ -1823,7 +2017,7 @@ class _HomePageState extends State<HomePage> {
       {'icon': Icons.note_alt, 'label': 'Thought', 'route': '/thought'},
       {'icon': Icons.rule, 'label': 'ABCD', 'route': '/abcd'},
       {'icon': Icons.self_improvement, 'label': 'Relax', 'route': '/relax'},
-      {'icon': Icons.psychology, 'label': 'CBT Game', 'route': '/cbt-game'},
+      {'icon': Icons.psychology, 'label': 'CBT Quiz', 'route': '/cbt-game'},
     ];
 
     // ✅ Different avatar background colors
@@ -2525,7 +2719,7 @@ class _HomePageState extends State<HomePage> {
       case 'faq':
         return 'faq.html';
       case 'rate':
-        return 'https://play.google.com/store/apps/details?id=com.reportx.app';
+        return 'https://play.google.com/store/apps/details?id=com.drktv.cbt_drktv';
       default:
         return null;
     }

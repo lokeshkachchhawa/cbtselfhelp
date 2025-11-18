@@ -2,8 +2,6 @@
 // Extracted ABCDE tutorial sheet (modal) from the main page.
 // Usage: import this file and call `showAbcdTutorialSheet(context, ...);`
 
-import 'dart:math' as math;
-import 'package:cbt_drktv/widgets/tutorial_video_player.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 

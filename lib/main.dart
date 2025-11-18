@@ -20,7 +20,7 @@ import 'package:cbt_drktv/services/push_service.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 // Screens & utils
@@ -34,36 +34,15 @@ import 'screens/paywall_screen.dart'; // <-- ADD THIS
 // App theme
 import 'theme.dart';
 
-// Notifications / timezone
-import 'package:timezone/data/latest_all.dart' as tz;
-import 'package:timezone/timezone.dart' as tz;
-
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // --- dotenv (optional) ---
-  try {
-    await dotenv.load(fileName: '.env');
-    debugPrint('dotenv loaded from project root');
-  } catch (e) {
-    debugPrint('dotenv root load failed: $e — trying assets/.env');
-    try {
-      await dotenv.load(fileName: 'assets/.env');
-      debugPrint('dotenv loaded from assets/.env');
-    } catch (e2) {
-      debugPrint('dotenv load from assets failed: $e2');
-    }
-  }
-
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    // DeviceOrientation.portraitDown, // अगर उल्टा भी चाहिये तो uncomment करें
+  ]);
   // --- Firebase ---
   await Firebase.initializeApp();
   await PushService.init();
-
-  // --- Timezone init ---
-  tz.initializeTimeZones();
-  final local = tz.local;
-  tz.setLocalLocation(local);
-  debugPrint('Local timezone: ${local.name}');
 
   runApp(const MyApp());
 }

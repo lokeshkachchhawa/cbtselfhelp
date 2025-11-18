@@ -101,7 +101,7 @@ flutter:
     - images/
     - assets/sounds/
     - assets/programs/
-    - assets/.env
+
     - assets/
     - assets/data/
     - assets/data/thought_detective_questions.json
