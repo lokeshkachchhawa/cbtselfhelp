@@ -86,6 +86,7 @@ Future<void> showThoughtTutorialSheet(
                               height: videoHeight,
                               autoPlay: false,
                               showControls: true,
+                              onFullScreenToggle: (bool isFullScreen) {},
                             ),
                           ),
                         );

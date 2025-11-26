@@ -148,8 +148,10 @@ exports.subsCreate = onCall(
 );
 
 // Verify first payment for subscription
+// Improved subsVerify - paste into your functions file (replace existing)
+// Deploy-ready improved subsVerify
 exports.subsVerify = onCall(
-  { region: 'asia-south1', secrets: [RZP_KEY_SECRET], timeoutSeconds: 30, memory: '256MiB' },
+  { region: 'asia-south1', secrets: [RZP_KEY_SECRET, RZP_KEY_ID], timeoutSeconds: 60, memory: '256MiB' },
   async (req) => {
     try {
       if (!req.auth) throw new HttpsError('unauthenticated', 'Sign in required');
@@ -159,46 +161,102 @@ exports.subsVerify = onCall(
         throw new HttpsError('invalid-argument', 'Missing verification fields');
       }
 
+      // Get secrets
       const keySecret = RZP_KEY_SECRET.value();
+      const keyId = RZP_KEY_ID.value();
 
+      // 1) Verify signature (client -> server)
       const expected = crypto.createHmac('sha256', keySecret)
         .update(`${razorpay_payment_id}|${razorpay_subscription_id}`)
         .digest('hex');
 
-      if (expected !== razorpay_signature) throw new HttpsError('permission-denied', 'Invalid signature');
+      if (expected !== razorpay_signature) {
+        console.warn('subsVerify: signature mismatch', { razorpay_payment_id, razorpay_subscription_id });
+        throw new HttpsError('permission-denied', 'Invalid signature');
+      }
 
+      // 2) Init Razorpay client and fetch payment entity to ensure capture
+      const rzp = rzpClient(keyId, keySecret);
+      const payment = await rzp.payments.fetch(razorpay_payment_id).catch((e) => {
+        console.error('subsVerify: payments.fetch failed', e?.message || e);
+        return null;
+      });
+
+      if (!payment) {
+        throw new HttpsError('not-found', 'Payment not found');
+      }
+
+      // Normalize status
+      const paymentStatus = (payment.status || '').toString().toLowerCase();
+      console.log('subsVerify: payment fetched', { paymentId: razorpay_payment_id, paymentStatus, payment });
+
+      // 2a) Ensure payment is captured (or captured-equivalent)
+      if (paymentStatus !== 'captured') {
+        // If you support 'authorized' then change logic accordingly, but typical flow expects 'captured'
+        console.warn('subsVerify: payment not captured yet', { paymentId: razorpay_payment_id, status: paymentStatus });
+        throw new HttpsError('failed-precondition', `Payment not captured (status=${paymentStatus})`);
+      }
+
+      // 2b) Optional: ensure payment is linked to same subscription on Razorpay side (if field present)
+      const linkedSubId = payment.subscription_id || payment?.entity?.subscription_id || null;
+      if (linkedSubId && linkedSubId !== razorpay_subscription_id) {
+        console.warn('subsVerify: payment.subscription_id mismatch', { paymentId: razorpay_payment_id, linkedSubId, razorpay_subscription_id });
+        // we don't auto-fail here, but log and surface to ops
+      }
+
+      // 3) Persist activation in Firestore (same pattern as your earlier implementation)
       const uid = req.auth.uid;
       const userRef = admin.firestore().collection('users').doc(uid);
-      const subRef  = userRef.collection('subscriptions').doc(razorpay_subscription_id);
+      const subRef = userRef.collection('subscriptions').doc(razorpay_subscription_id);
 
+      // Try to read stored sub doc to derive 'kind' if available
       let kind = 'monthly';
-      const snap = await subRef.get();
-      if (snap.exists) kind = (snap.data().kind || 'monthly');
+      try {
+        const snap = await subRef.get();
+        if (snap && snap.exists) kind = (snap.data().kind || kind);
+      } catch (e) {
+        console.warn('subsVerify: could not read sub doc', e?.message || e);
+      }
 
+      // Update top-level user subscription snapshot
       await userRef.set({
         subscription: {
           status: 'active',
           subscriptionId: razorpay_subscription_id,
           plan: (kind === 'yearly') ? 'yearly_5499' : 'monthly_499',
           activatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
+          lastPaymentId: razorpay_payment_id,
+        }
       }, { merge: true });
 
+      // Update sub-collection doc as verified
       await subRef.set({
         verified: true,
         verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
         lastPaymentId: razorpay_payment_id,
         status: 'active',
+        rawPayment: {
+          id: razorpay_payment_id,
+          status: paymentStatus,
+        }
       }, { merge: true });
 
-      return { ok: true };
+      console.log('subsVerify: subscription activated', { uid, razorpay_subscription_id, paymentId: razorpay_payment_id });
+      return { ok: true, paymentStatus };
+
     } catch (err) {
       console.error('subsVerify error:', err?.message || err);
+
+      // If it's already an HttpsError, rethrow so client gets proper code/message
       if (err instanceof HttpsError) throw err;
-      throw new HttpsError('internal', err?.message || 'Unknown server error');
+
+      // Generic fallback
+      throw new HttpsError('internal', err?.message || 'Unknown server error during subscription verification');
     }
   }
 );
+
+
 
 // Cancel subscription (optional)
 // Cancel subscription (updates both sub-collection AND top-level users/{uid}.subscription)

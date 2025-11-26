@@ -6,14 +6,22 @@ import 'dart:convert';
 import 'package:cbt_drktv/widgets/tutorial_video_player.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart'
+    show
+        rootBundle,
+        SystemChrome,
+        SystemUiMode,
+        DeviceOrientation,
+        SystemUiOverlay;
 
+// --- Constants (Good use of color constants) ---
 const Color amber1 = Color(0xFF8C5200); // Dark Amber Primary
 const Color amber3 = Color(0xFFFFB300); // Bright Amber Accent
 const Color amber4 = Color(0xFFCC8A00); // Deep Amber Accent
 
 const Color darkBg = Color(0xFF1A1200); // Warm dark background
 const Color cardBg = Color(0xFF2A1F00); // Card background with amber warmth
+// ---------------------------------------------
 
 class CourseDetailPage extends StatefulWidget {
   final String? courseId;
@@ -29,48 +37,90 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
   String? courseDescription;
   Map<String, dynamic>? _selectedSession;
 
-  // Local sessions loaded from prefs or assets
   List<Map<String, dynamic>> _sessions = [];
 
-  // Two controllers: one for overall page (if needed later) and separate for list
   final ScrollController _pageController = ScrollController();
   final ScrollController _listController = ScrollController();
 
-  // Progress tracking
   Set<String> _completedSessions = {};
   String? _lastWatchedSessionId;
   bool _isLoading = true;
 
-  // Course stats
   int _totalSessions = 0;
   int _completedCount = 0;
   double _overallProgress = 0.0;
 
-  // Key for forcing video player rebuild
   Key _videoPlayerKey = UniqueKey();
+
+  // 💡 NEW: State for tracking full-screen mode
+  bool _isFullScreen = false;
 
   @override
   void initState() {
     super.initState();
     courseId = widget.courseId ?? '';
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // 💡 IMPROVEMENT: Check for route args only if courseId is still empty
       if (courseId.isEmpty) {
         final args = ModalRoute.of(context)?.settings.arguments;
         if (args is Map && args['courseId'] is String) {
-          setState(() {
-            courseId = args['courseId'];
-          });
+          courseId = args['courseId'];
         }
       }
+
       if (courseId.isNotEmpty) {
-        _loadCourseMeta();
-        _loadProgress();
+        // Use a single load function
+        _loadData();
+      } else {
+        setState(() => _isLoading = false); // Avoid infinite loading if no ID
       }
     });
   }
 
+  // 💡 IMPROVEMENT: Consolidate data loading
+  Future<void> _loadData() async {
+    await _loadCourseMeta();
+    await _loadProgress();
+
+    // Auto-select last watched or first session (after build and load)
+    if (_sessions.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_selectedSession == null) {
+          Map<String, dynamic> sessionToPlay;
+          if (_lastWatchedSessionId != null) {
+            final found = _sessions.firstWhere(
+              (s) => s['id'] == _lastWatchedSessionId,
+              orElse: () => _sessions.first,
+            );
+            sessionToPlay = found;
+          } else {
+            sessionToPlay = _sessions.first;
+          }
+          // Only select if not null, otherwise sessionToPlay is guaranteed to be _sessions.first
+          if (sessionToPlay.isNotEmpty) {
+            _selectSession(
+              sessionToPlay,
+              saveProgress: false,
+              ensureVisible: true,
+            );
+          }
+        } else {
+          // If _selectedSession was set before loadProgress completed, ensure list scrolls.
+          _ensureVisibleSelected();
+        }
+      });
+    }
+  }
+
   @override
   void dispose() {
+    // 💡 IMPORTANT: Ensure system UI is restored to default when leaving page
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: SystemUiOverlay.values,
+    );
+    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+
     _pageController.dispose();
     _listController.dispose();
     super.dispose();
@@ -80,9 +130,11 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
   /// 1) Try SharedPreferences key `course_$courseId` (JSON string)
   /// 2) Else fallback to asset `assets/courses.json` (structure described above)
   Future<void> _loadCourseMeta() async {
-    setState(() => _isLoading = true);
+    // State set in _loadData or initState, no need to set here again unless error
+    if (mounted) setState(() => _isLoading = true);
 
     try {
+      // ... (rest of _loadCourseMeta is mostly fine) ...
       final prefs = await SharedPreferences.getInstance();
       final saved = prefs.getString('course_$courseId');
 
@@ -113,15 +165,16 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
         }
       }
 
-      // If still null, leave placeholders and empty sessions
       if (courseObj == null) {
-        setState(() {
-          courseTitle = 'Course';
-          courseDescription = null;
-          _sessions = [];
-          _totalSessions = 0;
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            courseTitle = 'Course';
+            courseDescription = null;
+            _sessions = [];
+            _totalSessions = 0;
+            _isLoading = false;
+          });
+        }
         return;
       }
 
@@ -138,6 +191,11 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
             } else {
               m['id'] = m['id'].toString();
             }
+            // 💡 NEW: Ensure 'youtubeUrl' is set from 'videoId' if 'youtubeUrl' is missing
+            if ((m['youtubeUrl'] as String?)?.isEmpty ??
+                true && m['videoId'] != null) {
+              m['youtubeUrl'] = m['videoId']?.toString();
+            }
             sessions.add(m);
           }
         }
@@ -151,38 +209,23 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
         return 0;
       });
 
-      setState(() {
-        courseTitle = (courseObj!['title'] as String?) ?? courseTitle;
-        courseDescription =
-            (courseObj['description'] as String?) ?? courseDescription;
-        _sessions = sessions;
-        _totalSessions = _sessions.length;
-        _isLoading = false;
-      });
-
-      // Auto-select last watched or first session (after build)
-      if (_sessions.isNotEmpty) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_selectedSession == null) {
-            Map<String, dynamic> sessionToPlay;
-            if (_lastWatchedSessionId != null) {
-              final found = _sessions.firstWhere(
-                (s) => s['id'] == _lastWatchedSessionId,
-                orElse: () => _sessions.first,
-              );
-              sessionToPlay = found;
-            } else {
-              sessionToPlay = _sessions.first;
-            }
-            _selectSession(sessionToPlay);
-          }
+      if (mounted) {
+        setState(() {
+          courseTitle = (courseObj?['title'] as String?) ?? courseTitle;
+          courseDescription =
+              (courseObj?['description'] as String?) ?? courseDescription;
+          _sessions = sessions;
+          _totalSessions = _sessions.length;
+          // IMPORTANT: Don't set _isLoading = false here, let _loadData do it after _loadProgress
         });
       }
     } catch (e) {
       debugPrint('Failed to load course meta: $e');
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -192,17 +235,24 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
       final completed = prefs.getStringList('completed_$courseId') ?? [];
       final lastWatched = prefs.getString('lastWatched_$courseId');
 
-      setState(() {
-        _completedSessions = completed.toSet();
-        _lastWatchedSessionId = lastWatched;
-        _calculateProgress();
-      });
+      if (mounted) {
+        setState(() {
+          _completedSessions = completed.toSet();
+          _lastWatchedSessionId = lastWatched;
+          _calculateProgress();
+          _isLoading = false; // Final loading indicator turn off
+        });
+      }
     } catch (e) {
       debugPrint('Failed to load progress: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   Future<void> _saveProgress() async {
+    // ... (This function is fine) ...
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setStringList(
@@ -218,11 +268,14 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
   }
 
   void _markSessionWatched(String sessionId) {
-    setState(() {
-      _completedSessions.add(sessionId);
-      _calculateProgress();
-    });
-    _saveProgress();
+    // Only update state if the session wasn't already marked
+    if (!_completedSessions.contains(sessionId)) {
+      setState(() {
+        _completedSessions.add(sessionId);
+        _calculateProgress();
+      });
+      _saveProgress();
+    }
   }
 
   void _calculateProgress() {
@@ -235,18 +288,51 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
     }
   }
 
-  void _selectSession(Map<String, dynamic> session) {
+  // 💡 IMPROVEMENT: Added optional arguments for better control
+  void _selectSession(
+    Map<String, dynamic> session, {
+    bool saveProgress = true,
+    bool ensureVisible = false,
+  }) {
+    final sessionId = session['id']?.toString();
+
+    // 💡 NEW: Ensure 'youtubeUrl' is populated from 'videoId' on selection (just in case)
+    final sessionMap = Map<String, dynamic>.from(session);
+    if ((sessionMap['youtubeUrl'] as String?)?.isEmpty ??
+        true && sessionMap['videoId'] != null) {
+      sessionMap['youtubeUrl'] = sessionMap['videoId']?.toString();
+    }
+
     setState(() {
-      _selectedSession = session;
-      _lastWatchedSessionId = session['id']?.toString();
-      // Mark as watched when selected
-      _markSessionWatched(session['id']?.toString() ?? '');
+      _selectedSession = sessionMap;
+      _lastWatchedSessionId = sessionId;
       // Force video player to rebuild with new video
       _videoPlayerKey = UniqueKey();
     });
-    _saveProgress();
 
-    // Optional: keep list scroll position stable — do NOT call _listController.jumpTo here
+    // Mark as watched only if a valid ID exists
+    if (sessionId != null && sessionId.isNotEmpty) {
+      _markSessionWatched(sessionId);
+    }
+
+    if (saveProgress) {
+      _saveProgress();
+    }
+
+    if (ensureVisible) {
+      _ensureVisibleSelected();
+    }
+  }
+
+  // 💡 NEW: Locate and scroll to the currently selected session
+  void _ensureVisibleSelected() {
+    if (_selectedSession == null || _sessions.isEmpty) return;
+    final currentIndex = _sessions.indexWhere(
+      (s) => s['id'] == _selectedSession!['id'],
+    );
+    if (currentIndex >= 0) {
+      _ensureVisibleIndex(currentIndex);
+    }
   }
 
   void _playNextSession() {
@@ -257,8 +343,7 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
     );
     if (currentIndex >= 0 && currentIndex < _sessions.length - 1) {
       final next = _sessions[currentIndex + 1];
-      _selectSession(next);
-      _ensureVisibleIndex(currentIndex + 1);
+      _selectSession(next, ensureVisible: true);
     }
   }
 
@@ -270,43 +355,64 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
     );
     if (currentIndex > 0) {
       final prev = _sessions[currentIndex - 1];
-      _selectSession(prev);
-      _ensureVisibleIndex(currentIndex - 1);
+      _selectSession(prev, ensureVisible: true);
     }
   }
 
   // ensure the list scrolls so the item at index is visible (smooth)
   void _ensureVisibleIndex(int index) {
-    // estimate item height (approx). If your item height changes, adjust this.
-    const itemHeight = 82.0; // thumbnail row approx height + spacing
-    final target = (index * (itemHeight + 10)) - 60.0;
+    // 💡 IMPROVEMENT: Estimate item height a bit better, includes padding/separator
+    const itemHeight = 82.0; // Based on your SessionListItem's height + padding
+    const itemSpacing = 10.0;
+
+    // Calculate the total offset to the top of the target item
+    final targetOffset = index * (itemHeight + itemSpacing);
+
+    // Adjust target so it appears near the middle/top of the visible list area
+    final adjustedTarget = targetOffset - 60.0;
+
     if (_listController.hasClients) {
       _listController.animateTo(
-        target.clamp(0.0, _listController.position.maxScrollExtent),
+        adjustedTarget.clamp(0.0, _listController.position.maxScrollExtent),
         duration: const Duration(milliseconds: 420),
         curve: Curves.easeInOut,
       );
     }
   }
 
+  // 💡 NEW: Callback from video player when full-screen is toggled
+  void _onFullScreenToggle(bool isFullScreen) {
+    if (!mounted) return;
+
+    setState(() {
+      _isFullScreen = isFullScreen;
+    });
+
+    if (isFullScreen) {
+      // Enter full-screen: lock to landscape, hide system overlays
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+      // Hide status bar and navigation bar
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    } else {
+      // Exit full-screen: allow all orientations, show system overlays
+      SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+      SystemChrome.setEnabledSystemUIMode(
+        SystemUiMode.manual,
+        overlays: SystemUiOverlay.values,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final routeArgs = ModalRoute.of(context)?.settings.arguments;
-    if ((courseId.isEmpty) &&
-        routeArgs is Map &&
-        routeArgs['courseId'] is String) {
-      final id = routeArgs['courseId'] as String;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        setState(() {
-          courseId = id;
-        });
-        _loadCourseMeta();
-        _loadProgress();
-      });
-    }
+    // 💡 IMPROVEMENT: Removed redundant route args logic from build, as it's handled in initState.
+    // The previous logic could cause a duplicate setState call.
 
     return Scaffold(
-      backgroundColor: darkBg,
+      backgroundColor: _isFullScreen ? Colors.black : darkBg,
       body: courseId.isEmpty
           ? const Center(
               child: Text(
@@ -316,12 +422,23 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
             )
           : _isLoading
           ? const Center(child: CircularProgressIndicator(color: amber3))
-          : _buildMainContent(),
+          : OrientationBuilder(
+              builder: (context, orientation) {
+                // 💡 CORE FULL-SCREEN LOGIC: If full-screen is active, only show the video player.
+                if (_isFullScreen || orientation == Orientation.landscape) {
+                  // The video player will take up the full screen/available space
+                  // The player itself should ideally handle its aspect ratio.
+                  return _buildFixedVideoPlayer(isFullScreen: true);
+                }
+
+                // Normal portrait/non-fullscreen view
+                return _buildMainContent();
+              },
+            ),
     );
   }
 
   Widget _buildMainContent() {
-    // _totalSessions may be updated already
     _totalSessions = _sessions.length;
     _calculateProgress();
 
@@ -329,13 +446,15 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
       children: [
         _buildAppBarWithProgress(),
 
-        if (_selectedSession != null) _buildFixedVideoPlayer(),
+        if (_selectedSession != null)
+          _buildFixedVideoPlayer(isFullScreen: false),
 
         Expanded(child: _buildSessionsList()),
       ],
     );
   }
 
+  // ... _buildAppBarWithProgress is fine ...
   Widget _buildAppBarWithProgress() {
     return Container(
       decoration: BoxDecoration(
@@ -433,7 +552,10 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
     );
   }
 
-  Widget _buildFixedVideoPlayer() {
+  // 💡 IMPROVEMENT: Added isFullScreen parameter
+  Widget _buildFixedVideoPlayer({required bool isFullScreen}) {
+    if (_selectedSession == null) return const SizedBox.shrink();
+
     final currentIndex = _sessions.indexWhere(
       (s) => s['id'] == _selectedSession!['id'],
     );
@@ -441,151 +563,160 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
     final isLastSession = currentIndex == _sessions.length - 1;
     final isWatched = _completedSessions.contains(_selectedSession!['id']);
 
+    // Use the available screen height for landscape full-screen, otherwise a fixed height
+    final videoHeight = isFullScreen
+        ? MediaQuery.of(context).size.height
+        : 220.0;
+
     return Container(
-      color: Colors.black,
+      // Only black background needed for non-full screen player controls
+      color: isFullScreen ? Colors.black : Colors.black,
       child: Column(
         children: [
           // Video player - with unique key to force rebuild
           SizedBox(
             key: _videoPlayerKey,
-            height: 220,
+            height: videoHeight,
             child: TutorialYoutubePlayer(
               videoUrl: _selectedSession!['youtubeUrl'] ?? '',
-              height: 220,
+              height: videoHeight,
               autoPlay: true,
               startMuted: false,
               showControls: true,
+              // 💡 CORE IMPROVEMENT: Pass the full-screen callback to the player
+              onFullScreenToggle: _onFullScreenToggle,
             ),
           ),
 
-          // Video info and controls
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: cardBg,
-              border: Border(
-                bottom: BorderSide(
-                  color: Colors.white.withOpacity(0.1),
-                  width: 1,
+          // 💡 IMPROVEMENT: Only show controls/info if NOT in full-screen mode
+          if (!isFullScreen)
+            _buildVideoInfoAndControls(
+              currentIndex: currentIndex,
+              isFirstSession: isFirstSession,
+              isLastSession: isLastSession,
+              isWatched: isWatched,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVideoInfoAndControls({
+    required int currentIndex,
+    required bool isFirstSession,
+    required bool isLastSession,
+    required bool isWatched,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cardBg,
+        border: Border(
+          bottom: BorderSide(color: Colors.white.withOpacity(0.1), width: 1),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // Status badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isWatched ? amber3 : Colors.orange,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isWatched ? Icons.check_circle : Icons.play_circle_filled,
+                      color: Colors.white,
+                      size: 12,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      isWatched ? 'WATCHED' : 'WATCHING',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
                 ),
               ),
+              const SizedBox(width: 8),
+              Text(
+                'Session ${currentIndex + 1} of $_totalSessions',
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _selectedSession!['title'] ?? 'Playing...',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    // Status badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isWatched ? amber3 : Colors.orange,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            isWatched
-                                ? Icons.check_circle
-                                : Icons.play_circle_filled,
-                            color: Colors.white,
-                            size: 12,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            isWatched ? 'WATCHED' : 'WATCHING',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Session ${currentIndex + 1} of $_totalSessions',
-                      style: const TextStyle(
-                        color: Colors.white54,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _selectedSession!['title'] ?? 'Playing...',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 12),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 12),
 
-                // Navigation buttons
-                Row(
-                  children: [
-                    // Previous button
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: isFirstSession ? null : _playPreviousSession,
-                        icon: const Icon(Icons.skip_previous, size: 18),
-                        label: const Text('Previous'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white70,
-                          disabledForegroundColor: Colors.white24,
-                          side: BorderSide(
-                            color: isFirstSession
-                                ? Colors.white12
-                                : Colors.white30,
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ),
+          // Navigation buttons
+          Row(
+            children: [
+              // Previous button
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: isFirstSession ? null : _playPreviousSession,
+                  icon: const Icon(Icons.skip_previous, size: 18),
+                  label: const Text('Previous'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white70,
+                    disabledForegroundColor: Colors.white24,
+                    side: BorderSide(
+                      color: isFirstSession ? Colors.white12 : Colors.white30,
                     ),
-                    const SizedBox(width: 8),
-                    // Next button
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: isLastSession ? null : _playNextSession,
-                        icon: const Icon(Icons.skip_next, size: 18),
-                        label: const Text('Next'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isLastSession
-                              ? Colors.white12
-                              : amber3,
-                          foregroundColor: Colors.white,
-                          disabledBackgroundColor: Colors.white12,
-                          disabledForegroundColor: Colors.white24,
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                  ],
+                  ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              // Next button
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: isLastSession ? null : _playNextSession,
+                  icon: const Icon(Icons.skip_next, size: 18),
+                  label: const Text('Next'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isLastSession ? Colors.white12 : amber3,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: Colors.white12,
+                    disabledForegroundColor: Colors.white24,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
+  // ... _buildSessionsList is fine ...
   Widget _buildSessionsList() {
     if (_sessions.isEmpty) {
       return Center(
@@ -657,146 +788,17 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
                     _selectedSession != null && (_selectedSession!['id'] == id);
                 final isWatched = _completedSessions.contains(id);
 
-                return Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                      final sessionMap = Map<String, dynamic>.from(data);
-                      // some data may use videoId -> youtubeUrl
-                      if ((sessionMap['youtubeUrl'] as String?)?.isEmpty ??
-                          true && sessionMap['videoId'] != null) {
-                        sessionMap['youtubeUrl'] = sessionMap['videoId'];
-                      }
-                      _selectSession(sessionMap);
-
-                      // ensure selected item visible smoothly
-                      _ensureVisibleIndex(i);
-                    },
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? amber3.withOpacity(0.2)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isSelected
-                              ? amber3
-                              : Colors.white.withOpacity(0.08),
-                          width: isSelected ? 2 : 1,
-                        ),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: Row(
-                          children: [
-                            // Status icon
-                            Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: isWatched
-                                    ? amber3
-                                    : isSelected
-                                    ? amber3.withOpacity(0.3)
-                                    : Colors.white.withOpacity(0.05),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Center(
-                                child: Icon(
-                                  isWatched
-                                      ? Icons.check_circle
-                                      : isSelected
-                                      ? Icons.pause
-                                      : Icons.play_arrow,
-                                  color: Colors.white,
-                                  size: 18,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-
-                            // Thumbnail
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(6),
-                              child: thumb.isNotEmpty
-                                  ? Image.network(
-                                      thumb,
-                                      width: 80,
-                                      height: 45,
-                                      fit: BoxFit.cover,
-                                      loadingBuilder: (context, child, chunk) {
-                                        if (chunk == null) return child;
-                                        return Container(
-                                          width: 80,
-                                          height: 45,
-                                          color: Colors.white10,
-                                          child: const Center(
-                                            child: SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                      errorBuilder: (_, __, ___) =>
-                                          _thumbFallback(),
-                                    )
-                                  : _thumbFallback(),
-                            ),
-                            const SizedBox(width: 12),
-
-                            // Title
-                            Expanded(
-                              child: Row(
-                                children: [
-                                  Text(
-                                    '${i + 1}.',
-                                    style: TextStyle(
-                                      color: isSelected
-                                          ? amber3
-                                          : Colors.white54,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      title,
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                        fontWeight: isSelected
-                                            ? FontWeight.bold
-                                            : FontWeight.w500,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            // Right indicator
-                            if (isSelected)
-                              Container(
-                                width: 3,
-                                height: 30,
-                                decoration: BoxDecoration(
-                                  color: amber3,
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                // 💡 NEW: Extracted to a separate widget for cleaner build function and potential performance (though minimal here)
+                return _SessionListItem(
+                  data: data,
+                  index: i,
+                  title: title,
+                  thumb: thumb,
+                  id: id,
+                  isSelected: isSelected,
+                  isWatched: isWatched,
+                  onSelect: _selectSession,
+                  thumbFallback: _thumbFallback,
                 );
               },
             ),
@@ -816,4 +818,164 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
       size: 24,
     ),
   );
+}
+
+// 💡 IMPROVEMENT: Extracted session list item to a private widget for better readability.
+class _SessionListItem extends StatelessWidget {
+  const _SessionListItem({
+    required this.data,
+    required this.index,
+    required this.title,
+    required this.thumb,
+    required this.id,
+    required this.isSelected,
+    required this.isWatched,
+    required this.onSelect,
+    required this.thumbFallback,
+  });
+
+  final Map<String, dynamic> data;
+  final int index;
+  final String title;
+  final String thumb;
+  final String id;
+  final bool isSelected;
+  final bool isWatched;
+  final void Function(
+    Map<String, dynamic> session, {
+    bool saveProgress,
+    bool ensureVisible,
+  })
+  onSelect;
+  final Widget Function() thumbFallback;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          // Pass the data map and trigger the select function
+          onSelect(data, ensureVisible: true);
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isSelected ? amber3.withOpacity(0.2) : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected ? amber3 : Colors.white.withOpacity(0.08),
+              width: isSelected ? 2 : 1,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Row(
+              children: [
+                // Status icon
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: isWatched
+                        ? amber3
+                        : isSelected
+                        ? amber3.withOpacity(0.3)
+                        : Colors.white.withOpacity(0.05),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Icon(
+                      isWatched
+                          ? Icons.check_circle
+                          : isSelected
+                          ? Icons.pause
+                          : Icons.play_arrow,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+
+                // Thumbnail
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: thumb.isNotEmpty
+                      ? Image.network(
+                          thumb,
+                          width: 80,
+                          height: 45,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, chunk) {
+                            if (chunk == null) return child;
+                            return Container(
+                              width: 80,
+                              height: 45,
+                              color: Colors.white10,
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                          errorBuilder: (_, __, ___) => thumbFallback(),
+                        )
+                      : thumbFallback(),
+                ),
+                const SizedBox(width: 12),
+
+                // Title
+                Expanded(
+                  child: Row(
+                    children: [
+                      Text(
+                        '${index + 1}.',
+                        style: TextStyle(
+                          color: isSelected ? amber3 : Colors.white54,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.w500,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Right indicator
+                if (isSelected)
+                  Container(
+                    width: 3,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: amber3,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
