@@ -117,7 +117,7 @@ exports.subsCreate = onCall(
       const keySecret = RZP_KEY_SECRET.value();
 
       const rzp = rzpClient(keyId, keySecret);
-      const total_count = (kind === 'yearly') ? 100 : 1200; // long running
+      const total_count = (kind === 'yearly') ? 10 : 120; // long running
 
       const sub = await rzp.subscriptions.create({
         plan_id: planId,
