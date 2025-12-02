@@ -23,13 +23,14 @@ class _DoctorUsersScreenState extends State<DoctorUsersScreen> {
   // Cached users (simple Map, JSON safe fields only)
   List<Map<String, dynamic>> _users = [];
 
-  // For incremental sync: highest createdAt we have seen so far
-  DateTime? _lastCreatedAt;
-
   bool _loading = true; // initial loading
   bool _syncing = false; // when hitting server
   String _searchQuery = '';
   bool _onlyActive = false;
+
+  // status filter driven by top chips:
+  // 'all', 'active', 'inactive', 'cancel_scheduled', 'with_sub'
+  String _statusFilter = 'all';
 
   // Pagination
   static const int _pageSize = 20;
@@ -43,7 +44,7 @@ class _DoctorUsersScreenState extends State<DoctorUsersScreen> {
 
   Future<void> _init() async {
     await _loadFromCache();
-    // After showing cache (if any), sync with server for new users
+    // After showing cache (if any), sync with server for latest users
     _syncFromServer();
   }
 
@@ -57,7 +58,6 @@ class _DoctorUsersScreenState extends State<DoctorUsersScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final jsonString = prefs.getString('doctor_users_cache');
-      final lastCreatedMillis = prefs.getInt('doctor_users_last_created');
 
       if (jsonString != null) {
         final list = jsonDecode(jsonString) as List;
@@ -74,10 +74,6 @@ class _DoctorUsersScreenState extends State<DoctorUsersScreen> {
           return bm.compareTo(am);
         });
       }
-
-      if (lastCreatedMillis != null) {
-        _lastCreatedAt = DateTime.fromMillisecondsSinceEpoch(lastCreatedMillis);
-      }
     } catch (e) {
       debugPrint('Failed to load users cache: $e');
     } finally {
@@ -89,6 +85,7 @@ class _DoctorUsersScreenState extends State<DoctorUsersScreen> {
     }
   }
 
+  /// Always fetch full latest list from Firestore (up to 200 users)
   Future<void> _syncFromServer() async {
     if (_syncing) return;
     setState(() {
@@ -96,27 +93,13 @@ class _DoctorUsersScreenState extends State<DoctorUsersScreen> {
     });
 
     try {
-      final col = _firestore.collection('users');
-      Query<Map<String, dynamic>> query;
+      final snap = await _firestore
+          .collection('users')
+          .orderBy('createdAt', descending: true)
+          .limit(200)
+          .get();
 
-      if (_lastCreatedAt == null) {
-        // First time: load recent users (you can adjust limit)
-        query = col.orderBy('createdAt', descending: true).limit(200);
-      } else {
-        // Next times: only new users created after lastCreatedAt
-        query = col
-            .where(
-              'createdAt',
-              isGreaterThan: Timestamp.fromDate(_lastCreatedAt!),
-            )
-            .orderBy('createdAt'); // oldest-new to newest-new
-      }
-
-      final snap = await query.get();
-      if (snap.docs.isEmpty) {
-        // No new users
-        return;
-      }
+      final List<Map<String, dynamic>> fresh = [];
 
       for (final doc in snap.docs) {
         final data = doc.data();
@@ -147,45 +130,23 @@ class _DoctorUsersScreenState extends State<DoctorUsersScreen> {
           'subscriptionId': subId,
         };
 
-        final idx = _users.indexWhere((u) => u['id'] == doc.id);
-        if (idx >= 0) {
-          _users[idx] = user;
-        } else {
-          _users.add(user);
-        }
+        fresh.add(user);
       }
 
-      // Update lastCreatedAt based on max
-      final maxMillis = _users.fold<int>(
-        0,
-        (prev, u) =>
-            u['createdAtMillis'] is int && (u['createdAtMillis'] as int) > prev
-            ? u['createdAtMillis'] as int
-            : prev,
-      );
-
-      if (maxMillis > 0) {
-        _lastCreatedAt = DateTime.fromMillisecondsSinceEpoch(maxMillis);
-      }
-
-      // Sort latest first
-      _users.sort((a, b) {
+      // Sort latest joined first (createdAt desc)
+      fresh.sort((a, b) {
         final am = (a['createdAtMillis'] ?? 0) as int;
         final bm = (b['createdAtMillis'] ?? 0) as int;
         return bm.compareTo(am);
       });
 
+      _users = fresh;
+
       // Save to cache
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('doctor_users_cache', jsonEncode(_users));
-      if (_lastCreatedAt != null) {
-        await prefs.setInt(
-          'doctor_users_last_created',
-          _lastCreatedAt!.millisecondsSinceEpoch,
-        );
-      }
 
-      // On new data, reset to first page
+      // On changed data, reset to first page
       _pageIndex = 0;
     } catch (e) {
       debugPrint('Error syncing users from server: $e');
@@ -214,24 +175,52 @@ class _DoctorUsersScreenState extends State<DoctorUsersScreen> {
 
     int activeUsers = 0;
     int withSubUsers = 0;
+    int cancelScheduledUsers = 0;
+
     for (final u in _users) {
       final subStatus = (u['subStatus'] ?? '').toString();
       final hasSub = subStatus.isNotEmpty;
       final isActive = subStatus == 'active' || subStatus == 'cancel_scheduled';
+
+      if (subStatus == 'cancel_scheduled') cancelScheduledUsers++;
       if (hasSub) withSubUsers++;
       if (isActive) activeUsers++;
     }
     final inactiveUsers = totalUsers - activeUsers;
 
-    // Filtered users (search + onlyActive)
+    // Filtered users (search + status filter + onlyActive switch)
     List<Map<String, dynamic>> filtered = _users.where((u) {
       final name = (u['name'] ?? '').toString();
       final email = (u['email'] ?? '').toString();
       final subStatus = (u['subStatus'] ?? '').toString();
+      final hasSub = subStatus.isNotEmpty;
       final isActive = subStatus == 'active' || subStatus == 'cancel_scheduled';
+      final isInactive = !isActive; // includes no-subscription also
 
+      // 1) Status chips filter
+      switch (_statusFilter) {
+        case 'active':
+          if (!isActive) return false;
+          break;
+        case 'inactive':
+          if (!isInactive) return false;
+          break;
+        case 'cancel_scheduled':
+          if (subStatus != 'cancel_scheduled') return false;
+          break;
+        case 'with_sub':
+          if (!hasSub) return false;
+          break;
+        case 'all':
+        default:
+          // no extra filter
+          break;
+      }
+
+      // 2) "Show only active subscriptions" switch
       if (_onlyActive && !isActive) return false;
 
+      // 3) Search filter
       final q = _searchQuery;
       if (q.isEmpty) return true;
 
@@ -301,6 +290,14 @@ class _DoctorUsersScreenState extends State<DoctorUsersScreen> {
                     label: 'Total',
                     value: totalUsers.toString(),
                     icon: Icons.person_outline,
+                    selected: _statusFilter == 'all',
+                    onTap: () {
+                      setState(() {
+                        _statusFilter = 'all';
+                        _onlyActive = false;
+                        _pageIndex = 0;
+                      });
+                    },
                   ),
                   const SizedBox(width: 8),
                   _statChip(
@@ -309,6 +306,14 @@ class _DoctorUsersScreenState extends State<DoctorUsersScreen> {
                     icon: Icons.verified_user_rounded,
                     bg: Colors.greenAccent.shade400,
                     fg: Colors.black,
+                    selected: _statusFilter == 'active',
+                    onTap: () {
+                      setState(() {
+                        _statusFilter = 'active';
+                        _onlyActive = false;
+                        _pageIndex = 0;
+                      });
+                    },
                   ),
                   const SizedBox(width: 8),
                   _statChip(
@@ -317,14 +322,46 @@ class _DoctorUsersScreenState extends State<DoctorUsersScreen> {
                     icon: Icons.person_off_outlined,
                     bg: Colors.redAccent.shade200,
                     fg: Colors.black,
+                    selected: _statusFilter == 'inactive',
+                    onTap: () {
+                      setState(() {
+                        _statusFilter = 'inactive';
+                        _onlyActive = false;
+                        _pageIndex = 0;
+                      });
+                    },
                   ),
                   const SizedBox(width: 8),
                   _statChip(
-                    label: 'With subscription record',
+                    label: 'Cancel scheduled',
+                    value: cancelScheduledUsers.toString(),
+                    icon: Icons.schedule_send_rounded,
+                    bg: Colors.amberAccent.shade700,
+                    fg: Colors.black,
+                    selected: _statusFilter == 'cancel_scheduled',
+                    onTap: () {
+                      setState(() {
+                        _statusFilter = 'cancel_scheduled';
+                        _onlyActive = false;
+                        _pageIndex = 0;
+                      });
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  _statChip(
+                    label: 'With subscription',
                     value: withSubUsers.toString(),
                     icon: Icons.receipt_long_rounded,
                     bg: Colors.blueGrey.shade200,
                     fg: Colors.black,
+                    selected: _statusFilter == 'with_sub',
+                    onTap: () {
+                      setState(() {
+                        _statusFilter = 'with_sub';
+                        _onlyActive = false;
+                        _pageIndex = 0;
+                      });
+                    },
                   ),
                 ],
               ),
@@ -848,38 +885,50 @@ class _DoctorUsersScreenState extends State<DoctorUsersScreen> {
     required String label,
     required String value,
     required IconData icon,
+    bool selected = false,
+    VoidCallback? onTap,
     Color? bg,
     Color? fg,
   }) {
-    final background = bg ?? Colors.white.withOpacity(0.08);
+    final backgroundBase = bg ?? Colors.white.withOpacity(0.08);
     final foreground = fg ?? Colors.white;
+    final background = selected
+        ? (bg ?? Colors.tealAccent.withOpacity(0.35))
+        : backgroundBase;
+    final borderColor = selected ? Colors.white : Colors.white24;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white24, width: 0.7),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 15, color: foreground.withOpacity(0.9)),
-          const SizedBox(width: 6),
-          Text(
-            value,
-            style: TextStyle(
-              color: foreground,
-              fontWeight: FontWeight.w700,
-              fontSize: 14,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: borderColor, width: selected ? 1.2 : 0.7),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15, color: foreground.withOpacity(0.9)),
+            const SizedBox(width: 6),
+            Text(
+              value,
+              style: TextStyle(
+                color: foreground,
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+              ),
             ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(color: foreground.withOpacity(0.85), fontSize: 11),
-          ),
-        ],
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: foreground.withOpacity(0.85),
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

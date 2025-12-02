@@ -50,6 +50,16 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
   static const _prefsConsentKey = 'drktv_consent';
 
   // Provider state (OpenAI by default)
+  // NEW: daily message limit keys
+  static const _prefsDailyCountKey = 'drktv_daily_msg_count';
+  static const _prefsDailyStartKey = 'drktv_daily_msg_window_start';
+
+  // ...
+
+  // NEW: daily quota state
+  int _dailyMsgCount = 0;
+  DateTime? _dailyWindowStart;
+  bool _limitReached = false; // 👈 add this
 
   // Firestore & Auth
   final _firestore = FirebaseFirestore.instance;
@@ -1647,9 +1657,43 @@ ${tr.alternativeThought}
 
   Future<void> _initPrefsAndHistory() async {
     _prefs = await SharedPreferences.getInstance();
+
     final consent = _prefs?.getBool(_prefsConsentKey) ?? false;
-    if (consent && mounted) setState(() => _consentAccepted = true);
+
+    // 🔹 Load daily limit info
+    final now = DateTime.now();
+    final savedCount = _prefs?.getInt(_prefsDailyCountKey) ?? 0;
+    final savedStartMs = _prefs?.getInt(_prefsDailyStartKey);
+    DateTime? savedStart = savedStartMs != null
+        ? DateTime.fromMillisecondsSinceEpoch(savedStartMs)
+        : null;
+
+    int count;
+    DateTime start;
+
+    if (savedStart == null ||
+        now.difference(savedStart) >= const Duration(hours: 24)) {
+      // reset window
+      count = 0;
+      start = now;
+      await _prefs?.setInt(_prefsDailyCountKey, 0);
+      await _prefs?.setInt(_prefsDailyStartKey, now.millisecondsSinceEpoch);
+    } else {
+      count = savedCount;
+      start = savedStart;
+    }
+
+    // Load history
     await _loadMessagesFromPrefs();
+
+    if (mounted) {
+      setState(() {
+        _consentAccepted = consent;
+        _dailyMsgCount = count;
+        _dailyWindowStart = start;
+        _limitReached = _dailyMsgCount >= 3;
+      });
+    }
   }
 
   Future<void> _loadMessagesFromPrefs() async {
@@ -1902,12 +1946,15 @@ add English words in brackets for clarity — e.g., विचार(thought), �
 गतिविधि(activity).  
 Use natural language with emojis 🌸🧠🌱💡✅🙏🌻👉.  
 
-Adapt your style:
-- For emotional or factual questions → give brief empathetic and clear answers.  
-- For anxiety/overthinking issues → include short CBT-style steps.  
+Style rules:
+- First reply में आप चाहें तो छोटा सा greeting दे सकते हैं (जैसे "नमस्ते", "hello") लेकिन ज़रूरी नहीं।
+- बाद के replies में **बार-बार नमस्ते या लंबा greeting मत दो** – सीधा जवाब से start करो.
+- User ka naam कभी-कभी इस्तेमाल करो, हर message में नहीं।
+- जवाब छोटे, clear, practical steps वाले हों (जैसे 3–5 points).
+- Tone हमेशा respectful, non-judgmental और दोस्ताना रहे.
 
 End each reply with an encouraging or reflective question inviting follow-up.
-If anyone ask for appointment booking with Dr.Kanhaiya give him this for call or whatsapp at this number +91773775617 between morning 8:00am to evening 8:00pm. 
+If anyone asks for appointment booking with Dr.Kanhaiya tell them they can call or WhatsApp at +91773775617 between morning 8:00am to evening 8:00pm.
 ''';
   }
 
@@ -2170,10 +2217,92 @@ ${worksheetMap['dispute'] ?? ''}
     }
   }
 
+  /// Returns true if user can send a message now.
+  /// Increments count when allowed. Shows dialog when limit exceeded.
+  Future<bool> _checkAndConsumeDailyQuota() async {
+    final now = DateTime.now();
+
+    // Reset window if 24h passed or never set
+    if (_dailyWindowStart == null ||
+        now.difference(_dailyWindowStart!) >= const Duration(hours: 24)) {
+      _dailyWindowStart = now;
+      _dailyMsgCount = 0;
+      await _prefs?.setInt(_prefsDailyCountKey, 0);
+      await _prefs?.setInt(
+        _prefsDailyStartKey,
+        _dailyWindowStart!.millisecondsSinceEpoch,
+      );
+    }
+
+    // Already hit limit?
+    if (_dailyMsgCount >= 3) {
+      if (mounted) {
+        setState(() {
+          _limitReached = true;
+        });
+      }
+
+      final resetAt = _dailyWindowStart!.add(const Duration(hours: 24));
+      final loc = MaterialLocalizations.of(context);
+      final dateStr = loc.formatFullDate(resetAt);
+      final timeStr = loc.formatTimeOfDay(
+        TimeOfDay.fromDateTime(resetAt),
+        alwaysUse24HourFormat: false,
+      );
+
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF021515),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: const Text(
+            'Daily limit reached',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Text(
+            'Aap aaj ke 3 questions bhej chuke hain.\n\n'
+            'Agla sawaal aap $dateStr ko $timeStr ke baad bhej sakte hain '
+            '(24 ghante ke baad limit reset ho jaayegi).',
+            style: const TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('OK', style: TextStyle(color: Colors.white70)),
+            ),
+          ],
+        ),
+      );
+
+      return false;
+    }
+
+    // Still within limit -> consume one
+    _dailyMsgCount++;
+    _limitReached = _dailyMsgCount >= 3;
+
+    await _prefs?.setInt(_prefsDailyCountKey, _dailyMsgCount);
+    if (_dailyWindowStart != null) {
+      await _prefs?.setInt(
+        _prefsDailyStartKey,
+        _dailyWindowStart!.millisecondsSinceEpoch,
+      );
+    }
+
+    if (mounted) {
+      setState(() {});
+    }
+
+    return true;
+  }
+
   Future<void> _sendMessage() async {
     final text = _ctrl.text.trim();
     if (text.isEmpty) return;
 
+    // 🔹 Consent check
     if (!_consentAccepted) {
       final ok = await showDialog<bool>(
         context: context,
@@ -2207,13 +2336,15 @@ ${worksheetMap['dispute'] ?? ''}
       );
 
       if (ok != true) return;
-      setState(() {
-        _consentAccepted = true;
-      });
+      _consentAccepted = true;
       await _prefs?.setBool(_prefsConsentKey, true);
     }
 
-    // Create local user message and persist
+    // 🔹 Daily quota check
+    final allowed = await _checkAndConsumeDailyQuota();
+    if (!allowed) return;
+
+    // 🔹 Add user message locally
     final userMsg = _ChatMessage.user(text);
     setState(() {
       _messages.add(userMsg);
@@ -2222,53 +2353,89 @@ ${worksheetMap['dispute'] ?? ''}
     await _saveMessagesToPrefs();
     _scrollToBottom();
 
-    // Write the user message to Firestore (immediately visible to doctor)
+    // 🔹 Write user message for doctor to Firestore
     await _writeUserMessageToFirestore(userMsg.id, text, userMsg.timestamp);
 
     _setLoading(true);
 
     try {
-      // Query AI provider
-      // Query Gemini only
-      // Query Gemini via Cloud Function (no API key needed on client)
+      final fullPrompt = _buildPromptWithContext(text);
+
+      // 🔹 Generate AI response via Cloud Function → pending for doctor review
       final reply = await _callGeminiCF(
-        prompt: text,
+        prompt: fullPrompt,
         system: _systemPromptForCBT(),
         temperature: 0.8,
         maxOutputTokens: 800,
         mimeType: 'text',
       );
 
-      // Write AI reply to Firestore as pending for doctor approval
       final ts = DateTime.now().millisecondsSinceEpoch;
       await _writeAiReplyToFirestore(reply, ts, userMsg.id);
 
-      // Do NOT add AI reply to _messages (user should not see it until doctor approves).
-      // Show a short acknowledgement
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Reply sent for review. Doctor approve karenge 😊'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Chat send error: $e');
+
+      // 🔹 No error bubble. Only soft toast.
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Response generated and sent to your reviewer for approval.',
+              'अभी जवाब नहीं बन पाया, कृपया थोड़ी देर बाद दोबारा कोशिश करें।',
             ),
             duration: Duration(seconds: 3),
           ),
         );
       }
-    } on Exception catch (e) {
-      debugPrint('Chat send error (AI): $e');
-      // If AI fails, show assistant error message locally (so user isn't left hanging).
-      final errMsg = _ChatMessage.assistant(
-        'Sorry — failed to get a reply. (${e})',
-      );
-      setState(() {
-        _messages.add(errMsg);
-      });
-      await _saveMessagesToPrefs();
-      _scrollToBottom();
     } finally {
       _setLoading(false);
     }
+  }
+
+  String _buildPromptWithContext(String latestUserText) {
+    const maxContextMessages = 8; // last 8 messages for context
+    final buffer = StringBuffer()
+      ..writeln(
+        'You are replying as Dr. Kanhaiya in a CBT-style mental health chat.',
+      )
+      ..writeln(
+        'Use the recent conversation to keep replies natural and contextual.',
+      )
+      ..writeln()
+      ..writeln('--- Conversation so far ---');
+
+    // Take last N messages
+    final recent = _messages.length <= maxContextMessages
+        ? _messages
+        : _messages.sublist(_messages.length - maxContextMessages);
+
+    for (final m in recent) {
+      // Worksheets are already described separately in messages, but you can skip them
+      if (m.type == 'worksheet') continue;
+
+      final who = m.isUser ? 'User' : 'Assistant';
+      buffer.writeln('$who: ${m.text}');
+    }
+
+    // Make sure latest user text is clearly at the end
+    buffer
+      ..writeln('User: $latestUserText')
+      ..writeln('--- End conversation ---')
+      ..writeln()
+      ..writeln(
+        'Now reply as Dr. Kanhaiya following the system prompt rules: '
+        'concise, warm, CBT-style, Hinglish/Hindi mix, and end with a small reflective/encouraging question.',
+      );
+
+    return buffer.toString();
   }
 
   TextStyle _textStyle({
@@ -2488,6 +2655,11 @@ ${worksheetMap['dispute'] ?? ''}
     );
   }
 
+  String get _dailyUsageLabel {
+    final used = _dailyMsgCount.clamp(0, 3);
+    return '$used / 3 questions today';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -2635,81 +2807,112 @@ ${worksheetMap['dispute'] ?? ''}
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
-                              vertical: 12,
+                              vertical: 8,
                             ),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.03),
                               borderRadius: BorderRadius.circular(28),
                             ),
-                            child: Row(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _ctrl,
-                                    textInputAction: TextInputAction.send,
-                                    minLines: 1,
-                                    maxLines: 6,
-                                    style: _textStyle(),
-                                    cursorColor: const Color(0xFF008F89),
-                                    decoration: InputDecoration(
-                                      hintText:
-                                          'Ask Dr. Kanhaiya a question...',
-                                      hintStyle: _textStyle(
-                                        size: 14,
-                                      ).copyWith(color: Colors.white54),
-                                      border: InputBorder.none,
-                                      isDense: true,
-                                      filled: false,
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            vertical: 6,
-                                          ),
-                                    ),
-                                    onSubmitted: (_) {
-                                      if (!_loading) _sendMessage();
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  height: 44,
-                                  width: 44,
-                                  decoration: BoxDecoration(
-                                    color: _loading
-                                        ? Colors.grey
-                                        : const Color(0xFF008F89),
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.25),
-                                        blurRadius: 6,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Material(
-                                    color: Colors.transparent,
-                                    child: InkWell(
-                                      borderRadius: BorderRadius.circular(22),
-                                      onTap: _loading ? null : _sendMessage,
-                                      child: Center(
-                                        child: _loading
-                                            ? const SizedBox(
-                                                width: 18,
-                                                height: 18,
-                                                child: CircularProgressIndicator(
-                                                  strokeWidth: 2,
-                                                  valueColor:
-                                                      AlwaysStoppedAnimation<
-                                                        Color
-                                                      >(Colors.white),
-                                                ),
-                                              )
-                                            : const Icon(
-                                                Icons.send,
-                                                color: Colors.white,
+                                // Row: textfield + send button
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextField(
+                                        controller: _ctrl,
+                                        enabled:
+                                            !_limitReached, // 🔹 disable when limit reached
+                                        textInputAction: TextInputAction.send,
+                                        minLines: 1,
+                                        maxLines: 6,
+                                        style: _textStyle(),
+                                        cursorColor: const Color(0xFF008F89),
+                                        decoration: InputDecoration(
+                                          hintText: _limitReached
+                                              ? 'Daily limit reached (3/3) — try tomorrow'
+                                              : 'Ask Dr. Kanhaiya a question...',
+                                          hintStyle: _textStyle(
+                                            size: 14,
+                                          ).copyWith(color: Colors.white54),
+                                          border: InputBorder.none,
+                                          isDense: true,
+                                          filled: false,
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                vertical: 6,
                                               ),
+                                        ),
+                                        onSubmitted: (_) {
+                                          if (!_loading && !_limitReached) {
+                                            _sendMessage();
+                                          }
+                                        },
                                       ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      height: 44,
+                                      width: 44,
+                                      decoration: BoxDecoration(
+                                        color: (_loading || _limitReached)
+                                            ? Colors
+                                                  .grey // 🔹 grey when busy or limited
+                                            : const Color(0xFF008F89),
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(
+                                              0.25,
+                                            ),
+                                            blurRadius: 6,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          borderRadius: BorderRadius.circular(
+                                            22,
+                                          ),
+                                          onTap: (_loading || _limitReached)
+                                              ? null
+                                              : _sendMessage,
+                                          child: Center(
+                                            child: _loading
+                                                ? const SizedBox(
+                                                    width: 18,
+                                                    height: 18,
+                                                    child: CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      valueColor:
+                                                          AlwaysStoppedAnimation<
+                                                            Color
+                                                          >(Colors.white),
+                                                    ),
+                                                  )
+                                                : const Icon(
+                                                    Icons.send,
+                                                    color: Colors.white,
+                                                  ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                // 🔹 tiny usage label
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Text(
+                                    _dailyUsageLabel,
+                                    style: _textStyle(size: 11).copyWith(
+                                      color: _limitReached
+                                          ? Colors.redAccent.shade200
+                                          : Colors.white54,
                                     ),
                                   ),
                                 ),
@@ -3169,7 +3372,7 @@ ${worksheetMap['dispute'] ?? ''}
         backgroundColor: const Color(0xFF021515),
         title: Text('Clear chat?', style: _textStyle(weight: FontWeight.w700)),
         content: Text(
-          'This will remove the conversation from local storage.',
+          'This will remove the conversation from this device and from the server.',
           style: _textStyle(),
         ),
         actions: [
@@ -3179,19 +3382,68 @@ ${worksheetMap['dispute'] ?? ''}
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              Navigator.of(ctx).pop(true);
-            },
+            onPressed: () => Navigator.of(ctx).pop(true),
             child: Text('Clear', style: _textStyle()),
           ),
         ],
       ),
-    ).then((val) {
+    ).then((val) async {
       if (val == true) {
+        // Use the same chat id you use for listening: chats/{_chatId}/messages
+        final uid = _auth.currentUser?.uid;
+        final chatId = _chatId ?? uid;
+
+        if (chatId == null) {
+          // Still clear local if somehow no auth user
+          setState(() {
+            _messages.clear();
+          });
+          _prefs?.remove(_prefsKey);
+          return;
+        }
+
+        final messagesRef = _firestore
+            .collection('chats')
+            .doc(chatId)
+            .collection('messages');
+
+        final chatIndexRef = _firestore.collection('chatIndex').doc(chatId);
+
+        try {
+          // 🔹 Paginated delete of all messages in chats/{chatId}/messages
+          while (true) {
+            final snap = await messagesRef.limit(200).get();
+            if (snap.docs.isEmpty) break;
+
+            final batch = _firestore.batch();
+            for (final doc in snap.docs) {
+              batch.delete(doc.reference);
+            }
+            await batch.commit();
+          }
+
+          // 🔹 Reset chatIndex safely (merge so doc can be created if missing)
+          await chatIndexRef.set({
+            'unreadCount': 0,
+            'pendingCount': 0,
+            'lastMessage': FieldValue.delete(),
+            'lastUpdated': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        } catch (e) {
+          debugPrint('Failed to delete Firebase messages: $e');
+        }
+
+        // 🔹 Clear local state + prefs
         setState(() {
           _messages.clear();
         });
         _prefs?.remove(_prefsKey);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Chat cleared from device & server')),
+          );
+        }
       }
     });
   }
@@ -3827,27 +4079,6 @@ class _ChatMessage {
     isUser: true,
     isApproved: true,
     isPending: false,
-    type: type,
-    worksheet: worksheet,
-    worksheetType: worksheetType,
-  );
-
-  /// Create an assistant message (defaults to approved=true, pending=false).
-  factory _ChatMessage.assistant(
-    String t, {
-    bool isApproved = true,
-    bool isPending = false,
-    String? preview,
-    String? type,
-    Map<String, dynamic>? worksheet,
-    String? worksheetType,
-  }) => _ChatMessage._(
-    id: const Uuid().v4(),
-    text: t,
-    isUser: false,
-    isApproved: isApproved,
-    isPending: isPending,
-    preview: preview,
     type: type,
     worksheet: worksheet,
     worksheetType: worksheetType,

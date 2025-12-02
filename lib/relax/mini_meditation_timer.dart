@@ -2,15 +2,16 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart' as fbstore;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:just_audio/just_audio.dart';
-import 'package:vibration/vibration.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
+import 'package:just_audio/just_audio.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:vibration/vibration.dart';
 
 // ================= Theme colors (Amber) =================
 const Color amber1 = Color(0xFFFFA000);
@@ -44,6 +45,7 @@ class _GuidedMeditationPlayerState extends State<GuidedMeditationPlayer>
     with TickerProviderStateMixin {
   // players
   late final AudioPlayer _audioPlayer;
+
   // animations
   late final AnimationController _pulseController;
   late final AnimationController _rotateController;
@@ -54,12 +56,11 @@ class _GuidedMeditationPlayerState extends State<GuidedMeditationPlayer>
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
 
-  // Local (asset) tracks - keep your 6 existing assets as-is
+  // Local (asset) tracks
   final Map<String, String> _localTracks = {
     'Circle of Calm (EN)': 'assets/sounds/circle_of_calm.mp3',
     'शांति का वृत्त और श्वास (HI)': 'assets/sounds/circle_of_calm_hi.mp3',
-
-    'समुद्र की लहर और श्वास (HI)': 'assets/sounds/bg_ocean_hi.mp3', // example
+    'समुद्र की लहर और श्वास (HI)': 'assets/sounds/bg_ocean_hi.mp3',
     'Sky Expansion Breath (EN)': 'assets/sounds/sky_expansion_breath_en.mp3',
     'आकाश विस्तार और श्वास (HI)': 'assets/sounds/sky_expansion_breath_hi.mp3',
     'Breath Meditation': 'assets/sounds/breath_meditation.mp3',
@@ -69,8 +70,7 @@ class _GuidedMeditationPlayerState extends State<GuidedMeditationPlayer>
   final Map<String, Map<String, dynamic>> _remoteTracks = {};
 
   // selection states
-  String _selectedKey =
-      'None'; // friendly title (either local key or remote title)
+  String _selectedKey = 'None'; // friendly title
   String _selectedSource = 'none'; // 'asset' | 'remote' | 'none'
 
   // download state tracking for remote files:
@@ -85,6 +85,10 @@ class _GuidedMeditationPlayerState extends State<GuidedMeditationPlayer>
 
   // loop toggle
   bool _isLooping = false;
+
+  // track list tab: 0 = general, 1 = Dr. Kanhaiya
+  int _trackTabIndex = 0;
+
   void _showDrKanhaiyaInfoSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -141,7 +145,7 @@ class _GuidedMeditationPlayerState extends State<GuidedMeditationPlayer>
                 "Downloaded audios remain available offline and "
                 "you can listen anytime without internet.",
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.white70,
                   fontSize: 14,
                   height: 1.4,
@@ -183,14 +187,17 @@ class _GuidedMeditationPlayerState extends State<GuidedMeditationPlayer>
   void initState() {
     super.initState();
     _audioPlayer = AudioPlayer();
+
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 4000),
     )..repeat(reverse: true);
+
     _rotateController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 20),
     )..repeat();
+
     _glowController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2500),
@@ -296,7 +303,6 @@ class _GuidedMeditationPlayerState extends State<GuidedMeditationPlayer>
   }
 
   // Download a remote file (docId -> local file)
-  // progressCallback is optional and is intended to be bottom sheet's setState
   Future<void> _downloadRemoteFile(
     String docId, {
     void Function()? progressCallback,
@@ -311,12 +317,10 @@ class _GuidedMeditationPlayerState extends State<GuidedMeditationPlayer>
       return;
     }
 
-    // set downloading state
     _downloadStates[docId] = _DownloadState(
       status: DownloadStatus.downloading,
       progress: 0.0,
     );
-    // notify both UIs
     progressCallback?.call();
     if (mounted) setState(() {});
 
@@ -334,7 +338,7 @@ class _GuidedMeditationPlayerState extends State<GuidedMeditationPlayer>
 
       final filename = uri.pathSegments.isNotEmpty
           ? uri.pathSegments.last
-          : '${docId}.mp3';
+          : '$docId.mp3';
       final targetFile = File('${targetDir.path}/$filename');
 
       final client = http.Client();
@@ -360,7 +364,6 @@ class _GuidedMeditationPlayerState extends State<GuidedMeditationPlayer>
             status: DownloadStatus.downloading,
             progress: p,
           );
-          // update bottom sheet and main UI
           progressCallback?.call();
           if (mounted) setState(() {});
         }
@@ -547,432 +550,6 @@ class _GuidedMeditationPlayerState extends State<GuidedMeditationPlayer>
     return '$minutes:$seconds';
   }
 
-  // UI: open bottom sheet listing local + remote (remote show download button)
-  void _openTrackList() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: cardDark,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
-      ),
-      isScrollControlled: true,
-      builder: (ctx) {
-        // Important: use StatefulBuilder so we can update progress inside sheet
-        return StatefulBuilder(
-          builder: (ctx, bottomSetState) {
-            // Build combined ordered list:
-            final remoteList =
-                _remoteTracks.entries
-                    .map((e) => MapEntry(e.key, e.value))
-                    .toList()
-                  ..sort(
-                    (a, b) => (a.value['order'] as int? ?? 9999).compareTo(
-                      b.value['order'] as int? ?? 9999,
-                    ),
-                  );
-
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(ctx).viewInsets.bottom,
-              ),
-              child: Container(
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(ctx).size.height * 0.78,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(height: 12),
-                    Container(
-                      width: 48,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.white24,
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Row(
-                        children: const [
-                          Icon(Icons.library_music, color: Colors.white70),
-                          SizedBox(width: 10),
-                          Text(
-                            'Choose guided track',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Expanded(
-                      child: ListView(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        children: [
-                          // Local header
-                          if (_localTracks.isNotEmpty)
-                            const Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              child: Text(
-                                'On-device (assets)',
-                                style: TextStyle(
-                                  color: Colors.white60,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ..._localTracks.entries.map((entry) {
-                            final title = entry.key;
-                            final asset = entry.value;
-                            final selected =
-                                _selectedSource == 'asset' &&
-                                _selectedKey == title;
-                            return ListTile(
-                              tileColor: selected
-                                  ? Colors.white10
-                                  : Colors.transparent,
-                              leading: CircleAvatar(
-                                radius: 22,
-                                backgroundColor: selected
-                                    ? amber3
-                                    : const Color(0xFF012A2A),
-                                child: const Icon(
-                                  Icons.music_note,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              title: Text(
-                                title,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              trailing: IconButton(
-                                icon: Icon(
-                                  selected
-                                      ? Icons.check_circle
-                                      : Icons.radio_button_unchecked,
-                                  color: selected ? amber2 : Colors.white54,
-                                ),
-                                onPressed: () async {
-                                  await _selectTrackByLocalAsset(title, asset);
-                                  Navigator.of(ctx).pop();
-                                },
-                              ),
-                              onTap: () async {
-                                await _selectTrackByLocalAsset(title, asset);
-                                Navigator.of(ctx).pop();
-                              },
-                            );
-                          }).toList(),
-
-                          // Remote header
-                          if (remoteList.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  // Avatar with tap-to-preview
-                                  GestureDetector(
-                                    onTap: () {
-                                      showDialog(
-                                        context: ctx,
-                                        builder: (_) => Dialog(
-                                          backgroundColor: Colors.transparent,
-                                          child: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              ClipRRect(
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                                child: Image.asset(
-                                                  'assets/images/dr_kanhaiya.png',
-                                                  fit: BoxFit.cover,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 8),
-                                              Text(
-                                                'Dr. Kanhaiya',
-                                                style: TextStyle(
-                                                  color: amber2,
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    child: CircleAvatar(
-                                      radius: 22,
-                                      backgroundColor: const Color(0xFF012A2A),
-                                      backgroundImage: const AssetImage(
-                                        'images/drkanhaiya.png',
-                                      ),
-                                    ),
-                                  ),
-
-                                  const SizedBox(width: 12),
-
-                                  // Title + small helper text
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Cloud / Downloadable By Dr.Kanhaiya',
-                                          style: const TextStyle(
-                                            color: Colors.yellow,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          'New audios will appear here automatically',
-                                          style: TextStyle(
-                                            color: Colors.white.withOpacity(
-                                              0.55,
-                                            ),
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  // optional info icon
-                                  IconButton(
-                                    onPressed: () {
-                                      _showDrKanhaiyaInfoSheet(ctx);
-                                    },
-                                    icon: const Icon(
-                                      Icons.info_outline,
-                                      color: Colors.white70,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                          // remote items
-                          ...remoteList.map((entry) {
-                            final docId = entry.key;
-                            final info = entry.value;
-                            final title = info['title'] as String? ?? docId;
-                            final url = info['url'] as String? ?? '';
-                            final downloadedPath = _downloadedLocalPath[docId];
-                            final dlState =
-                                _downloadStates[docId] ??
-                                _DownloadState(
-                                  status: DownloadStatus.notDownloaded,
-                                );
-                            final selected =
-                                _selectedSource == 'remote' &&
-                                _selectedKey == title;
-
-                            return ListTile(
-                              tileColor: selected
-                                  ? Colors.white10
-                                  : Colors.transparent,
-                              leading: CircleAvatar(
-                                radius: 22,
-                                backgroundColor: selected
-                                    ? amber3
-                                    : const Color(0xFF012A2A),
-                                child: Icon(
-                                  Icons.cloud_download,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              title: Text(
-                                title,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              subtitle:
-                                  (info['language'] != null &&
-                                      (info['language'] as String).isNotEmpty)
-                                  ? Text(
-                                      info['language'],
-                                      style: const TextStyle(
-                                        color: Colors.white54,
-                                      ),
-                                    )
-                                  : null,
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // If downloaded -> show Play/select button
-                                  if (dlState.status ==
-                                          DownloadStatus.downloaded &&
-                                      downloadedPath != null)
-                                    IconButton(
-                                      icon: Icon(
-                                        selected
-                                            ? Icons.check_circle
-                                            : Icons.play_arrow,
-                                        color: selected
-                                            ? amber2
-                                            : Colors.white54,
-                                      ),
-                                      onPressed: () async {
-                                        await _selectTrackByRemoteDoc(docId);
-                                        Navigator.of(ctx).pop();
-                                      },
-                                    )
-                                  else if (dlState.status ==
-                                      DownloadStatus.downloading)
-                                    // show circular progress
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8.0,
-                                      ),
-                                      child: SizedBox(
-                                        width: 40,
-                                        height: 40,
-                                        child: Stack(
-                                          alignment: Alignment.center,
-                                          children: [
-                                            CircularProgressIndicator(
-                                              value: dlState.progress,
-                                              color: amber3,
-                                            ),
-                                            const Icon(
-                                              Icons.downloading,
-                                              color: Colors.white70,
-                                              size: 16,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    )
-                                  else
-                                    // not downloaded -> show download button
-                                    IconButton(
-                                      icon: const Icon(Icons.download_rounded),
-                                      color: amber3,
-                                      onPressed: url.isEmpty
-                                          ? null
-                                          : () async {
-                                              // pass bottom setState as callback so the sheet updates live
-                                              await _downloadRemoteFile(
-                                                docId,
-                                                progressCallback: () {
-                                                  try {
-                                                    bottomSetState(() {});
-                                                  } catch (_) {}
-                                                },
-                                              );
-                                              // no automatic close — user can tap play/select
-                                            },
-                                    ),
-                                ],
-                              ),
-                              onTap: () async {
-                                if (dlState.status ==
-                                        DownloadStatus.downloaded &&
-                                    downloadedPath != null) {
-                                  await _selectTrackByRemoteDoc(docId);
-                                  Navigator.of(ctx).pop();
-                                } else {
-                                  if (url.isEmpty) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Remote URL missing'),
-                                      ),
-                                    );
-                                  } else {
-                                    final doIt = await showDialog<bool>(
-                                      context: ctx,
-                                      builder: (dCtx) => AlertDialog(
-                                        title: Text('Download "$title"?'),
-                                        content: const Text(
-                                          'This will download the audio to your device for offline play.',
-                                        ),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () =>
-                                                Navigator.pop(dCtx, false),
-                                            child: const Text('Cancel'),
-                                          ),
-                                          TextButton(
-                                            onPressed: () =>
-                                                Navigator.pop(dCtx, true),
-                                            child: const Text('Download'),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                    if (doIt == true) {
-                                      await _downloadRemoteFile(
-                                        docId,
-                                        progressCallback: () {
-                                          try {
-                                            bottomSetState(() {});
-                                          } catch (_) {}
-                                        },
-                                      );
-                                    }
-                                  }
-                                }
-                              },
-                            );
-                          }).toList(),
-
-                          const SizedBox(height: 12),
-                          const SizedBox(height: 8),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16.0,
-                        vertical: 12,
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () => Navigator.of(ctx).pop(),
-                              style: OutlinedButton.styleFrom(
-                                side: BorderSide(color: Colors.white12),
-                              ),
-                              child: const Text(
-                                'Close',
-                                style: TextStyle(color: Colors.white70),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
   @override
   void dispose() {
     _fsSub?.cancel();
@@ -992,7 +569,6 @@ class _GuidedMeditationPlayerState extends State<GuidedMeditationPlayer>
 
   @override
   Widget build(BuildContext context) {
-    (MediaQuery.of(context).size.width * 0.56).clamp(100.0, 360.0);
     return Scaffold(
       backgroundColor: surfaceDark,
       extendBodyBehindAppBar: true,
@@ -1004,20 +580,67 @@ class _GuidedMeditationPlayerState extends State<GuidedMeditationPlayer>
           icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          IconButton(
-            tooltip: 'Tracks',
-            icon: const Icon(Icons.library_music, color: Colors.white),
-            onPressed: _openTrackList,
+        title: Text(
+          widget.subtitle,
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.9),
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
           ),
-        ],
+        ),
+        centerTitle: true,
       ),
       body: SafeArea(
-        child: Column(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isLandscape = constraints.maxWidth > constraints.maxHeight;
+
+            if (isLandscape) {
+              // Side-by-side in landscape
+              return Row(
+                children: [
+                  SizedBox(
+                    width: constraints.maxWidth * 0.46,
+                    child: _buildPlayerSection(padHorizontal: 24),
+                  ),
+                  Expanded(child: _buildTracksPanel()),
+                ],
+              );
+            }
+
+            // Portrait: top player, bottom tracks
+            return Column(
+              children: [
+                SizedBox(
+                  height: constraints.maxHeight * 0.46,
+                  child: _buildPlayerSection(padHorizontal: 24),
+                ),
+                Expanded(child: _buildTracksPanel()),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  // ===================== PLAYER UI (TOP) =====================
+
+  Widget _buildPlayerSection({double padHorizontal = 24}) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Decide animation size based on available height
+        final double animSize = math.min(
+          constraints.maxHeight * 0.7,
+          260.0,
+        ); // max 260
+
+        return Column(
           children: [
-            const SizedBox(height: 20),
+            const SizedBox(height: 8),
+            // Title + selected track
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: EdgeInsets.symmetric(horizontal: padHorizontal),
               child: Column(
                 children: [
                   Text(
@@ -1030,10 +653,12 @@ class _GuidedMeditationPlayerState extends State<GuidedMeditationPlayer>
                       letterSpacing: 0.5,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                   Text(
                     _selectedLabel(),
                     textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.white.withOpacity(0.9),
@@ -1043,19 +668,85 @@ class _GuidedMeditationPlayerState extends State<GuidedMeditationPlayer>
                 ],
               ),
             ),
-            const SizedBox(height: 40),
-            Expanded(child: Center(child: _buildAnimatedFigure())),
-            const SizedBox(height: 24),
+
+            const SizedBox(height: 8),
+
+            // ---------- Row: Animation + Play Button ----------
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: padHorizontal),
+                child: Row(
+                  children: [
+                    // Animation on the left
+                    Expanded(
+                      flex: 3,
+                      child: Center(
+                        child: SizedBox(
+                          height: animSize,
+                          width: animSize,
+                          child: _buildAnimatedFigure(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Play button + repeat on the right
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildPlayPauseButton(),
+                          const SizedBox(height: 20),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              IconButton(
+                                tooltip: _isLooping
+                                    ? 'Repeat: On'
+                                    : 'Repeat: Off',
+                                icon: Icon(
+                                  _isLooping ? Icons.repeat_one : Icons.repeat,
+                                  color: _isLooping ? amber2 : Colors.white54,
+                                  size: 26,
+                                ),
+                                onPressed: _toggleLoopMode,
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  _isLooping
+                                      ? 'Repeating current track'
+                                      : 'No repeat',
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 6),
+
+            // ---------- Time + Slider at the bottom ----------
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
+              padding: EdgeInsets.symmetric(horizontal: padHorizontal + 8),
               child: Column(
                 children: [
+                  // time row
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         _formatDuration(_position),
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: amber2,
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -1071,7 +762,8 @@ class _GuidedMeditationPlayerState extends State<GuidedMeditationPlayer>
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 4),
+                  // slider
                   SliderTheme(
                     data: SliderThemeData(
                       trackHeight: 4,
@@ -1088,9 +780,11 @@ class _GuidedMeditationPlayerState extends State<GuidedMeditationPlayer>
                     ),
                     child: Slider(
                       value: _duration.inSeconds > 0
-                          ? _position.inSeconds.toDouble()
+                          ? _position.inSeconds
+                                .clamp(0, _duration.inSeconds)
+                                .toDouble()
                           : 0.0,
-                      max: _duration.inSeconds.toDouble() > 0
+                      max: _duration.inSeconds > 0
                           ? _duration.inSeconds.toDouble()
                           : 1.0,
                       onChanged: (value) =>
@@ -1100,35 +794,10 @@ class _GuidedMeditationPlayerState extends State<GuidedMeditationPlayer>
                 ],
               ),
             ),
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    tooltip: _isLooping ? 'Repeat: On' : 'Repeat: Off',
-                    icon: Icon(
-                      _isLooping ? Icons.repeat_one : Icons.repeat,
-                      color: _isLooping ? amber2 : Colors.white54,
-                      size: 28,
-                    ),
-                    onPressed: _toggleLoopMode,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    _isLooping ? 'Repeating current track' : 'No repeat',
-                    style: TextStyle(color: Colors.white70, fontSize: 13),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            _buildPlayPauseButton(),
-            const SizedBox(height: 40),
+            const SizedBox(height: 4),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -1334,6 +1003,479 @@ class _GuidedMeditationPlayerState extends State<GuidedMeditationPlayer>
                 ],
               ),
       ),
+    );
+  }
+
+  // ===================== TRACKS PANEL (BOTTOM) =====================
+
+  Widget _buildTracksPanel() {
+    final remoteList =
+        _remoteTracks.entries.map((e) => MapEntry(e.key, e.value)).toList()
+          ..sort(
+            (a, b) => (a.value['order'] as int? ?? 9999).compareTo(
+              b.value['order'] as int? ?? 9999,
+            ),
+          );
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cardDark,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.5),
+            blurRadius: 18,
+            offset: const Offset(0, -6),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 8),
+          Container(
+            width: 42,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18.0),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.library_music,
+                  color: Colors.white70,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Meditation Tracks',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+                const Spacer(),
+                Icon(
+                  _selectedSource == 'remote'
+                      ? Icons.cloud_done_rounded
+                      : _selectedSource == 'asset'
+                      ? Icons.offline_bolt_rounded
+                      : Icons.music_note_outlined,
+                  size: 18,
+                  color: amber2,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  _selectedSource == 'remote'
+                      ? 'Cloud'
+                      : _selectedSource == 'asset'
+                      ? 'Built-in'
+                      : 'None',
+                  style: const TextStyle(color: Colors.white60, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          // segmented tabs
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildTracksTabButton(
+                    index: 0,
+                    title: 'General tracks',
+                    subtitle:
+                        '${_localTracks.length} ${_localTracks.length == 1 ? 'track' : 'tracks'}',
+                    icon: Icons.music_video_rounded,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildTracksTabButton(
+                    index: 1,
+                    title: 'By Dr. Kanhaiya',
+                    subtitle:
+                        '${remoteList.length} ${remoteList.length == 1 ? 'track' : 'tracks'}',
+                    icon: Icons.cloud_download_rounded,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              child: _trackTabIndex == 0
+                  ? _buildLocalTrackList()
+                  : _buildRemoteTrackList(remoteList),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTracksTabButton({
+    required int index,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+  }) {
+    final bool isActive = _trackTabIndex == index;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _trackTabIndex = index;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        decoration: BoxDecoration(
+          color: isActive ? amber3.withOpacity(0.16) : Colors.transparent,
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(
+            color: isActive ? amber3.withOpacity(0.9) : Colors.white12,
+            width: 1.1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: isActive ? amber2 : Colors.white.withOpacity(0.7),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: isActive
+                          ? Colors.white
+                          : Colors.white.withOpacity(0.85),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.6),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLocalTrackList() {
+    if (_localTracks.isEmpty) {
+      return const Center(
+        child: Text(
+          'No built-in tracks',
+          style: TextStyle(color: Colors.white60),
+        ),
+      );
+    }
+
+    return ListView(
+      key: const ValueKey('local-list'),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      children: _localTracks.entries.map((entry) {
+        final title = entry.key;
+        final asset = entry.value;
+        final selected = _selectedSource == 'asset' && _selectedKey == title;
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4),
+          child: ListTile(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            tileColor: selected
+                ? Colors.white12
+                : Colors.white.withOpacity(0.02),
+            leading: CircleAvatar(
+              radius: 22,
+              backgroundColor: selected
+                  ? amber3
+                  : const Color(0xFF1C1305).withOpacity(0.9),
+              child: const Icon(Icons.music_note, color: Colors.white),
+            ),
+            title: Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            subtitle: const Text(
+              'On-device • Instant play',
+              style: TextStyle(color: Colors.white54, fontSize: 11),
+            ),
+            trailing: Icon(
+              selected ? Icons.check_circle : Icons.play_arrow_rounded,
+              color: selected ? amber2 : Colors.white70,
+            ),
+            onTap: () async {
+              await _selectTrackByLocalAsset(title, asset);
+            },
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildRemoteTrackList(
+    List<MapEntry<String, Map<String, dynamic>>> remoteList,
+  ) {
+    if (remoteList.isEmpty) {
+      return const Center(
+        child: Text(
+          'New guided tracks by Dr. Kanhaiya\nwill appear here automatically.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white60, fontSize: 13),
+        ),
+      );
+    }
+
+    return ListView(
+      key: const ValueKey('remote-list'),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      children: [
+        // header row with avatar + info
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              GestureDetector(
+                onTap: () => _showDrKanhaiyaInfoSheet(context),
+                child: CircleAvatar(
+                  radius: 20,
+                  backgroundColor: const Color(0xFF012A2A),
+                  backgroundImage: const AssetImage('images/drkanhaiya.png'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Guided meditations by Dr. Kanhaiya',
+                      style: TextStyle(
+                        color: Colors.yellow,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Tap download once, then listen offline anytime.',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.55),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: () => _showDrKanhaiyaInfoSheet(context),
+                icon: const Icon(Icons.info_outline, color: Colors.white70),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 2),
+        ...remoteList.map((entry) {
+          final docId = entry.key;
+          final info = entry.value;
+          final title = info['title'] as String? ?? docId;
+          final url = info['url'] as String? ?? '';
+          final downloadedPath = _downloadedLocalPath[docId];
+          final dlState =
+              _downloadStates[docId] ??
+              _DownloadState(status: DownloadStatus.notDownloaded);
+          final selected = _selectedSource == 'remote' && _selectedKey == title;
+
+          final language = (info['language'] as String?) ?? '';
+          final hasLang = language.trim().isNotEmpty;
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4),
+            child: ListTile(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              tileColor: selected
+                  ? Colors.white12
+                  : Colors.white.withOpacity(0.02),
+              leading: CircleAvatar(
+                radius: 22,
+                backgroundColor: selected
+                    ? amber3
+                    : const Color(0xFF012A2A).withOpacity(0.9),
+                child: const Icon(Icons.cloud_download, color: Colors.white),
+              ),
+              title: Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              subtitle: hasLang
+                  ? Text(
+                      language,
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 11,
+                      ),
+                    )
+                  : null,
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (dlState.status == DownloadStatus.downloaded &&
+                      downloadedPath != null)
+                    IconButton(
+                      icon: Icon(
+                        selected
+                            ? Icons.check_circle
+                            : Icons.play_arrow_rounded,
+                        color: selected ? amber2 : Colors.white70,
+                      ),
+                      onPressed: () async {
+                        await _selectTrackByRemoteDoc(docId);
+                      },
+                    )
+                  else if (dlState.status == DownloadStatus.downloading)
+                    SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                            value: dlState.progress,
+                            color: amber3,
+                          ),
+                          const Icon(
+                            Icons.downloading,
+                            color: Colors.white70,
+                            size: 16,
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    IconButton(
+                      icon: const Icon(Icons.download_rounded),
+                      color: amber3,
+                      onPressed: url.isEmpty
+                          ? null
+                          : () async {
+                              final doIt = await showDialog<bool>(
+                                context: context,
+                                builder: (dCtx) => AlertDialog(
+                                  title: Text('Download "$title"?'),
+                                  content: const Text(
+                                    'This will download the audio to your device for offline play.',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(dCtx, false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(dCtx, true),
+                                      child: const Text('Download'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (doIt == true) {
+                                await _downloadRemoteFile(
+                                  docId,
+                                  progressCallback: () {
+                                    if (mounted) setState(() {});
+                                  },
+                                );
+                              }
+                            },
+                    ),
+                ],
+              ),
+              onTap: () async {
+                if (dlState.status == DownloadStatus.downloaded &&
+                    downloadedPath != null) {
+                  await _selectTrackByRemoteDoc(docId);
+                } else {
+                  if (url.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Remote URL missing')),
+                    );
+                  } else {
+                    final doIt = await showDialog<bool>(
+                      context: context,
+                      builder: (dCtx) => AlertDialog(
+                        title: Text('Download "$title"?'),
+                        content: const Text(
+                          'This will download the audio to your device for offline play.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(dCtx, false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(dCtx, true),
+                            child: const Text('Download'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (doIt == true) {
+                      await _downloadRemoteFile(
+                        docId,
+                        progressCallback: () {
+                          if (mounted) setState(() {});
+                        },
+                      );
+                    }
+                  }
+                }
+              },
+            ),
+          );
+        }).toList(),
+        const SizedBox(height: 4),
+      ],
     );
   }
 }
