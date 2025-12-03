@@ -9,6 +9,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cbt_drktv/utils/analytics_helper.dart'; // 👈 NEW
 
 /// Palette
 const Color teal1 = Color.fromARGB(255, 1, 108, 108);
@@ -102,6 +103,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _progressFuture = _loadProgressSummary();
+    syncLocalAnalyticsOncePerDay();
   }
 
   // Helper: check enrollment and navigate or show dialog
@@ -742,6 +744,7 @@ class _HomePageState extends State<HomePage> {
 
   // Consent + navigation handler (add below the widget)
   void _onOpenDrKanhaiyaChat() async {
+    trackFeatureUse('home_drkanhaiya_chat_tap');
     final prefs = await SharedPreferences.getInstance();
     final hideConsent = prefs.getBool('hide_drkanhaiya_consent') ?? false;
 
@@ -2014,13 +2017,32 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildQuickTools() {
     final tools = [
-      {'icon': Icons.note_alt, 'label': 'Thought', 'route': '/thought'},
-      {'icon': Icons.rule, 'label': 'ABCD', 'route': '/abcd'},
-      {'icon': Icons.self_improvement, 'label': 'Relax', 'route': '/relax'},
-      {'icon': Icons.psychology, 'label': 'CBT Quiz', 'route': '/cbt-game'},
+      {
+        'icon': Icons.note_alt,
+        'label': 'Thought',
+        'route': '/thought',
+        'feature': 'quick_thought_record',
+      },
+      {
+        'icon': Icons.rule,
+        'label': 'ABCD',
+        'route': '/abcd',
+        'feature': 'quick_abcd_worksheet',
+      },
+      {
+        'icon': Icons.self_improvement,
+        'label': 'Relax',
+        'route': '/relax',
+        'feature': 'quick_relax',
+      },
+      {
+        'icon': Icons.psychology,
+        'label': 'CBT Quiz',
+        'route': '/cbt-game',
+        'feature': 'quick_cbt_quiz',
+      },
     ];
 
-    // ✅ Different avatar background colors
     final avatarColors = [
       Colors.orange, // Thought
       Colors.purple, // ABCD
@@ -2035,7 +2057,11 @@ class _HomePageState extends State<HomePage> {
 
         return Expanded(
           child: GestureDetector(
-            onTap: () => Navigator.pushNamed(context, t['route'] as String),
+            onTap: () => navigateWithTracking(
+              context,
+              featureKey: t['feature'] as String,
+              routeName: t['route'] as String,
+            ),
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 6),
               padding: const EdgeInsets.symmetric(vertical: 14),
@@ -2047,7 +2073,7 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   CircleAvatar(
                     radius: 20,
-                    backgroundColor: avatarColors[i], // ✅ per-tool color
+                    backgroundColor: avatarColors[i],
                     child: Icon(t['icon'] as IconData, color: Colors.white),
                   ),
                   const SizedBox(height: 8),

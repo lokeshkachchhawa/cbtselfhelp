@@ -1,11 +1,12 @@
 import 'package:cbt_drktv/screens/doctor_chat_screen.dart';
 import 'package:cbt_drktv/screens/quiz_creator_screen.dart';
-import 'package:cbt_drktv/screens/doctor_users_screen.dart'; // 👈 NEW
+import 'package:cbt_drktv/screens/doctor_users_screen.dart';
+import 'package:cbt_drktv/screens/doctor_metrics_screen.dart'; // 👈 NEW
 import 'package:cbt_drktv/utils/logout_helper.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-// Remove these if you already define them in a shared theme and import instead:
+// Remove these if already in shared theme:
 const Color teal3 = Color(0xFF008F89);
 const Color teal4 = Color(0xFF007A78);
 
@@ -23,6 +24,8 @@ class _DoctorHomeState extends State<DoctorHome> {
 
   // cache to avoid repeated profile reads
   final Map<String, String> _nameCache = {};
+
+  int _currentIndex = 0; // 👈 bottom nav index
 
   @override
   void dispose() {
@@ -106,35 +109,257 @@ class _DoctorHomeState extends State<DoctorHome> {
     return 'User';
   }
 
+  String _titleForIndex(int index) {
+    switch (index) {
+      case 0:
+        return 'Doctor Dashboard — Chats';
+      case 1:
+        return 'Doctor Dashboard — Users';
+      case 2:
+        return 'Doctor Dashboard — Quiz';
+      case 3:
+        return 'Doctor Dashboard — Metrics';
+      default:
+        return 'Doctor Dashboard';
+    }
+  }
+
+  Widget _buildBody() {
+    switch (_currentIndex) {
+      case 0:
+        return _buildChatTab();
+      case 1:
+        return const DoctorUsersScreen();
+      case 2:
+        return const QuizCreatorScreen();
+      case 3:
+        return const DoctorMetricsScreen(); // 👈 NEW
+      default:
+        return _buildChatTab();
+    }
+  }
+
+  // 🔹 Original chat list UI, moved into its own method
+  Widget _buildChatTab() {
+    return Column(
+      children: [
+        // Search bar
+        Padding(
+          padding: const EdgeInsets.all(10),
+          child: TextField(
+            controller: _searchCtrl,
+            onChanged: (val) => setState(() => _searchQuery = val.trim()),
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Search patient name or email...',
+              hintStyle: const TextStyle(color: Colors.white54),
+              prefixIcon: const Icon(Icons.search, color: Colors.white70),
+              filled: true,
+              fillColor: Colors.white12,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+        ),
+
+        // Chat list
+        Expanded(
+          child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: _chatStream(),
+            builder: (context, snap) {
+              if (snap.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snap.hasError) {
+                return Center(
+                  child: Text(
+                    'Error loading chats: ${snap.error}',
+                    style: const TextStyle(color: Colors.redAccent),
+                  ),
+                );
+              }
+
+              final docs = snap.data?.docs ?? [];
+              if (docs.isEmpty) {
+                return const Center(
+                  child: Text(
+                    'No patient chats yet.',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(8),
+                itemCount: docs.length,
+                itemBuilder: (ctx, i) {
+                  final doc = docs[i];
+                  final data = doc.data();
+                  final chatId = doc.id;
+
+                  final lastMessage = (data['lastMessage'] ?? '').toString();
+                  final unread = (data['unreadCount'] ?? 0) as int;
+                  final pending = (data['pendingCount'] ?? 0) as int;
+                  final ts = (data['lastUpdated'] as Timestamp?)?.toDate();
+                  final time = ts != null
+                      ? '${ts.hour.toString().padLeft(2, '0')}:${ts.minute.toString().padLeft(2, '0')}'
+                      : '';
+
+                  return FutureBuilder<String>(
+                    future: _resolveDisplayName(data),
+                    builder: (ctx, nameSnap) {
+                      final userName = (nameSnap.data ?? '').trim();
+                      final displayName = userName.isEmpty ? 'User' : userName;
+
+                      // search filtering uses resolved name
+                      final q = _searchQuery.toLowerCase();
+                      if (q.isNotEmpty) {
+                        final email = (data['userEmail'] ?? '')
+                            .toString()
+                            .toLowerCase();
+                        final matches =
+                            displayName.toLowerCase().contains(q) ||
+                            email.contains(q);
+                        if (!matches) return const SizedBox.shrink();
+                      }
+
+                      return Card(
+                        color: Colors.white.withOpacity(0.05),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: teal3,
+                            child: Text(
+                              _initial(displayName),
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ),
+                          title: Text(
+                            displayName,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  lastMessage,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                              if (pending > 0)
+                                Container(
+                                  margin: const EdgeInsets.only(left: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orangeAccent.shade200,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    'Pending $pending',
+                                    style: const TextStyle(
+                                      color: Colors.black87,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          trailing: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (unread > 0)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.redAccent,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    '$unread',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              if (time.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    time,
+                                    style: const TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          onTap: () async {
+                            try {
+                              await _firestore
+                                  .collection('chatIndex')
+                                  .doc(chatId)
+                                  .update({'unreadCount': 0});
+                            } catch (e) {
+                              debugPrint('Failed to reset unread: $e');
+                            }
+
+                            if (!mounted) return;
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => DoctorChatThread(
+                                  chatId: chatId,
+                                  userName: displayName, // pass resolved
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF021515),
       appBar: AppBar(
         backgroundColor: teal4,
-        title: const Text('Doctor Dashboard — Chats'),
+        title: Text(_titleForIndex(_currentIndex)),
         actions: [
-          // 👇 NEW: Users list icon
-          IconButton(
-            tooltip: 'All Users',
-            icon: const Icon(Icons.people_alt_outlined),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const DoctorUsersScreen()),
-              );
-            },
-          ),
-          IconButton(
-            tooltip: 'Create Quiz',
-            icon: const Icon(Icons.post_add),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const QuizCreatorScreen()),
-              );
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () {
@@ -143,224 +368,42 @@ class _DoctorHomeState extends State<DoctorHome> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Search bar
-          Padding(
-            padding: const EdgeInsets.all(10),
-            child: TextField(
-              controller: _searchCtrl,
-              onChanged: (val) => setState(() => _searchQuery = val.trim()),
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'Search patient name or email...',
-                hintStyle: const TextStyle(color: Colors.white54),
-                prefixIcon: const Icon(Icons.search, color: Colors.white70),
-                filled: true,
-                fillColor: Colors.white12,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
+      body: _buildBody(),
+      floatingActionButton: _currentIndex == 0
+          ? FloatingActionButton(
+              backgroundColor: teal3,
+              child: const Icon(Icons.refresh),
+              onPressed: () => setState(() {}),
+              tooltip: 'Refresh list',
+            )
+          : null,
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: const Color(0xFF031818),
+        selectedItemColor: Colors.white,
+        unselectedItemColor: Colors.white54,
+        onTap: (idx) {
+          setState(() => _currentIndex = idx);
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.chat_bubble_outline),
+            label: 'Chats',
           ),
-
-          // Chat list
-          Expanded(
-            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: _chatStream(),
-              builder: (context, snap) {
-                if (snap.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snap.hasError) {
-                  return Center(
-                    child: Text(
-                      'Error loading chats: ${snap.error}',
-                      style: const TextStyle(color: Colors.redAccent),
-                    ),
-                  );
-                }
-
-                final docs = snap.data?.docs ?? [];
-                if (docs.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      'No patient chats yet.',
-                      style: TextStyle(color: Colors.white70),
-                    ),
-                  );
-                }
-
-                // We filter after resolving names. To keep UI smooth, we still
-                // render each tile with a FutureBuilder and hide when it doesn’t match.
-                return ListView.builder(
-                  padding: const EdgeInsets.all(8),
-                  itemCount: docs.length,
-                  itemBuilder: (ctx, i) {
-                    final doc = docs[i];
-                    final data = doc.data();
-                    final chatId = doc.id;
-
-                    final lastMessage = (data['lastMessage'] ?? '').toString();
-                    final unread = (data['unreadCount'] ?? 0) as int;
-                    final pending = (data['pendingCount'] ?? 0) as int;
-                    final ts = (data['lastUpdated'] as Timestamp?)?.toDate();
-                    final time = ts != null
-                        ? '${ts.hour.toString().padLeft(2, '0')}:${ts.minute.toString().padLeft(2, '0')}'
-                        : '';
-
-                    return FutureBuilder<String>(
-                      future: _resolveDisplayName(data),
-                      builder: (ctx, nameSnap) {
-                        final userName = (nameSnap.data ?? '').trim();
-                        final displayName = userName.isEmpty
-                            ? 'User'
-                            : userName;
-
-                        // search filtering uses resolved name
-                        final q = _searchQuery.toLowerCase();
-                        if (q.isNotEmpty) {
-                          final email = (data['userEmail'] ?? '')
-                              .toString()
-                              .toLowerCase();
-                          final matches =
-                              displayName.toLowerCase().contains(q) ||
-                              email.contains(q);
-                          if (!matches) return const SizedBox.shrink();
-                        }
-
-                        return Card(
-                          color: Colors.white.withOpacity(0.05),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          margin: const EdgeInsets.symmetric(vertical: 6),
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: teal3,
-                              child: Text(
-                                _initial(displayName),
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                            ),
-                            title: Text(
-                              displayName,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            subtitle: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    lastMessage,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                                if (pending > 0)
-                                  Container(
-                                    margin: const EdgeInsets.only(left: 8),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.orangeAccent.shade200,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      'Pending $pending',
-                                      style: const TextStyle(
-                                        color: Colors.black87,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            trailing: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                if (unread > 0)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.redAccent,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      '$unread',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                                if (time.isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 4),
-                                    child: Text(
-                                      time,
-                                      style: const TextStyle(
-                                        color: Colors.white54,
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            onTap: () async {
-                              try {
-                                await _firestore
-                                    .collection('chatIndex')
-                                    .doc(chatId)
-                                    .update({'unreadCount': 0});
-                              } catch (e) {
-                                debugPrint('Failed to reset unread: $e');
-                              }
-
-                              if (!mounted) return;
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => DoctorChatThread(
-                                    chatId: chatId,
-                                    userName: displayName, // pass resolved
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    );
-                  },
-                );
-              },
-            ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.people_alt_outlined),
+            label: 'Users',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.quiz_outlined),
+            label: 'Quiz',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.insights_outlined),
+            label: 'Metrics',
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: teal3,
-        child: const Icon(Icons.refresh),
-        onPressed: () => setState(() {}),
-        tooltip: 'Refresh list',
       ),
     );
   }

@@ -1,6 +1,7 @@
 // lib/screens/relax_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cbt_drktv/utils/analytics_helper.dart'; // 👈 NEW
 
 /// Enhanced RelaxPage with improved UI/UX:
 /// - Vibrant per-feature colors with glowing effects
@@ -36,6 +37,7 @@ class RelaxPage extends StatefulWidget {
 
 class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
   late final AnimationController _controller;
+  late final TrackingRouteAware _routeTracker;
 
   final Duration singleDuration = const Duration(milliseconds: 450);
   final double staggerDelay = 0.08;
@@ -47,6 +49,7 @@ class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
       icon: Icons.air_rounded,
       color: breathBlue,
       route: '/relax/breath',
+      analyticsKey: 'feature_relax_breath', // 🔁 UPDATED
     ),
     _Feature(
       title: 'Progressive Muscle Relaxation',
@@ -54,6 +57,7 @@ class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
       icon: Icons.self_improvement_rounded,
       color: muscleViolet,
       route: '/relax_pmr',
+      analyticsKey: 'feature_relax_pmr', // 🔁 UPDATED
     ),
     _Feature(
       title: 'Grounding (5-4-3-2-1)',
@@ -61,6 +65,7 @@ class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
       icon: Icons.spa_rounded,
       color: groundGreen,
       route: '/grounding',
+      analyticsKey: 'feature_relax_grounding', // 🔁 UPDATED
     ),
     _Feature(
       title: 'Mini Meditation Timer',
@@ -68,12 +73,16 @@ class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
       icon: Icons.timer_rounded,
       color: meditationAmber,
       route: '/minimeditation',
+      analyticsKey: 'feature_relax_meditation', // 🔁 UPDATED
     ),
   ];
 
   @override
   void initState() {
     super.initState();
+
+    // 👇 NEW: track time spent on Relax screen
+    _routeTracker = TrackingRouteAware('screen_relax');
 
     final int items = _features.length + 1;
     final double totalSeconds =
@@ -87,7 +96,17 @@ class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      routeObserver.subscribe(_routeTracker, route);
+    }
+  }
+
+  @override
   void dispose() {
+    routeObserver.unsubscribe(_routeTracker); // 👈 NEW
     _controller.dispose();
     super.dispose();
   }
@@ -164,6 +183,7 @@ class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
                         icon: feature.icon,
                         color: feature.color,
                         route: feature.route,
+                        analyticsKey: feature.analyticsKey,
                       ),
                     ),
                   ),
@@ -314,6 +334,7 @@ class _EnhancedFeatureCard extends StatefulWidget {
   final IconData icon;
   final Color color;
   final String route;
+  final String analyticsKey; // 👈 NEW
 
   const _EnhancedFeatureCard({
     required this.title,
@@ -321,6 +342,7 @@ class _EnhancedFeatureCard extends StatefulWidget {
     required this.icon,
     required this.color,
     required this.route,
+    required this.analyticsKey, // 👈 NEW
   });
 
   @override
@@ -361,10 +383,14 @@ class _EnhancedFeatureCardState extends State<_EnhancedFeatureCard>
       onTapUp: (_) {
         setState(() => _isPressed = false);
         _pressController.reverse();
-        Future.delayed(
-          const Duration(milliseconds: 120),
-          () => Navigator.pushNamed(context, widget.route),
-        );
+
+        Future.delayed(const Duration(milliseconds: 120), () {
+          navigateWithTracking(
+            context,
+            featureKey: widget.analyticsKey,
+            routeName: widget.route,
+          );
+        });
       },
       onTapCancel: () {
         setState(() => _isPressed = false);
@@ -648,6 +674,7 @@ class _Feature {
   final IconData icon;
   final Color color;
   final String route;
+  final String analyticsKey; // 👈 NEW
 
   _Feature({
     required this.title,
@@ -655,5 +682,6 @@ class _Feature {
     required this.icon,
     required this.color,
     required this.route,
+    required this.analyticsKey, // 👈 NEW
   });
 }

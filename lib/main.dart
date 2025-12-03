@@ -17,6 +17,7 @@ import 'package:cbt_drktv/screens/relax_page.dart';
 import 'package:cbt_drktv/screens/thought_record_page.dart';
 import 'package:cbt_drktv/screens/safety_page.dart';
 import 'package:cbt_drktv/services/push_service.dart';
+import 'package:cbt_drktv/utils/analytics_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -74,6 +75,9 @@ class MyApp extends StatelessWidget {
         title: 'CBT Self-Guided',
         theme: appTheme(),
         home: const EntryRouter(),
+        navigatorObservers: [
+          routeObserver, // 👈 NEW: needed for time-spent tracking
+        ],
         routes: {
           '/home': (_) => const HomePage(),
           '/onboarding': (_) => OnboardingPage(),
@@ -102,7 +106,7 @@ class MyApp extends StatelessWidget {
 
             return CourseDetailPage(courseId: courseId);
           },
-          '/paywall': (_) => const PaywallScreen(), // <-- ADD THIS
+          '/paywall': (_) => const PaywallScreen(),
           "/cbt-game": (_) => const CBTGameScreen(),
           '/cancel': (_) => const CancelSubscriptionScreen(),
         },

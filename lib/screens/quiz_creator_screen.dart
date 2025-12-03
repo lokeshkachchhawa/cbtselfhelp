@@ -46,11 +46,9 @@ class _QuizCreatorScreenState extends State<QuizCreatorScreen> {
 
   /// Predefined option sets (auto-fills A–D and correct answer)
   /// Designed for Thought Detective questions.
-  ///
-  /// Each entry has: title, options[4], correctIndex.
   final List<_Preset> _presets = const [
     _Preset(
-      title: 'Mind Reading set (A–D includes correct C)',
+      title: 'Mind Reading set (C)',
       options: [
         'Personalization',
         'Catastrophizing',
@@ -60,7 +58,7 @@ class _QuizCreatorScreenState extends State<QuizCreatorScreen> {
       correctIndex: 2,
     ),
     _Preset(
-      title: 'Catastrophizing set (Correct: D)',
+      title: 'Catastrophizing set (D)',
       options: [
         'Emotional Reasoning',
         'Mind Reading',
@@ -70,7 +68,7 @@ class _QuizCreatorScreenState extends State<QuizCreatorScreen> {
       correctIndex: 3,
     ),
     _Preset(
-      title: 'Personalization set (Correct: A)',
+      title: 'Personalization set (A)',
       options: [
         'Personalization',
         'Filtering',
@@ -80,7 +78,7 @@ class _QuizCreatorScreenState extends State<QuizCreatorScreen> {
       correctIndex: 0,
     ),
     _Preset(
-      title: 'Jumping to Conclusions (Correct: D)',
+      title: 'Jumping to Conclusions (D)',
       options: [
         'Filtering',
         'Labeling',
@@ -90,7 +88,7 @@ class _QuizCreatorScreenState extends State<QuizCreatorScreen> {
       correctIndex: 3,
     ),
     _Preset(
-      title: 'All-or-Nothing vs Common (Correct: C)',
+      title: 'All-or-Nothing vs Common (C)',
       options: [
         'Overgeneralization',
         'Labeling',
@@ -132,7 +130,6 @@ class _QuizCreatorScreenState extends State<QuizCreatorScreen> {
       final uid = FirebaseAuth.instance.currentUser?.uid;
       final now = FieldValue.serverTimestamp();
 
-      // Build document
       final doc = {
         'quizType': _quizType.name, // 'thoughtDetective' | 'other'
         'question': _questionCtrl.text.trim(),
@@ -145,7 +142,6 @@ class _QuizCreatorScreenState extends State<QuizCreatorScreen> {
         'createdBy': uid ?? '',
         'createdAt': now,
         'updatedAt': now,
-        // Space for future features:
         'status': 'active', // or 'draft'
         'tags': _quizType == QuizType.thoughtDetective
             ? ['cognitive_distortion']
@@ -180,69 +176,228 @@ class _QuizCreatorScreenState extends State<QuizCreatorScreen> {
   void _showPreview() {
     final q = _questionCtrl.text.trim();
     final opts = _optionCtrls.map((c) => c.text.trim()).toList();
-    final ansIdx = _correctIndex;
     final explain = _explanationCtrl.text.trim();
+
+    if (q.isEmpty || opts.any((o) => o.isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Preview se pehle question aur options भर दें.'),
+        ),
+      );
+      return;
+    }
+
+    final ansIdx = _correctIndex.clamp(0, 3);
 
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: pageBg,
-        titleTextStyle: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-          fontSize: 18,
-        ),
-        contentTextStyle: const TextStyle(color: Colors.white70),
-        title: const Text('Preview'),
-        content: SingleChildScrollView(
+      barrierColor: Colors.black.withOpacity(0.6),
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent, // 👈 no default white surface
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        elevation: 0,
+        child: Container(
+          decoration: BoxDecoration(
+            color: pageBg,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Colors.white10),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.6),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Type: ${_quizType.name}'),
+              // Header row
+              Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withOpacity(0.08),
+                    ),
+                    child: const Icon(
+                      Icons.visibility,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'Preview',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close, color: Colors.white70),
+                    splashRadius: 20,
+                  ),
+                ],
+              ),
               const SizedBox(height: 8),
-              Text('Q:\n$q'),
-              const SizedBox(height: 8),
-              Text('A. ${opts[0]}'),
-              Text('B. ${opts[1]}'),
-              Text('C. ${opts[2]}'),
-              Text('D. ${opts[3]}'),
-              const SizedBox(height: 8),
-              Text('✅ उत्तर: ${['A', 'B', 'C', 'D'][ansIdx]}. ${opts[ansIdx]}'),
+
+              // Type chip
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Chip(
+                  label: Text(
+                    _quizType == QuizType.thoughtDetective
+                        ? 'Thought Detective'
+                        : 'Other',
+                  ),
+                  backgroundColor: Colors.white10,
+                  labelStyle: const TextStyle(color: Colors.white70),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // Question text
+              Text(
+                q,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14.5,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // Options list
+              ...List.generate(4, (i) {
+                final label = ['A', 'B', 'C', 'D'][i];
+                final isCorrect = i == ansIdx;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$label. ',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          opts[i],
+                          style: TextStyle(
+                            color: isCorrect
+                                ? Colors.greenAccent
+                                : Colors.white70,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+
+              const SizedBox(height: 10),
+
+              // Correct answer line
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: Colors.greenAccent.withOpacity(0.4),
+                    width: 0.8,
+                  ),
+                ),
+                child: Text(
+                  '✅ सही उत्तर: ${['A', 'B', 'C', 'D'][ansIdx]}. ${opts[ansIdx]}',
+                  style: const TextStyle(
+                    color: Colors.greenAccent,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13.5,
+                  ),
+                ),
+              ),
+
               if (explain.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 const Text(
-                  'Explanation:',
+                  'Explanation / कारण:',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
+                    fontSize: 13.5,
                   ),
                 ),
-                Text(explain),
+                const SizedBox(height: 4),
+                Text(
+                  explain,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
               ],
+
+              const SizedBox(height: 12),
+
+              // Actions row
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    'Close',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
-        actions: [
-          TextButton(
-            child: const Text('Close'),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ],
       ),
     );
   }
 
-  InputDecoration _inputDecoration(String hint) => InputDecoration(
-    hintText: hint,
-    hintStyle: const TextStyle(color: Colors.white54),
-    filled: true,
-    fillColor: Colors.white12,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide.none,
-    ),
-  );
+  InputDecoration _inputDecoration(String hint, {String? helper}) =>
+      InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: Colors.white54),
+        helperText: helper,
+        helperStyle: const TextStyle(color: Colors.white38, fontSize: 11),
+        filled: true,
+        fillColor: Colors.white10,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: teal3, width: 1.2),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -250,6 +405,7 @@ class _QuizCreatorScreenState extends State<QuizCreatorScreen> {
       backgroundColor: pageBg,
       appBar: AppBar(
         backgroundColor: teal4,
+        elevation: 0,
         title: const Text('Create Quiz Question'),
         actions: [
           IconButton(
@@ -263,234 +419,379 @@ class _QuizCreatorScreenState extends State<QuizCreatorScreen> {
         child: Form(
           key: _formKey,
           child: ListView(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(16),
             children: [
-              // Quiz type
-              Card(
-                color: Colors.white.withOpacity(0.05),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: DropdownButtonFormField<QuizType>(
-                    value: _quizType,
-                    decoration: _inputDecoration('Quiz type'),
-                    dropdownColor: pageBg,
-                    items: const [
-                      DropdownMenuItem(
-                        value: QuizType.thoughtDetective,
-                        child: Text(
-                          'Thought Detective',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                      DropdownMenuItem(
-                        value: QuizType.other,
-                        child: Text(
-                          'Other type (coming soon)',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ],
-                    onChanged: (v) => setState(
-                      () => _quizType = v ?? QuizType.thoughtDetective,
-                    ),
-                  ),
-                ),
-              ),
-
-              // Optional language selector
-              Row(
-                children: [
-                  const Text(
-                    'Language:',
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                  const SizedBox(width: 10),
-                  DropdownButton<String>(
-                    value: _languageCode,
-                    dropdownColor: pageBg,
-                    underline: const SizedBox.shrink(),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'hi',
-                        child: Text(
-                          'Hindi',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                      DropdownMenuItem(
-                        value: 'en',
-                        child: Text(
-                          'English',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ],
-                    onChanged: (v) => setState(() => _languageCode = v ?? 'hi'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              // Predefined options (only shown for Thought Detective)
-              if (_quizType == QuizType.thoughtDetective) ...[
-                DropdownButtonFormField<_Preset>(
-                  value: _selectedPreset,
-                  decoration: _inputDecoration('Predefined options (optional)'),
-                  dropdownColor: pageBg,
-                  items: [
-                    const DropdownMenuItem<_Preset>(
-                      value: null,
-                      child: Text(
-                        '— None —',
-                        style: TextStyle(color: Colors.white70),
-                      ),
-                    ),
-                    ..._presets.map(
-                      (p) => DropdownMenuItem<_Preset>(
-                        value: p,
-                        child: Text(
-                          p.title,
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  ],
-                  onChanged: (p) {
-                    if (p != null)
-                      _applyPreset(p);
-                    else
-                      setState(() => _selectedPreset = null);
-                  },
-                ),
-                const SizedBox(height: 8),
-              ],
-
-              // Question text
-              TextFormField(
-                controller: _questionCtrl,
-                minLines: 3,
-                maxLines: 6,
-                style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration(
-                  'Question text (e.g., हिंदी में परिदृश्य + “यह कौन सी सोच की गलती है?”)',
-                ),
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'Please enter a question'
-                    : null,
-              ),
+              _buildHeaderCard(),
               const SizedBox(height: 12),
-
-              // Options A–D with radio to select the correct one
-              const Text(
-                'Options (A–D):',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 6),
-              ...List.generate(4, (i) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Radio<int>(
-                        value: i,
-                        groupValue: _correctIndex,
-                        activeColor: teal3,
-                        onChanged: (v) =>
-                            setState(() => _correctIndex = v ?? 0),
-                      ),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _optionCtrls[i],
-                          style: const TextStyle(color: Colors.white),
-                          decoration: _inputDecoration(
-                            '${['A', 'B', 'C', 'D'][i]}. Option text',
-                          ),
-                          validator: (v) => (v == null || v.trim().isEmpty)
-                              ? 'Required'
-                              : null,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-
-              // Explanation
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _explanationCtrl,
-                minLines: 2,
-                maxLines: 6,
-                style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration(
-                  'Explanation (विस्तृत कारण / rationale)',
-                ),
-              ),
-
+              _buildTypeAndLanguageCard(),
+              const SizedBox(height: 12),
+              _buildQuestionCard(),
+              const SizedBox(height: 12),
+              _buildOptionsCard(),
+              const SizedBox(height: 12),
+              _buildExplanationCard(),
               const SizedBox(height: 16),
-
-              // Actions
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.visibility),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white38),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      onPressed: _showPreview,
-                      label: const Text('Preview'),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      icon: _submitting
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.save),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: teal3,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      onPressed: _submitting ? null : _submit,
-                      label: Text(_submitting ? 'Saving...' : 'Submit'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Tip: Select a preset to auto-fill A–D for common cognitive distortions. You can still edit them.',
-                style: TextStyle(color: Colors.white54, fontSize: 12),
-              ),
-              const SizedBox(height: 20),
+              _buildActionButtons(),
+              const SizedBox(height: 16),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  // --- UI Sections ---
+
+  Widget _buildHeaderCard() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [teal4.withOpacity(0.7), pageBg],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white10),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withOpacity(0.08),
+              boxShadow: [
+                BoxShadow(
+                  color: teal3.withOpacity(0.4),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.psychology_alt_outlined,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  'Thought Detective Quiz Builder',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Add CBT questions (scenario + thinking trap) for your quiz bank.',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12.5,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypeAndLanguageCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white10),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Quiz settings',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 10),
+
+          // Quiz type dropdown
+          DropdownButtonFormField<QuizType>(
+            value: _quizType,
+            decoration: _inputDecoration('Quiz type'),
+            dropdownColor: pageBg,
+            iconEnabledColor: Colors.white70,
+            items: const [
+              DropdownMenuItem(
+                value: QuizType.thoughtDetective,
+                child: Text(
+                  'Thought Detective',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+              DropdownMenuItem(
+                value: QuizType.other,
+                child: Text(
+                  'Other type (coming soon)',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+            onChanged: (v) =>
+                setState(() => _quizType = v ?? QuizType.thoughtDetective),
+          ),
+          const SizedBox(height: 12),
+
+          // Language + small hint
+          Row(
+            children: [
+              const Text('Language:', style: TextStyle(color: Colors.white70)),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white12,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: DropdownButton<String>(
+                  value: _languageCode,
+                  dropdownColor: pageBg,
+                  underline: const SizedBox.shrink(),
+                  iconEnabledColor: Colors.white70,
+                  style: const TextStyle(color: Colors.white),
+                  items: const [
+                    DropdownMenuItem(value: 'hi', child: Text('Hindi')),
+                    DropdownMenuItem(value: 'en', child: Text('English')),
+                  ],
+                  onChanged: (v) => setState(() => _languageCode = v ?? 'hi'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Hint: Most current questions are in Hindi.',
+                  style: TextStyle(color: Colors.white38, fontSize: 11),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 10),
+
+          // Predefined options (only for Thought Detective)
+          if (_quizType == QuizType.thoughtDetective)
+            DropdownButtonFormField<_Preset?>(
+              value: _selectedPreset,
+              isExpanded: true,
+              decoration: _inputDecoration(
+                'Predefined distortion options (optional)',
+                helper: 'Auto-fill A–D with common thinking errors.',
+              ),
+              dropdownColor: pageBg,
+              iconEnabledColor: Colors.white70,
+              items: [
+                const DropdownMenuItem<_Preset?>(
+                  value: null,
+                  child: Text(
+                    '— None —',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                ),
+                ..._presets.map(
+                  (p) => DropdownMenuItem<_Preset?>(
+                    value: p,
+                    child: Text(
+                      p.title,
+                      style: const TextStyle(color: Colors.white),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ],
+              onChanged: (p) {
+                if (p != null) {
+                  _applyPreset(p);
+                } else {
+                  setState(() => _selectedPreset = null);
+                }
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuestionCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white10),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Question',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _questionCtrl,
+            minLines: 3,
+            maxLines: 6,
+            style: const TextStyle(color: Colors.white),
+            decoration: _inputDecoration(
+              'Question text (e.g., हिंदी में परिदृश्य + “यह कौन सी सोच की गलती है?”)',
+            ),
+            validator: (v) => (v == null || v.trim().isEmpty)
+                ? 'Please enter a question'
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOptionsCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white10),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Options (A–D) & correct answer',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Tap the circle to mark the correct cognitive distortion.',
+            style: TextStyle(color: Colors.white38, fontSize: 11),
+          ),
+          const SizedBox(height: 10),
+          ...List.generate(4, (i) {
+            final label = ['A', 'B', 'C', 'D'][i];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Compact radio to avoid overflow
+                  Radio<int>(
+                    value: i,
+                    groupValue: _correctIndex,
+                    activeColor: teal3,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                    onChanged: (v) => setState(() => _correctIndex = v ?? 0),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _optionCtrls[i],
+                      style: const TextStyle(color: Colors.white),
+                      decoration: _inputDecoration('$label. Option text'),
+                      validator: (v) =>
+                          (v == null || v.trim().isEmpty) ? 'Required' : null,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExplanationCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white10),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Explanation (optional)',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _explanationCtrl,
+            minLines: 2,
+            maxLines: 6,
+            style: const TextStyle(color: Colors.white),
+            decoration: _inputDecoration(
+              'Explanation / rationale (e.g., यह Mind Reading है क्योंकि...',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            icon: const Icon(Icons.visibility),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white,
+              side: const BorderSide(color: Colors.white38),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            onPressed: _showPreview,
+            label: const Text('Preview'),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: ElevatedButton.icon(
+            icon: _submitting
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.save),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: teal3,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            onPressed: _submitting ? null : _submit,
+            label: Text(_submitting ? 'Saving...' : 'Submit'),
+          ),
+        ),
+      ],
     );
   }
 }

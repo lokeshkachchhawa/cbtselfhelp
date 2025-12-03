@@ -58,7 +58,6 @@ class _DrktvChatScreenState extends State<DrKtvChatScreen>
 
   // NEW: daily quota state
   int _dailyMsgCount = 0;
-  DateTime? _dailyWindowStart;
   bool _limitReached = false; // 👈 add this
 
   // Firestore & Auth
@@ -1669,18 +1668,15 @@ ${tr.alternativeThought}
         : null;
 
     int count;
-    DateTime start;
 
     if (savedStart == null ||
         now.difference(savedStart) >= const Duration(hours: 24)) {
       // reset window
       count = 0;
-      start = now;
       await _prefs?.setInt(_prefsDailyCountKey, 0);
       await _prefs?.setInt(_prefsDailyStartKey, now.millisecondsSinceEpoch);
     } else {
       count = savedCount;
-      start = savedStart;
     }
 
     // Load history
@@ -1690,7 +1686,6 @@ ${tr.alternativeThought}
       setState(() {
         _consentAccepted = consent;
         _dailyMsgCount = count;
-        _dailyWindowStart = start;
         _limitReached = _dailyMsgCount >= 3;
       });
     }
@@ -2220,36 +2215,38 @@ ${worksheetMap['dispute'] ?? ''}
   /// Returns true if user can send a message now.
   /// Increments count when allowed. Shows dialog when limit exceeded.
   Future<bool> _checkAndConsumeDailyQuota() async {
-    final now = DateTime.now();
+    final prefs = await SharedPreferences.getInstance();
+    final uid = _auth.currentUser?.uid ?? 'guest';
 
-    // Reset window if 24h passed or never set
-    if (_dailyWindowStart == null ||
-        now.difference(_dailyWindowStart!) >= const Duration(hours: 24)) {
-      _dailyWindowStart = now;
-      _dailyMsgCount = 0;
-      await _prefs?.setInt(_prefsDailyCountKey, 0);
-      await _prefs?.setInt(
-        _prefsDailyStartKey,
-        _dailyWindowStart!.millisecondsSinceEpoch,
-      );
+    // 🔹 Build per-user, per-day keys
+    final now = DateTime.now();
+    final todayStr =
+        '${now.year.toString().padLeft(4, '0')}-'
+        '${now.month.toString().padLeft(2, '0')}-'
+        '${now.day.toString().padLeft(2, '0')}';
+
+    final dateKey = 'drktv_quota_date_$uid';
+    final countKey = 'drktv_quota_count_$uid';
+
+    String? storedDate = prefs.getString(dateKey);
+    int used = prefs.getInt(countKey) ?? 0;
+
+    // 🔁 If stored date is not today → reset counter
+    if (storedDate != todayStr) {
+      storedDate = todayStr;
+      used = 0;
+      await prefs.setString(dateKey, todayStr);
+      await prefs.setInt(countKey, used);
     }
 
-    // Already hit limit?
-    if (_dailyMsgCount >= 3) {
-      if (mounted) {
-        setState(() {
-          _limitReached = true;
-        });
-      }
+    // ⛔ If already hit 3/3 for today
+    if (used >= 3) {
+      setState(() {
+        _dailyMsgCount = used;
+        _limitReached = true;
+      });
 
-      final resetAt = _dailyWindowStart!.add(const Duration(hours: 24));
-      final loc = MaterialLocalizations.of(context);
-      final dateStr = loc.formatFullDate(resetAt);
-      final timeStr = loc.formatTimeOfDay(
-        TimeOfDay.fromDateTime(resetAt),
-        alwaysUse24HourFormat: false,
-      );
-
+      // Optional: gentle info dialog / snackbar
       await showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -2261,11 +2258,10 @@ ${worksheetMap['dispute'] ?? ''}
             'Daily limit reached',
             style: TextStyle(color: Colors.white),
           ),
-          content: Text(
-            'Aap aaj ke 3 questions bhej chuke hain.\n\n'
-            'Agla sawaal aap $dateStr ko $timeStr ke baad bhej sakte hain '
-            '(24 ghante ke baad limit reset ho jaayegi).',
-            style: const TextStyle(color: Colors.white70),
+          content: const Text(
+            'Aaj ke 3 questions ho chuke हैं.\n'
+            'Aap kal फिर से नये सवाल पूछ सकते हैं 🙂',
+            style: TextStyle(color: Colors.white70),
           ),
           actions: [
             TextButton(
@@ -2279,21 +2275,15 @@ ${worksheetMap['dispute'] ?? ''}
       return false;
     }
 
-    // Still within limit -> consume one
-    _dailyMsgCount++;
-    _limitReached = _dailyMsgCount >= 3;
+    // ✅ Allow this message and increment count
+    used += 1;
+    await prefs.setString(dateKey, todayStr);
+    await prefs.setInt(countKey, used);
 
-    await _prefs?.setInt(_prefsDailyCountKey, _dailyMsgCount);
-    if (_dailyWindowStart != null) {
-      await _prefs?.setInt(
-        _prefsDailyStartKey,
-        _dailyWindowStart!.millisecondsSinceEpoch,
-      );
-    }
-
-    if (mounted) {
-      setState(() {});
-    }
+    setState(() {
+      _dailyMsgCount = used;
+      _limitReached = used >= 3;
+    });
 
     return true;
   }
