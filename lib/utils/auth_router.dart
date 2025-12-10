@@ -4,7 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 /// Robust navigateAfterSignIn:
-/// Now also checks subscription.status == 'active'
+/// Now removes baseline flow. New users are routed to /paywall.
+/// Existing users: doctor -> /doctor/home, active subscription -> /home, else -> /paywall.
 Future<void> navigateAfterSignIn(BuildContext context, {User? user}) async {
   user ??= FirebaseAuth.instance.currentUser;
 
@@ -42,13 +43,14 @@ Future<void> navigateAfterSignIn(BuildContext context, {User? user}) async {
     snap = await userDocRef.get();
   } catch (e) {
     debugPrint('Firestore user doc read failed: $e');
+    // If we can't read, fallback to home to avoid blocking user
     Navigator.pushReplacementNamed(context, '/home');
     return;
   }
 
   Map<String, dynamic> data = snap.data() ?? {};
 
-  // If user doc missing, create minimal one
+  // If user doc missing, create minimal one and send to paywall (baseline removed)
   if (!snap.exists) {
     try {
       await userDocRef.set({
@@ -59,20 +61,21 @@ Future<void> navigateAfterSignIn(BuildContext context, {User? user}) async {
         'lastLogin': FieldValue.serverTimestamp(),
         'isAnonymous': user.isAnonymous,
         'consentGiven': false,
-        'baselineCompleted': false,
-        // initialize default subscription
+        // baseline feature removed - but keep field if other code expects it
+        'baselineCompleted': true,
+        // initialize default subscription (inactive)
         'subscription': {'status': 'inactive'},
       }, SetOptions(merge: true));
     } catch (e) {
       debugPrint('Failed to create minimal user doc: $e');
     }
 
-    // new users → onboarding first
-    Navigator.pushReplacementNamed(context, '/onboarding');
+    // After signup: send to paywall
+    Navigator.pushReplacementNamed(context, '/paywall');
     return;
   }
 
-  // Firestore doctor role check
+  // Firestore doctor role check (again, in case doc exists with role)
   final fsRole = (data['role']?.toString().toLowerCase() ?? '');
   if (fsRole == 'doctor') {
     debugPrint('→ Routing via Firestore role to doctor home');
@@ -80,8 +83,7 @@ Future<void> navigateAfterSignIn(BuildContext context, {User? user}) async {
     return;
   }
 
-  // ---------- ✅ STEP 3 — SUBSCRIPTION CHECK ----------
-  // ---------- ✅ STEP 3 — SUBSCRIPTION CHECK ----------
+  // ---------- STEP 3 — SUBSCRIPTION CHECK ----------
   final Map<String, dynamic> sub = (data['subscription'] is Map)
       ? Map<String, dynamic>.from(data['subscription'])
       : {};
@@ -90,50 +92,20 @@ Future<void> navigateAfterSignIn(BuildContext context, {User? user}) async {
   // allow access if active OR cancel is scheduled (access continues until period end)
   final bool allowAccess = status == 'active' || status == 'cancel_scheduled';
 
-  // (optional) you may also want to read an "accessUntil" timestamp if you store it:
-  // final Timestamp? accessUntilTs = sub['accessUntil'] as Timestamp?;
-  // final bool notExpired = accessUntilTs == null || accessUntilTs.toDate().isAfter(DateTime.now());
-  // final bool allowAccess = (status == 'active') || (status == 'cancel_scheduled' && notExpired);
-
   if (!allowAccess) {
     debugPrint('→ Subscription not eligible (status: $status) → paywall');
     Navigator.pushReplacementNamed(context, '/paywall');
     return;
   }
 
-  // ---------- STEP 4: Continue your original logic ----------
+  // ---------- STEP 4: Update lastLogin and route to home ----------
   try {
     await userDocRef.update({'lastLogin': FieldValue.serverTimestamp()});
   } catch (e) {
     debugPrint('Failed to update lastLogin: $e');
   }
 
-  final consentGiven = data['consentGiven'] == true;
-  final baselineCompleted = data['baselineCompleted'] == true;
-
-  if (!consentGiven) {
-    Navigator.pushReplacementNamed(context, '/onboarding');
-    return;
-  }
-
-  if (consentGiven && !baselineCompleted) {
-    Navigator.pushReplacementNamed(context, '/baseline');
-    return;
-  }
-
-  final lastScore = data['lastBaselineScore'];
-  if (lastScore != null) {
-    final scoreNum = int.tryParse(lastScore.toString()) ?? -1;
-    if (scoreNum >= 20) {
-      Navigator.pushReplacementNamed(
-        context,
-        '/safety',
-        arguments: {'reason': 'high_phq9'},
-      );
-      return;
-    }
-  }
-
+  // Baseline/PHQ logic removed — proceed to home for eligible users
   final safeUserMap = <String, dynamic>{
     'uid': user.uid,
     'email': user.email,

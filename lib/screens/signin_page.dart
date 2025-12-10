@@ -1,4 +1,6 @@
 // lib/screens/signin_page.dart
+import 'dart:io' show Platform;
+
 import 'package:cbt_drktv/config/google_oauth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -6,6 +8,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/auth_router.dart';
 import 'package:cbt_drktv/services/fcm_token_registry.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 /// Match HomePage palette
 const Color teal1 = Color.fromARGB(255, 1, 108, 108);
@@ -183,7 +186,7 @@ class _SignInScreenState extends State<SignInScreen>
     });
 
     try {
-      // ✅ Web Client ID dena zaroori hai idToken ke liye
+      // Same config you already had (works on Android+iOS)
       final googleSignIn = GoogleSignIn(
         serverClientId: kGoogleWebClientId,
         scopes: const ['email'],
@@ -198,7 +201,6 @@ class _SignInScreenState extends State<SignInScreen>
 
       final googleAuth = await googleUser.authentication;
 
-      // Defensive check
       if (googleAuth.idToken == null && googleAuth.accessToken == null) {
         throw Exception(
           'Google auth tokens null (idToken/accessToken). '
@@ -214,11 +216,6 @@ class _SignInScreenState extends State<SignInScreen>
       final userCred = await _auth.signInWithCredential(credential);
       final user = userCred.user;
 
-      await _ensureUserDoc(user);
-      if (user != null) {
-        await FcmTokenRegistry.registerForUser(user.uid);
-      }
-
       await _postSignInNavigation(user ?? _auth.currentUser);
     } on FirebaseAuthException catch (e, st) {
       debugPrint(
@@ -228,6 +225,70 @@ class _SignInScreenState extends State<SignInScreen>
     } catch (e, st) {
       debugPrint('Google sign-in failed: $e\n$st');
       await _showError('Google sign-in failed: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _signInWithApple() async {
+    if (!Platform.isIOS) return; // safety
+
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      final oauthCred = OAuthProvider("apple.com").credential(
+        idToken: appleCredential.identityToken,
+        accessToken: appleCredential.authorizationCode,
+      );
+
+      final userCred = await _auth.signInWithCredential(oauthCred);
+      var user = userCred.user;
+
+      // Try to save name if first-time and Apple provided it
+      final fullName = [
+        appleCredential.givenName,
+        appleCredential.familyName,
+      ].where((p) => p != null && p.trim().isNotEmpty).join(' ');
+
+      if (user != null &&
+          fullName.isNotEmpty &&
+          (user.displayName == null || user.displayName!.isEmpty)) {
+        try {
+          await user.updateDisplayName(fullName);
+          await user.reload();
+          user = _auth.currentUser;
+        } catch (e) {
+          debugPrint('updateDisplayName (Apple) failed: $e');
+        }
+      }
+
+      await _postSignInNavigation(user ?? _auth.currentUser);
+    } on SignInWithAppleAuthorizationException catch (e, st) {
+      debugPrint('Apple sign-in auth exception: $e\n$st');
+      if (e.code == AuthorizationErrorCode.canceled) {
+        // user cancelled → no error toast
+      } else {
+        await _showError('Apple sign-in failed: ${e.message}');
+      }
+    } on FirebaseAuthException catch (e, st) {
+      debugPrint(
+        'Apple sign-in FirebaseAuthException: ${e.code} / ${e.message}\n$st',
+      );
+      await _showError(_friendlyFirebaseMessage(e));
+    } catch (e, st) {
+      debugPrint('Apple sign-in failed: $e\n$st');
+      await _showError('Apple sign-in failed: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -379,7 +440,6 @@ class _SignInScreenState extends State<SignInScreen>
     );
 
     return Scaffold(
-      // ----- Gradient background (same vibe as HomePage) -----
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -416,7 +476,6 @@ class _SignInScreenState extends State<SignInScreen>
                             height: 104,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(15),
-
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.white.withOpacity(0.85),
@@ -463,73 +522,112 @@ class _SignInScreenState extends State<SignInScreen>
                         ],
                       ),
 
-                      const SizedBox(height: 28),
-
-                      // ---------------- Google Sign-in ----------------
+                      const SizedBox(height: 15),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Text(
+                          "Sign in with",
+                          style: TextStyle(
+                            color: const Color.fromARGB(
+                              255,
+                              255,
+                              226,
+                              3,
+                            ).withOpacity(0.85),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 15),
+                      // ------------- Row: Google + Apple icons -------------
                       SizedBox(
                         width: double.infinity,
                         child: _isLoading
-                            ? ElevatedButton(
-                                onPressed: null,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: teal3,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 14,
-                                  ),
-                                ),
-                                child: const SizedBox(
-                                  height: 18,
-                                  width: 18,
+                            ? const Center(
+                                child: SizedBox(
+                                  height: 24,
+                                  width: 24,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                     color: Colors.white,
                                   ),
                                 ),
                               )
-                            : ElevatedButton.icon(
-                                onPressed: _signInWithGoogle,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: teal3,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 14,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  elevation: 3,
-                                  shadowColor: teal3.withOpacity(0.5),
-                                ),
-                                icon: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Image.asset(
-                                    'images/google_logo.png',
-                                    width: 20,
-                                    height: 20,
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            const Icon(
-                                              Icons.login,
-                                              size: 20,
-                                              color: teal6,
+                            : Row(
+                                children: [
+                                  // Google icon button
+                                  Expanded(
+                                    child: SizedBox(
+                                      height: 52,
+                                      child: OutlinedButton(
+                                        onPressed: _signInWithGoogle,
+                                        style: OutlinedButton.styleFrom(
+                                          backgroundColor: Colors.white
+                                              .withOpacity(0.06),
+                                          side: BorderSide(
+                                            color: Colors.white.withOpacity(
+                                              0.25,
                                             ),
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                        ),
+                                        child: Image.asset(
+                                          'images/google_logo.png',
+                                          width: 22,
+                                          height: 22,
+                                          errorBuilder:
+                                              (context, error, stackTrace) =>
+                                                  const Icon(
+                                                    Icons.login,
+                                                    size: 22,
+                                                    color: Colors.white,
+                                                  ),
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                ),
-                                label: const Text(
-                                  'Continue with Google',
-                                  style: TextStyle(fontSize: 16),
-                                ),
+
+                                  // Space + Apple icon (iOS only)
+                                  if (Platform.isIOS) ...[
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: SizedBox(
+                                        height: 52,
+                                        child: OutlinedButton(
+                                          onPressed: _signInWithApple,
+                                          style: OutlinedButton.styleFrom(
+                                            backgroundColor: Colors.white
+                                                .withOpacity(0.06),
+                                            side: BorderSide(
+                                              color: Colors.white.withOpacity(
+                                                0.25,
+                                              ),
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                          ),
+                                          child: const Icon(
+                                            Icons.apple,
+                                            size: 24,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                       ),
 
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 16),
 
                       // --------------- Divider "or" ----------------
                       Row(
@@ -627,13 +725,15 @@ class _SignInScreenState extends State<SignInScreen>
                                       ],
                                       validator: (value) {
                                         final v = value?.trim() ?? '';
-                                        if (v.isEmpty)
+                                        if (v.isEmpty) {
                                           return 'Please enter your email.';
+                                        }
                                         final emailRegex = RegExp(
                                           r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
                                         );
-                                        if (!emailRegex.hasMatch(v))
+                                        if (!emailRegex.hasMatch(v)) {
                                           return 'Enter a valid email.';
+                                        }
                                         return null;
                                       },
                                       onFieldSubmitted: (_) =>

@@ -1,6 +1,7 @@
 // lib/services/fcm_token_registry.dart
 import 'dart:io' show Platform;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart' show FirebaseException;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -13,15 +14,34 @@ class FcmTokenRegistry {
     // Ask permission if needed (safe on Android/iOS)
     await _messaging.requestPermission();
 
-    final token = await _messaging.getToken();
-    if (token != null) {
-      await _upsert(uid, token);
-    }
-
-    // keep in sync only when token actually changes
+    // Listen for future token changes FIRST
     _messaging.onTokenRefresh.listen((newToken) async {
       await _upsert(uid, newToken);
     });
+
+    // On iOS/macOS: wait until APNs token is available.
+    // If it's not ready yet, just return and rely on onTokenRefresh.
+    if (Platform.isIOS || Platform.isMacOS) {
+      final apnsToken = await _messaging.getAPNSToken();
+      if (apnsToken == null) {
+        // APNs token not yet received; don't crash, just wait for refresh.
+        return;
+      }
+    }
+
+    // Now it's safe to try getToken().
+    try {
+      final token = await _messaging.getToken();
+      if (token != null) {
+        await _upsert(uid, token);
+      }
+    } on FirebaseException catch (e) {
+      // iOS early-call case: apns-token-not-set → ignore and rely on onTokenRefresh
+      if (e.code == 'apns-token-not-set') {
+        return;
+      }
+      rethrow;
+    }
   }
 
   /// Remove current token when the user logs out (best effort).
@@ -33,7 +53,9 @@ class FcmTokenRegistry {
           'fcmTokens.$t': FieldValue.delete(),
         }, SetOptions(merge: true));
       }
-    } catch (_) {}
+    } catch (_) {
+      // Ignore – logout should not crash the app if token isn't ready.
+    }
     try {
       await _messaging.deleteToken(); // make sure we don’t reuse stale token
     } catch (_) {}
