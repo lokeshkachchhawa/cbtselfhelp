@@ -1518,6 +1518,8 @@ class _HomePageState extends State<HomePage> {
                       const SizedBox(height: 12),
                       _buildDrKanhaiyaChatCard(),
                       const SizedBox(height: 10),
+                      _buildCommunityCard(),
+                      const SizedBox(height: 10),
                       _buildThoughtDetectiveCard(),
                       const SizedBox(height: 10),
                       _buildCoursesSection(),
@@ -1667,6 +1669,31 @@ class _HomePageState extends State<HomePage> {
 
     // Option B (alternative): push the widget directly
     // Navigator.push(context, MaterialPageRoute(builder: (_) => const BaselinePage()));
+  }
+
+  Widget _buildCommunityCard() {
+    return Card(
+      color: Colors.white.withOpacity(0.08),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: Colors.pinkAccent,
+          child: const Icon(Icons.forum, color: Colors.white),
+        ),
+        title: const Text(
+          'Community Support',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        subtitle: const Text(
+          'Read & share experiences anonymously',
+          style: TextStyle(color: Colors.white70),
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white54),
+        onTap: () {
+          Navigator.pushNamed(context, '/community');
+        },
+      ),
+    );
   }
 
   Widget _buildMoodCard() {

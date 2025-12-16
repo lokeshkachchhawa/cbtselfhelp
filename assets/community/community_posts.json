@@ -1,0 +1,135 @@
+[
+    {
+      "id": "p1",
+      "content": "I feel anxious before meetings, even when I am prepared. My heart races and I keep thinking I will mess up. Has anyone found a simple way to calm this?",
+      "category": "anxiety",
+      "likes": 14,
+      "replies": 3,
+      "week": 2,
+      "authorLabel": "Anonymous",
+      "createdAt": "2025-01-12T10:30:00Z",
+      "isSeed": true
+    },
+    {
+      "id": "p2",
+      "content": "Some days my mood feels low without any clear reason. I still do my work, but inside I feel heavy and tired. Does anyone else experience this?",
+      "category": "depression",
+      "likes": 21,
+      "replies": 5,
+      "week": 3,
+      "authorLabel": "Anonymous",
+      "createdAt": "2025-01-10T14:10:00Z",
+      "isSeed": true
+    },
+    {
+      "id": "p3",
+      "content": "I struggle to fall asleep because my mind keeps replaying the day. Even when I am tired, thoughts don’t slow down. What helps you wind down?",
+      "category": "sleep",
+      "likes": 18,
+      "replies": 4,
+      "week": 4,
+      "authorLabel": "Anonymous",
+      "createdAt": "2025-01-09T20:45:00Z",
+      "isSeed": true
+    },
+    {
+      "id": "p4",
+      "content": "I often overthink small comments from others and assume they are upset with me. Later I realize I may have jumped to conclusions. How do you handle this?",
+      "category": "anxiety",
+      "likes": 26,
+      "replies": 6,
+      "week": 5,
+      "authorLabel": "Anonymous",
+      "createdAt": "2025-01-08T11:00:00Z",
+      "isSeed": true
+    },
+    {
+      "id": "p5",
+      "content": "Balancing work and personal life feels overwhelming lately. I feel guilty when I rest and stressed when I work. Does anyone relate?",
+      "category": "self_growth",
+      "likes": 19,
+      "replies": 4,
+      "week": 6,
+      "authorLabel": "Anonymous",
+      "createdAt": "2025-01-07T16:20:00Z",
+      "isSeed": true
+    },
+    {
+      "id": "p6",
+      "content": "I find it hard to express my needs in relationships. I usually stay quiet to avoid conflict, but then feel resentful later.",
+      "category": "relationships",
+      "likes": 23,
+      "replies": 7,
+      "week": 4,
+      "authorLabel": "Anonymous",
+      "createdAt": "2025-01-06T18:50:00Z",
+      "isSeed": true
+    },
+    {
+      "id": "p7",
+      "content": "Whenever I make a mistake, I keep replaying it in my head for days. Even small errors feel huge. How do you let go?",
+      "category": "anxiety",
+      "likes": 30,
+      "replies": 8,
+      "week": 5,
+      "authorLabel": "Anonymous",
+      "createdAt": "2025-01-05T09:40:00Z",
+      "isSeed": true
+    },
+    {
+      "id": "p8",
+      "content": "I feel mentally exhausted even on days when nothing major happens. It’s like my energy drains quickly. Anyone else?",
+      "category": "depression",
+      "likes": 17,
+      "replies": 3,
+      "week": 3,
+      "authorLabel": "Anonymous",
+      "createdAt": "2025-01-04T13:15:00Z",
+      "isSeed": true
+    },
+    {
+      "id": "p9",
+      "content": "I want to build healthier habits, but I lose motivation after a few days. How do you stay consistent without pressure?",
+      "category": "self_growth",
+      "likes": 28,
+      "replies": 6,
+      "week": 6,
+      "authorLabel": "Anonymous",
+      "createdAt": "2025-01-03T08:55:00Z",
+      "isSeed": true
+    },
+    {
+      "id": "p10",
+      "content": "Social situations drain me, even with people I like. I enjoy company but need a lot of recovery time afterward.",
+      "category": "relationships",
+      "likes": 22,
+      "replies": 5,
+      "week": 2,
+      "authorLabel": "Anonymous",
+      "createdAt": "2025-01-02T19:30:00Z",
+      "isSeed": true
+    },
+    {
+      "id": "p11",
+      "content": "I notice my mood improves slightly when I write things down, but I forget to do it regularly. Any tips to make journaling easier?",
+      "category": "self_growth",
+      "likes": 15,
+      "replies": 2,
+      "week": 1,
+      "authorLabel": "Anonymous",
+      "createdAt": "2025-01-01T10:00:00Z",
+      "isSeed": true
+    },
+    {
+      "id": "p12",
+      "content": "I feel pressure to always appear okay in front of others, even when I am struggling inside. It feels isolating.",
+      "category": "depression",
+      "likes": 34,
+      "replies": 9,
+      "week": 6,
+      "authorLabel": "Anonymous",
+      "createdAt": "2024-12-31T17:10:00Z",
+      "isSeed": true
+    }
+  ]
+  

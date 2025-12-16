@@ -1,0 +1,67 @@
+[
+    {
+      "id": "r1",
+      "postId": "p1",
+      "content": "I experience this too. Taking a few slow breaths before speaking helps me settle my body a bit.",
+      "likes": 8,
+      "authorLabel": "Anonymous",
+      "createdAt": "2025-01-12T11:00:00Z"
+    },
+    {
+      "id": "r2",
+      "postId": "p1",
+      "content": "I remind myself that feeling anxious doesn’t mean I will perform badly. That thought alone reduces some pressure.",
+      "likes": 11,
+      "authorLabel": "Anonymous",
+      "createdAt": "2025-01-12T11:20:00Z"
+    },
+    {
+      "id": "r3",
+      "postId": "p2",
+      "content": "Yes, I relate. For me it helps to notice that moods can change even if nothing obvious caused them.",
+      "likes": 14,
+      "authorLabel": "Anonymous",
+      "createdAt": "2025-01-10T15:00:00Z"
+    },
+    {
+      "id": "r4",
+      "postId": "p3",
+      "content": "I try to stop checking my phone at least 30 minutes before bed. It doesn’t fix everything but helps a little.",
+      "likes": 9,
+      "authorLabel": "Anonymous",
+      "createdAt": "2025-01-09T21:10:00Z"
+    },
+    {
+      "id": "r5",
+      "postId": "p4",
+      "content": "I often assume the worst too. Writing down alternative explanations has helped me challenge that habit.",
+      "likes": 16,
+      "authorLabel": "Anonymous",
+      "createdAt": "2025-01-08T12:00:00Z"
+    },
+    {
+      "id": "r6",
+      "postId": "p6",
+      "content": "I relate a lot. Practicing small boundary statements first made it easier over time.",
+      "likes": 12,
+      "authorLabel": "Anonymous",
+      "createdAt": "2025-01-06T19:30:00Z"
+    },
+    {
+      "id": "r7",
+      "postId": "p7",
+      "content": "Mistakes stick with me too. I try to ask myself what I would say to a friend in the same situation.",
+      "likes": 18,
+      "authorLabel": "Anonymous",
+      "createdAt": "2025-01-05T10:15:00Z"
+    },
+    {
+      "id": "r8",
+      "postId": "p9",
+      "content": "Starting very small helped me. I aim for consistency rather than intensity.",
+      "likes": 20,
+      "authorLabel": "Anonymous",
+      "createdAt": "2025-01-03T09:30:00Z"
+    }
+  ]
+  

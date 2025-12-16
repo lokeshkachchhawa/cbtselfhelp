@@ -107,6 +107,8 @@ flutter:
     - assets/data/
     - assets/data/thought_detective_questions.json
     - assets/data/asq_items.json
+    - assets/community/community_posts.json
+    - assets/community/community_replies.json
 flutter_icons:
   android: true
   ios: true
