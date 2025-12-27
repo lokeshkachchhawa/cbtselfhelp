@@ -1,5 +1,7 @@
 // lib/screens/paywall_screen.dart
 import 'dart:async';
+import 'dart:io' show Platform;
+import 'package:in_app_purchase/in_app_purchase.dart';
 
 import 'package:cbt_drktv/widgets/help_sheet.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -32,38 +34,79 @@ class _PaywallScreenState extends State<PaywallScreen> {
   Stream<DocumentSnapshot<Map<String, dynamic>>>? _userStream;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _sub;
   bool _checkingGate = true;
+  final InAppPurchase _iap = InAppPurchase.instance;
+  StreamSubscription<List<PurchaseDetails>>? _iapSub;
+
+  static const String iosMonthlyId = 'drktv_cbt_monthly';
+  static const String iosYearlyId = 'drktv_cbt_yearly';
+
+  String _monthlyPriceText() {
+    return Platform.isIOS ? '₹599' : '₹499';
+  }
+
+  String _yearlyPriceText() {
+    return Platform.isIOS ? '₹5900' : '₹5499';
+  }
 
   @override
   void initState() {
     super.initState();
-    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _onPaymentSuccess);
-    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _onPaymentError);
-    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, (_) {});
 
-    // Start a snapshot listener to bypass paywall when allowed
+    // ----------------------------------
+    // ANDROID: Razorpay listeners
+    // ----------------------------------
+    if (!Platform.isIOS) {
+      _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _onPaymentSuccess);
+      _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _onPaymentError);
+      _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, (_) {});
+    }
+
+    // ----------------------------------
+    // iOS: Apple In-App Purchase listener
+    // ----------------------------------
+    if (Platform.isIOS) {
+      _iapSub = _iap.purchaseStream.listen((purchases) async {
+        for (final purchase in purchases) {
+          if (purchase.status == PurchaseStatus.purchased ||
+              purchase.status == PurchaseStatus.restored) {
+            await _unlockPremiumIOS();
+          }
+        }
+      });
+    }
+
+    // ----------------------------------
+    // COMMON: Firestore subscription gate
+    // ----------------------------------
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
       _userStream = FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
           .snapshots();
+
       _sub = _userStream!.listen(
         (snap) {
           final data = snap.data() ?? {};
           final sub = Map<String, dynamic>.from(data['subscription'] ?? {});
           final status = (sub['status'] ?? '').toString();
           final allowed = status == 'active' || status == 'cancel_scheduled';
+
           if (allowed && mounted) {
-            // Avoid double navigations
+            // Prevent double navigation
             _sub?.cancel();
             _sub = null;
             Navigator.pushReplacementNamed(context, '/home');
           } else {
-            if (mounted && _checkingGate) setState(() => _checkingGate = false);
+            if (mounted && _checkingGate) {
+              setState(() => _checkingGate = false);
+            }
           }
         },
         onError: (_) {
-          if (mounted && _checkingGate) setState(() => _checkingGate = false);
+          if (mounted && _checkingGate) {
+            setState(() => _checkingGate = false);
+          }
         },
       );
     } else {
@@ -74,7 +117,13 @@ class _PaywallScreenState extends State<PaywallScreen> {
   @override
   void dispose() {
     _sub?.cancel();
-    _razorpay.clear();
+
+    if (Platform.isIOS) {
+      _iapSub?.cancel();
+    } else {
+      _razorpay.clear();
+    }
+
     super.dispose();
   }
 
@@ -86,7 +135,57 @@ class _PaywallScreenState extends State<PaywallScreen> {
     return (s.data()?['name'] ?? 'User').toString();
   }
 
-  Future<void> _start({required String kind}) async {
+  Future<void> _startApplePurchase({required String kind}) async {
+    setState(() {
+      _busy = true;
+      _pendingKind = kind;
+      _err = null;
+    });
+
+    try {
+      final productId = kind == 'yearly' ? iosYearlyId : iosMonthlyId;
+
+      final response = await _iap.queryProductDetails({productId});
+      print('Found products: ${response.productDetails.length}');
+      print('Invalid/Not Found IDs: ${response.notFoundIDs}');
+
+      if (response.productDetails.isEmpty) {
+        throw Exception('Apple product not found');
+      }
+
+      final product = response.productDetails.first;
+      final purchaseParam = PurchaseParam(productDetails: product);
+
+      await _iap.buyNonConsumable(purchaseParam: purchaseParam);
+    } catch (e) {
+      setState(() => _err = e.toString());
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _pendingKind = null;
+        });
+      }
+    }
+  }
+
+  Future<void> _unlockPremiumIOS() async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+
+    await FirebaseFirestore.instance.collection('users').doc(uid).set({
+      'subscription': {
+        'status': 'active',
+        'platform': 'ios',
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+    }, SetOptions(merge: true));
+
+    if (mounted) {
+      Navigator.pushReplacementNamed(context, '/home');
+    }
+  }
+
+  Future<void> _startRazorpay({required String kind}) async {
     setState(() {
       _busy = true;
       _pendingKind = kind;
@@ -317,7 +416,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                         // Plans
                         _PlanCard(
                           title: 'Monthly',
-                          price: '₹499',
+                          price: _monthlyPriceText(),
                           cadence: '/month',
                           bullets: const [
                             'All CBT tools & exercises',
@@ -328,12 +427,19 @@ class _PaywallScreenState extends State<PaywallScreen> {
                           busy: _busy && _pendingKind == 'monthly',
                           onPressed: _busy
                               ? null
-                              : () => _start(kind: 'monthly'),
+                              : () {
+                                  if (Platform.isIOS) {
+                                    _startApplePurchase(kind: 'monthly');
+                                  } else {
+                                    _startRazorpay(kind: 'monthly');
+                                  }
+                                },
                         ),
+
                         const SizedBox(height: 12),
                         _PlanCard(
                           title: 'Yearly',
-                          price: '₹5499',
+                          price: _yearlyPriceText(),
                           cadence: '/year',
                           bullets: const [
                             'Everything in Monthly',
@@ -346,8 +452,41 @@ class _PaywallScreenState extends State<PaywallScreen> {
                           busy: _busy && _pendingKind == 'yearly',
                           onPressed: _busy
                               ? null
-                              : () => _start(kind: 'yearly'),
+                              : () {
+                                  if (Platform.isIOS) {
+                                    _startApplePurchase(kind: 'yearly');
+                                  } else {
+                                    _startRazorpay(kind: 'yearly');
+                                  }
+                                },
                         ),
+
+                        if (Platform.isIOS) const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: () async {
+                            await _iap.restorePurchases();
+                          },
+                          child: const Text(
+                            'Restore Purchase',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: Colors.teal,
+                            ),
+                          ),
+                        ),
+                        if (Platform.isIOS)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              'Use this if you already purchased on this Apple ID',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+
                         const SizedBox(height: 12),
                         ScreenshotCarousel(
                           imagePaths: [
@@ -734,7 +873,9 @@ final List<FaqItem> faqs = [
   ),
   FaqItem(
     "Is payment secure?",
-    "Yes. All payments are securely processed using Razorpay.",
+    Platform.isIOS
+        ? "Yes. Payments are securely processed using Apple In-App Purchase."
+        : "Yes. Payments are securely processed using Razorpay.",
   ),
   FaqItem(
     "Can I switch between monthly & yearly plans?",
@@ -1053,8 +1194,7 @@ class WhatsAppButton extends StatelessWidget {
   const WhatsAppButton({super.key});
 
   final String phone = "+917976171908";
-  final String message =
-      "Hello, I need help with my CBT Self-Guided subscription.";
+  final String message = "Hello, I need help using the CBT Self-Guided app.";
 
   Future<void> _openWhatsApp() async {
     final url =

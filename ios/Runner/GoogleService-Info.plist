@@ -3,9 +3,11 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>53409765369-6cdvchn5127b9tct7994mcdmogdvgsn9.apps.googleusercontent.com</string>
+	<string>53409765369-jqc34kb5hhiscekc52i07m5mb7041d3f.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.53409765369-6cdvchn5127b9tct7994mcdmogdvgsn9</string>
+	<string>com.googleusercontent.apps.53409765369-jqc34kb5hhiscekc52i07m5mb7041d3f</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>53409765369-beia6ffqf2alsmn9a8t43n8me96qp6n3.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
 	<string>AIzaSyDN75MxBKpybwCFNIN0oLci6TdjU7KDiFg</string>
 	<key>GCM_SENDER_ID</key>
@@ -13,7 +15,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.example.cbtDrktv</string>
+	<string>com.drktv.cbt</string>
 	<key>PROJECT_ID</key>
 	<string>cbtdrktv</string>
 	<key>STORAGE_BUCKET</key>
@@ -29,6 +31,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:53409765369:ios:9df85d2405ee6767340f28</string>
+	<string>1:53409765369:ios:7f2d704fecf141cb340f28</string>
 </dict>
 </plist>
