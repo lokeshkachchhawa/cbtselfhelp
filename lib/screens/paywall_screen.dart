@@ -30,6 +30,12 @@ class _PaywallScreenState extends State<PaywallScreen> {
   // Track which plan was tapped to show inline spinner on that button.
   String? _pendingKind;
 
+  static const String _privacyUrl =
+      'https://phpstack-1484732-5862316.cloudwaysapps.com/privacy.html';
+
+  static const String _termsUrl =
+      'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
+
   // 🔔 Live gate: send home if status is active or cancel_scheduled
   Stream<DocumentSnapshot<Map<String, dynamic>>>? _userStream;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _sub;
@@ -505,8 +511,67 @@ class _PaywallScreenState extends State<PaywallScreen> {
                         const SizedBox(height: 12),
                         // FAQ section below plans
                         const FaqSection(),
+                        const SizedBox(height: 12),
+
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Column(
+                            children: [
+                              Text(
+                                Platform.isIOS
+                                    ? 'Payment will be charged to your Apple ID account at confirmation of purchase. '
+                                          'Subscription automatically renews unless cancelled at least 24 hours before the end of the current period.'
+                                    : 'Subscription automatically renews unless cancelled.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade700,
+                                  height: 1.4,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Wrap(
+                                alignment: WrapAlignment.center,
+                                spacing: 12,
+                                children: [
+                                  TextButton(
+                                    onPressed: () async {
+                                      final uri = Uri.parse(_privacyUrl);
+                                      if (await canLaunchUrl(uri)) {
+                                        await launchUrl(
+                                          uri,
+                                          mode: LaunchMode.externalApplication,
+                                        );
+                                      }
+                                    },
+                                    child: const Text(
+                                      'Privacy Policy',
+                                      style: TextStyle(fontSize: 12),
+                                    ),
+                                  ),
+                                  TextButton(
+                                    onPressed: () async {
+                                      final uri = Uri.parse(_termsUrl);
+                                      if (await canLaunchUrl(uri)) {
+                                        await launchUrl(
+                                          uri,
+                                          mode: LaunchMode.externalApplication,
+                                        );
+                                      }
+                                    },
+                                    child: const Text(
+                                      'Terms of Use',
+                                      style: TextStyle(fontSize: 12),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
 
                         const SizedBox(height: 12),
+
                         Opacity(
                           opacity: 0.7,
                           child: Text(

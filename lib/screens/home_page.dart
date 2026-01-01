@@ -181,6 +181,96 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _confirmAndDeleteAccount() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete account permanently?'),
+        content: const Text(
+          'This will permanently delete your account and all associated data. '
+          'This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      // 1️⃣ Delete Firestore user data
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .delete();
+
+      // Optional: delete related collections if any
+      // e.g. moods, chats, progress (if stored separately)
+
+      // 2️⃣ Delete Firebase Auth account
+      await user.delete();
+
+      // 3️⃣ Navigate to sign-in
+      if (!mounted) return;
+      Navigator.pushNamedAndRemoveUntil(context, '/signin', (route) => false);
+    } on FirebaseAuthException catch (e) {
+      // Re-auth required (very common)
+      if (e.code == 'requires-recent-login') {
+        _showReauthMessage();
+      } else {
+        _showDeleteError(e.message);
+      }
+    } catch (e) {
+      _showDeleteError(e.toString());
+    }
+  }
+
+  void _showReauthMessage() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Re-authentication required'),
+        content: const Text(
+          'For security reasons, please sign in again and then retry deleting your account.',
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await FirebaseAuth.instance.signOut();
+              if (!mounted) return;
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                '/signin',
+                (route) => false,
+              );
+            },
+            child: const Text('Sign in again'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteError(String? msg) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(msg ?? 'Failed to delete account')));
+  }
+
   // Dialog shown when user is not enrolled
   Future<void> _showNotEnrolledDialog({
     required String courseTitle,
@@ -1416,6 +1506,9 @@ class _HomePageState extends State<HomePage> {
                               preferMarketForPlayStore: true,
                             );
                             break;
+                          case 'delete_account':
+                            _confirmAndDeleteAccount(); // ✅ correct place
+                            break;
                           case 'signout':
                             await LogoutHelper.confirmAndLogout(context);
                             break;
@@ -1481,6 +1574,26 @@ class _HomePageState extends State<HomePage> {
                             style: TextStyle(color: Colors.white),
                           ),
                         ),
+                        const PopupMenuDivider(),
+
+                        PopupMenuItem(
+                          value: 'delete_account',
+                          child: Row(
+                            children: const [
+                              Icon(
+                                Icons.delete_forever,
+                                color: Colors.redAccent,
+                                size: 18,
+                              ),
+                              SizedBox(width: 10),
+                              Text(
+                                'Delete Account',
+                                style: TextStyle(color: Colors.redAccent),
+                              ),
+                            ],
+                          ),
+                        ),
+
                         const PopupMenuDivider(),
 
                         const PopupMenuItem(
@@ -2717,6 +2830,8 @@ class _HomePageState extends State<HomePage> {
         return 'About & contact';
       case 'faq':
         return 'FAQ & help';
+      case 'delete_account':
+        return 'Delete Account';
       default:
         return 'Info';
     }
