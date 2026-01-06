@@ -45,6 +45,7 @@ class _DoctorChatThreadState extends State<DoctorChatThread> {
   final TextEditingController _assistantCtrl = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   StreamSubscription? _sub;
+  bool _initialAutoScrollDone = false;
 
   List<QueryDocumentSnapshot<Map<String, dynamic>>> _docs = [];
   Map<String, List<QueryDocumentSnapshot<Map<String, dynamic>>>> _replies = {};
@@ -53,6 +54,30 @@ class _DoctorChatThreadState extends State<DoctorChatThread> {
   void initState() {
     super.initState();
     _subscribe();
+  }
+
+  @override
+  void didUpdateWidget(covariant DoctorChatThread oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.chatId != widget.chatId) {
+      _initialAutoScrollDone = false;
+    }
+  }
+
+  void _scrollToBottom({bool animated = true}) {
+    if (!_scrollController.hasClients) return;
+
+    final position = _scrollController.position.maxScrollExtent;
+
+    if (animated) {
+      _scrollController.animateTo(
+        position,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    } else {
+      _scrollController.jumpTo(position);
+    }
   }
 
   void _subscribe() {
@@ -99,18 +124,26 @@ class _DoctorChatThreadState extends State<DoctorChatThread> {
 
       // After frame, only scroll if user was previously at bottom
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (wasAtBottom && _scroll_controller_has_clients()) {
-          try {
-            _scrollController.animateTo(
-              _scrollController.position.maxScrollExtent,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOut,
-            );
-          } catch (_) {
-            // defensive: ignore if animation fails due to race conditions
-          }
+        if (!_scrollController.hasClients) return;
+
+        // 🔥 FIRST OPEN → ALWAYS SCROLL
+        if (!_initialAutoScrollDone) {
+          _initialAutoScrollDone = true;
+
+          // jump first (no animation avoids flicker)
+          _scrollToBottom(animated: false);
+
+          // optional smooth settle
+          Future.delayed(const Duration(milliseconds: 60), () {
+            _scrollToBottom(animated: true);
+          });
+          return;
         }
-        // else: intentionally do nothing — keep user at current scroll offset
+
+        // 🔁 AFTER THAT → SMART AUTO SCROLL
+        if (wasAtBottom) {
+          _scrollToBottom(animated: true);
+        }
       });
     });
   }
@@ -177,6 +210,40 @@ class _DoctorChatThreadState extends State<DoctorChatThread> {
     }
 
     return TextSpan(children: spans, style: defaultStyle);
+  }
+
+  Future<void> _sendManualDoctorMessage() async {
+    final text = _assistantCtrl.text.trim();
+    if (text.isEmpty) return;
+
+    _assistantCtrl.clear();
+    FocusScope.of(context).unfocus();
+
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    // 👇 find last user message
+    final lastUserDoc = _docs.lastWhere(
+      (d) => d['sender'] == 'user',
+      orElse: () => throw Exception('No user message found'),
+    );
+
+    await _firestore
+        .collection('chats')
+        .doc(widget.chatId)
+        .collection('messages')
+        .add({
+          'sender': 'assistant',
+          'text': text,
+          'suggestedBy': 'DOCTOR',
+          'approved': true,
+          'editedByDoctor': true,
+
+          // 🔥 KEY FIX
+          'parentId': lastUserDoc.id,
+
+          'timestamp': now,
+          'serverTimestamp': FieldValue.serverTimestamp(),
+        });
   }
 
   /// Save ONLY the edited text (do NOT mark approved).
@@ -1202,6 +1269,54 @@ class _DoctorChatThreadState extends State<DoctorChatThread> {
                   }
                   return _buildThread();
                 },
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF003E3D),
+                border: const Border(top: BorderSide(color: Colors.white10)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _assistantCtrl,
+                      minLines: 1,
+                      maxLines: 4,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _sendManualDoctorMessage(),
+                      decoration: InputDecoration(
+                        hintText: 'Type reply manually as doctor...',
+                        hintStyle: const TextStyle(color: Colors.white54),
+                        filled: true,
+                        fillColor: Colors.white10,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  CircleAvatar(
+                    radius: 22,
+                    backgroundColor: _kAccentColor,
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.send,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      onPressed: _sendManualDoctorMessage,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
