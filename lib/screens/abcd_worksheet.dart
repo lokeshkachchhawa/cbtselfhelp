@@ -10,8 +10,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 const _kStorageKey = 'ABCDE_worksheets_v1';
-const String _kExampleIdsKey = 'ABCDE_example_ids_v1';
-const String _kExamplesImportedFlag = 'ABCDE_examples_imported_v1';
+String _kExampleIdsKey(bool hindi) =>
+    hindi ? 'ABCDE_example_ids_hi' : 'ABCDE_example_ids_en';
+
+String _kExamplesImportedFlag(bool hindi) =>
+    hindi ? 'ABCDE_examples_imported_hi' : 'ABCDE_examples_imported_en';
+
 const String _kLegacyExampleIdKey = 'ABCDE_example_id_v1';
 
 final _uuid = Uuid();
@@ -343,7 +347,7 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
   bool _didAutoOpen = false;
 
   // tutorial language: false = EN, true = HI
-  bool _tutorialInHindi = false;
+  bool _tutorialInHindi = true;
 
   @override
   void initState() {
@@ -425,42 +429,65 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
     _showFormSheet();
   }
 
+  Future<void> _removeCurrentLanguageExamples() async {
+    final all = await _storage.loadAll();
+
+    final filtered = all.where((e) => !_exampleIds.contains(e.id)).toList();
+
+    await _storage.saveAll(filtered);
+    _exampleIds.clear();
+  }
+
   /// Import examples from asset JSON once (idempotent)
   Future<void> _importExamplesFromAssetsIfNeeded() async {
     final prefs = await SharedPreferences.getInstance();
-    final imported = prefs.getBool(_kExamplesImportedFlag) ?? false;
-    if (imported) {
-      // read persisted example ids if present
-      final saved = prefs.getStringList(_kExampleIdsKey);
-      if (saved != null) _exampleIds = saved.toSet();
-      return;
+    final bool isHindi = _tutorialInHindi;
+
+    final importedKey = _kExamplesImportedFlag(isHindi);
+    final idsKey = _kExampleIdsKey(isHindi);
+
+    final alreadyImported = prefs.getBool(importedKey) ?? false;
+
+    // If language not imported yet → remove old language examples
+    if (!alreadyImported) {
+      await _removeCurrentLanguageExamples();
     }
 
-    try {
-      final jsonStr = await rootBundle.loadString('assets/abcd_examples.json');
-      final List<dynamic> list = json.decode(jsonStr) as List<dynamic>;
-      final examples = list
-          .map(
-            (e) => _worksheetFromJsonMap(
-              Map<String, dynamic>.from(e as Map),
-              asExample: true,
-            ),
-          )
-          .toList();
+    // Load existing ids for this language
+    final saved = prefs.getStringList(idsKey);
+    _exampleIds = saved?.toSet() ?? {};
 
-      final existing = (await _storage.loadAll()).map((e) => e.id).toSet();
+    // If already imported, stop here
+    if (alreadyImported) return;
+
+    try {
+      final assetPath = isHindi
+          ? 'assets/abcd_examples.json'
+          : 'assets/abcd_examples_en.json';
+
+      final jsonStr = await rootBundle.loadString(assetPath);
+      final List<dynamic> list = json.decode(jsonStr);
+
+      final examples = list.map((e) {
+        return _worksheetFromJsonMap(
+          Map<String, dynamic>.from(e),
+          asExample: true,
+        );
+      }).toList();
+
+      final existingIds = (await _storage.loadAll()).map((e) => e.id).toSet();
 
       for (final ex in examples) {
-        if (!existing.contains(ex.id)) {
+        if (!existingIds.contains(ex.id)) {
           await _storage.add(ex);
         }
         _exampleIds.add(ex.id);
       }
 
-      await prefs.setStringList(_kExampleIdsKey, _exampleIds.toList());
-      await prefs.setBool(_kExamplesImportedFlag, true);
+      await prefs.setStringList(idsKey, _exampleIds.toList());
+      await prefs.setBool(importedKey, true);
     } catch (e) {
-      debugPrint('Failed to import example worksheets from assets: $e');
+      debugPrint('Example import failed: $e');
     }
   }
 
@@ -469,15 +496,16 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
     final prefs = await SharedPreferences.getInstance();
     final legacy = prefs.getString(_kLegacyExampleIdKey);
     if (legacy != null && legacy.isNotEmpty) {
-      final saved = prefs.getStringList(_kExampleIdsKey) ?? <String>[];
+      final saved =
+          prefs.getStringList(_kExampleIdsKey(_tutorialInHindi)) ?? <String>[];
       if (!saved.contains(legacy)) {
         saved.add(legacy);
-        await prefs.setStringList(_kExampleIdsKey, saved);
+        await prefs.setStringList(_kExampleIdsKey(_tutorialInHindi), saved);
       }
       _exampleIds = saved.toSet();
     } else {
       // if no legacy but there is saved set, read it
-      final saved = prefs.getStringList(_kExampleIdsKey);
+      final saved = prefs.getStringList(_kExampleIdsKey(_tutorialInHindi));
       if (saved != null) _exampleIds = saved.toSet();
     }
   }
@@ -496,7 +524,10 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
 
     // refresh _exampleIds from prefs in case anything changed
     final prefs = await SharedPreferences.getInstance();
-    final savedExampleIds = prefs.getStringList(_kExampleIdsKey);
+    final savedExampleIds = prefs.getStringList(
+      _kExampleIdsKey(_tutorialInHindi),
+    );
+
     if (savedExampleIds != null) _exampleIds = savedExampleIds.toSet();
 
     setState(() {
@@ -2130,7 +2161,39 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
     return Scaffold(
       backgroundColor: surfaceDark,
       appBar: AppBar(
-        title: const Text('ABCDE Worksheet'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'ABCDE',
+              style: TextStyle(
+                fontSize: 16, // 👈 smaller title
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.18),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white24),
+              ),
+              child: const Text(
+                'Worksheet CBT Tool',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ),
+          ],
+        ),
+
         elevation: 0,
         backgroundColor: Colors.transparent,
         systemOverlayStyle: Theme.of(context).appBarTheme.systemOverlayStyle,
@@ -2144,26 +2207,111 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
           ),
         ),
         actions: [
-          IconButton(
-            onPressed: () {
+          // 🔤 Language toggle
+          GestureDetector(
+            onTap: () async {
+              final prefs = await SharedPreferences.getInstance();
+
+              // flip language
+              setState(() => _tutorialInHindi = !_tutorialInHindi);
+
+              // VERY IMPORTANT:
+              // force re-import for the target language
+              await prefs.remove(_kExamplesImportedFlag(_tutorialInHindi));
+
+              // now reload examples cleanly
+              await _importExamplesFromAssetsIfNeeded();
+              await _load();
+            },
+
+            child: Container(
+              margin: const EdgeInsets.only(right: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: _tutorialInHindi
+                      ? [Colors.orange, Colors.deepOrange]
+                      : [teal3, teal4],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 6,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.language, size: 16, color: Colors.white),
+                  const SizedBox(width: 6),
+                  Text(
+                    _tutorialInHindi ? 'हिंदी' : 'EN',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Help button
+          GestureDetector(
+            onTap: () {
               showAbcdTutorialSheet(
                 context,
                 initialHindi: _tutorialInHindi,
                 onCreate: _startNew,
-                onLanguageChanged: (v) {
+                onLanguageChanged: (v) async {
                   setState(() => _tutorialInHindi = v);
+                  await _importExamplesFromAssetsIfNeeded();
+                  await _load();
                 },
               );
             },
-            icon: const Icon(Icons.help, color: Colors.white70),
-            tooltip: 'Show tutorial',
+            child: Container(
+              margin: const EdgeInsets.only(right: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0xFF5C7CFA),
+                    Color(0xFF4C6EF5),
+                  ], // soft blue help
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 6,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: const [
+                  Icon(Icons.help_outline, size: 16, color: Colors.white),
+                  SizedBox(width: 6),
+                  Text(
+                    'Help',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          IconButton(
-            onPressed: _startNew,
-            icon: const Icon(Icons.add, color: Colors.white70),
-            tooltip: 'New worksheet',
-          ),
+
+          // Add button
         ],
+
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(52),
           child: Container(
@@ -2240,24 +2388,38 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
         ),
       ),
 
-      floatingActionButton: Container(
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [
-              Colors.green, // teal3
-              Color(0xFF007A78), // teal4
+      floatingActionButton: GlowPulse(
+        color: teal2, // soft mint glow
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Colors.green, teal2],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: teal2.withOpacity(0.5),
+                blurRadius: 20,
+                spreadRadius: 1,
+              ),
             ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(30), // must match FAB shape
-        ),
-        child: FloatingActionButton.extended(
-          onPressed: _startNew,
-          icon: const Icon(Icons.add),
-          label: const Text('New worksheet'),
-          backgroundColor: Colors.transparent, // IMPORTANT
-          elevation: 0, // looks cleaner
+          child: FloatingActionButton.extended(
+            onPressed: _startNew,
+            icon: const Icon(Icons.add, color: Colors.white),
+            label: const Text(
+              'New worksheet',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
+              ),
+            ),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+          ),
         ),
       ),
 
@@ -2283,6 +2445,71 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
           ),
         ],
       ),
+    );
+  }
+}
+
+class GlowPulse extends StatefulWidget {
+  final Widget child;
+  final Color color;
+
+  const GlowPulse({required this.child, required this.color, super.key});
+
+  @override
+  State<GlowPulse> createState() => _GlowPulseState();
+}
+
+class _GlowPulseState extends State<GlowPulse>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scale;
+  late Animation<double> _opacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+
+    _scale = Tween<double>(
+      begin: 1.0,
+      end: 1.25,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+
+    _opacity = Tween<double>(begin: 0.6, end: 0.0).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        AnimatedBuilder(
+          animation: _controller,
+          builder: (_, __) {
+            return Transform.scale(
+              scale: _scale.value,
+              child: Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.color.withOpacity(_opacity.value),
+                ),
+              ),
+            );
+          },
+        ),
+        widget.child,
+      ],
     );
   }
 }

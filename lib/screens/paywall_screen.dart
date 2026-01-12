@@ -241,6 +241,132 @@ class _PaywallScreenState extends State<PaywallScreen> {
     }
   }
 
+  Future<bool> _confirmBeforePayment({required String kind}) async {
+    final price = kind == 'yearly' ? _yearlyPriceText() : _monthlyPriceText();
+
+    final cadence = kind == 'yearly' ? 'year' : 'month';
+
+    return await showModalBottomSheet<bool>(
+          context: context,
+          backgroundColor: Colors.transparent,
+          isScrollControlled: true,
+          builder: (ctx) {
+            return Container(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Handle
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+
+                    const Text(
+                      'Confirm your subscription',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.teal,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    Text(
+                      'You’ll be charged $price today for CBT Self-Guided.',
+                      style: const TextStyle(fontSize: 15, height: 1.4),
+                    ),
+                    const SizedBox(height: 8),
+
+                    Text(
+                      'This is a $cadence subscription that renews automatically.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    _confirmBullet('Cancel anytime from the app'),
+                    _confirmBullet('No questions asked'),
+                    _confirmBullet(
+                      'Access continues until the end of the billing cycle',
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.teal,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(52),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text(
+                        'Continue to secure payment',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    Center(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: Text(
+                          'Not now',
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ) ??
+        false;
+  }
+
+  Widget _confirmBullet(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle, color: Colors.teal, size: 18),
+          const SizedBox(width: 8),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 14.5))),
+        ],
+      ),
+    );
+  }
+
   Future<void> _onPaymentSuccess(PaymentSuccessResponse r) async {
     try {
       final subscriptionId = (r.orderId?.isNotEmpty ?? false)
@@ -433,11 +559,16 @@ class _PaywallScreenState extends State<PaywallScreen> {
                           busy: _busy && _pendingKind == 'monthly',
                           onPressed: _busy
                               ? null
-                              : () {
+                              : () async {
                                   if (Platform.isIOS) {
                                     _startApplePurchase(kind: 'monthly');
                                   } else {
-                                    _startRazorpay(kind: 'monthly');
+                                    final ok = await _confirmBeforePayment(
+                                      kind: 'monthly',
+                                    );
+                                    if (ok) {
+                                      _startRazorpay(kind: 'monthly');
+                                    }
                                   }
                                 },
                         ),
@@ -458,11 +589,16 @@ class _PaywallScreenState extends State<PaywallScreen> {
                           busy: _busy && _pendingKind == 'yearly',
                           onPressed: _busy
                               ? null
-                              : () {
+                              : () async {
                                   if (Platform.isIOS) {
                                     _startApplePurchase(kind: 'yearly');
                                   } else {
-                                    _startRazorpay(kind: 'yearly');
+                                    final ok = await _confirmBeforePayment(
+                                      kind: 'yearly',
+                                    );
+                                    if (ok) {
+                                      _startRazorpay(kind: 'yearly');
+                                    }
                                   }
                                 },
                         ),

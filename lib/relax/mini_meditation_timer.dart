@@ -60,7 +60,8 @@ class _GuidedMeditationPlayerState extends State<GuidedMeditationPlayer>
   final Map<String, String> _localTracks = {
     'Circle of Calm (EN)': 'assets/sounds/circle_of_calm.mp3',
     'शांति का वृत्त और श्वास (HI)': 'assets/sounds/circle_of_calm_hi.mp3',
-    'समुद्र की लहर और श्वास (HI)': 'assets/sounds/bg_ocean_hi.mp3',
+    'Ocean wave Breath (EN)': 'assets/sounds/ocean_wave_breath_en.mp3',
+    'समुद्र की लहर और श्वास (HI)': 'assets/sounds/ocean_wave_breath_hi.mp3',
     'Sky Expansion Breath (EN)': 'assets/sounds/sky_expansion_breath_en.mp3',
     'आकाश विस्तार और श्वास (HI)': 'assets/sounds/sky_expansion_breath_hi.mp3',
     'Breath Meditation': 'assets/sounds/breath_meditation.mp3',
@@ -420,52 +421,45 @@ class _GuidedMeditationPlayerState extends State<GuidedMeditationPlayer>
   // Select track (local asset)
   Future<void> _selectTrackByLocalAsset(String title, String assetPath) async {
     try {
-      await _audioPlayer.setAsset(assetPath);
-      await _audioPlayer.setLoopMode(_isLooping ? LoopMode.one : LoopMode.off);
+      // ✅ 1. UPDATE UI FIRST
       setState(() {
         _selectedKey = title;
         _selectedSource = 'asset';
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Selected: $title')));
+
+      // ✅ 2. SET AUDIO
+      await _audioPlayer.setAsset(assetPath);
+      await _audioPlayer.setLoopMode(_isLooping ? LoopMode.one : LoopMode.off);
+
+      // ✅ 3. PLAY
+      await _audioPlayer.play();
     } catch (e) {
       debugPrint('[select asset] $e');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Failed to select track')));
     }
   }
 
-  Future<void> _selectTrackByRemoteDoc(
-    String docId, {
-    bool playIfWasPlaying = false,
-  }) async {
+  Future<void> _selectTrackByRemoteDoc(String docId) async {
     final meta = _remoteTracks[docId];
     if (meta == null) return;
+
     final local = _downloadedLocalPath[docId];
-    if (local == null || !File(local).existsSync()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Download file first to play offline')),
-      );
-      return;
-    }
+    if (local == null || !File(local).existsSync()) return;
+
     try {
-      await _audioPlayer.setFilePath(local);
-      await _audioPlayer.setLoopMode(_isLooping ? LoopMode.one : LoopMode.off);
+      // ✅ 1. UPDATE UI FIRST
       setState(() {
         _selectedKey = meta['title'] as String? ?? docId;
         _selectedSource = 'remote';
       });
-      if (playIfWasPlaying) await _audioPlayer.play();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Selected: ${meta['title']}')));
+
+      // ✅ 2. SET AUDIO
+      await _audioPlayer.setFilePath(local);
+      await _audioPlayer.setLoopMode(_isLooping ? LoopMode.one : LoopMode.off);
+
+      // ✅ 3. PLAY
+      await _audioPlayer.play();
     } catch (e) {
       debugPrint('[select remote] $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to select remote track')),
-      );
     }
   }
 
@@ -510,6 +504,7 @@ class _GuidedMeditationPlayerState extends State<GuidedMeditationPlayer>
 
     try {
       await _audioPlayer.play();
+
       _vibrateLight();
     } catch (e) {
       debugPrint('[play] failed: $e');
@@ -1231,7 +1226,7 @@ class _GuidedMeditationPlayerState extends State<GuidedMeditationPlayer>
               ),
             ),
             subtitle: const Text(
-              'On-device • Instant play',
+              'On-device',
               style: TextStyle(color: Colors.white54, fontSize: 11),
             ),
             trailing: Icon(

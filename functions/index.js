@@ -5,6 +5,8 @@ const { setGlobalOptions } = require('firebase-functions/v2');
 const { onDocumentUpdated } = require('firebase-functions/v2/firestore');
 const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
+const { onSchedule } = require('firebase-functions/v2/scheduler');
+
 const admin = require('firebase-admin');
 // ---------- Gemini (Google Generative AI) ----------
 const { GoogleGenerativeAI } = require('@google/generative-ai');
@@ -452,6 +454,92 @@ exports.geminiGenerate = onCall(
       console.error('geminiGenerate error:', err?.message || err);
       if (err instanceof HttpsError) throw err;
       throw new HttpsError('internal', err?.message || 'Unknown server error');
+    }
+  }
+);
+
+
+// ---------- Daily CBT Tip Scheduler (40-day loop) ----------
+exports.sendDailyCbtTip = onSchedule(
+  {
+    schedule: '0 9 * * *', // रोज़ सुबह 9 बजे
+    timeZone: 'Asia/Kolkata',
+    region: 'asia-south1',
+    retry: true,
+  },
+  async () => {
+    try {
+      const TOTAL_DAYS = 40;
+
+      // 🔹 Reference doc to track current day
+      const stateRef = admin
+        .firestore()
+        .collection('system')
+        .doc('cbt_tip_state');
+
+      // 🔹 Transaction to safely increment day
+      const currentDay = await admin.firestore().runTransaction(async (tx) => {
+        const snap = await tx.get(stateRef);
+
+        let day = 1;
+        if (snap.exists) {
+          day = snap.data().day || 1;
+          day = day >= TOTAL_DAYS ? 1 : day + 1; // loop back to 1
+        }
+
+        tx.set(
+          stateRef,
+          {
+            day,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
+
+        return day;
+      });
+
+      // 🔹 Fetch today’s CBT tip
+      const tipSnap = await admin
+        .firestore()
+        .collection('cbt_daily_tips')
+        .doc(currentDay.toString())
+        .get();
+
+      if (!tipSnap.exists) {
+        console.warn('CBT tip missing for day', currentDay);
+        return;
+      }
+
+      const tip = tipSnap.data();
+
+      // 🔹 Send notification to ALL users
+      await admin.messaging().send({
+        topic: 'all_users',
+        notification: {
+          title: tip.title,
+          body: tip.message,
+        },
+        android: {
+          priority: 'high',
+          notification: {
+            channelId: 'chat_channel', // 👈 MATCH APP
+            sound: 'default',
+          },
+        },
+        apns: {
+          payload: {
+            aps: {
+              sound: 'default',
+            },
+          },
+        },
+      });
+      
+
+      console.log(`✅ CBT tip sent | Day ${currentDay}`);
+    } catch (err) {
+      console.error('❌ Daily CBT scheduler error', err);
     }
   }
 );

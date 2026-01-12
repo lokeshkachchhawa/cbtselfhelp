@@ -1,0 +1,87 @@
+[
+    {
+      "id": "example-1",
+      "activatingEvent": "This morning my boss said he needs a detailed project report by tomorrow. I immediately thought it would be very difficult.",
+      "belief": "If I cannot complete the report properly on time, I am a failure and people will think I am incompetent.",
+      "consequencesEmotional": "Anxiety, shame, sadness",
+      "consequencesPsychological": "Repeated thoughts like 'I am a failure', poor concentration",
+      "consequencesPhysical": "Fast heartbeat, stomach discomfort, reduced sleep",
+      "consequencesBehavioural": "Procrastinating, avoiding small tasks",
+      "dispute": "Does one report really define my entire ability? I have done well before, and it is okay to ask for help.",
+      "emotionalEffect": "Some relief; a small sense of hope",
+      "psychologicalEffect": "Fewer negative thoughts; a 'I will try' mindset",
+      "physicalEffect": "Slower breathing, reduced tension",
+      "behaviouralEffect": "Breaking the report into small steps; asking a colleague for feedback",
+      "note": "Break work into small tasks; follow the 60-minute work + 5-minute break rule.",
+      "createdAt": "2025-10-01T09:00:00.000Z"
+    },
+  
+    {
+      "id": "example-2",
+      "activatingEvent": "During an interview I became nervous and forgot some words.",
+      "belief": "I am always nervous; I am not suitable for this position.",
+      "consequencesEmotional": "Shame, embarrassment",
+      "consequencesPsychological": "Low self-worth, self-criticism",
+      "consequencesPhysical": "Shaking hands and legs, sweating",
+      "consequencesBehavioural": "Avoiding trying again next time",
+      "dispute": "A little nervousness in one interview does not measure my full ability; I can improve with practice.",
+      "emotionalEffect": "Some hope; improved confidence",
+      "psychologicalEffect": "Reduced negative thinking; motivation to prepare for the next interview",
+      "physicalEffect": "Slight physical calm",
+      "behaviouralEffect": "Doing mock interviews; practicing breathing exercises",
+      "note": "Practice breathing exercises and posture for 5–10 minutes daily.",
+      "createdAt": "2025-09-24T10:30:00.000Z"
+    },
+  
+    {
+      "id": "example-3",
+      "activatingEvent": "A friend read my message but did not reply.",
+      "belief": "They are angry with me or have lost interest in me.",
+      "consequencesEmotional": "Sadness, anxiety",
+      "consequencesPsychological": "Recalling past hurts, distressing thoughts",
+      "consequencesPhysical": "Loss of appetite",
+      "consequencesBehavioural": "Creating distance from them",
+      "dispute": "People are sometimes busy; not replying to one message does not automatically mean rejection.",
+      "emotionalEffect": "Relaxation, reduced anxiety",
+      "psychologicalEffect": "More balanced thinking",
+      "physicalEffect": "Normal appetite returning",
+      "behaviouralEffect": "Following up gently after some time",
+      "note": "Delays happen due to busy schedules. Send a light follow-up after 24 hours.",
+      "createdAt": "2025-10-10T14:15:00.000Z"
+    },
+  
+    {
+      "id": "example-4",
+      "activatingEvent": "I made a mistake during a presentation and people laughed.",
+      "belief": "I should feel ashamed; I made a fool of myself.",
+      "consequencesEmotional": "Shame, embarrassment",
+      "consequencesPsychological": "Self-blame",
+      "consequencesPhysical": "Face feeling hot",
+      "consequencesBehavioural": "Avoiding speaking next time",
+      "dispute": "Mistakes are normal; people usually react briefly and then forget.",
+      "emotionalEffect": "Gradual restoration of self-esteem",
+      "psychologicalEffect": "Less self-criticism",
+      "physicalEffect": "Reduced tension",
+      "behaviouralEffect": "Learning from mistakes and preparing better next time",
+      "note": "After every presentation, write down at least one positive feedback.",
+      "createdAt": "2025-08-30T11:00:00.000Z"
+    },
+  
+    {
+      "id": "example-5",
+      "activatingEvent": "I received a test result that was lower than expected.",
+      "belief": "I am not intelligent; I will not succeed in the future.",
+      "consequencesEmotional": "Disappointment, sadness",
+      "consequencesPsychological": "Strong negative thinking",
+      "consequencesPhysical": "Fatigue, changes in sleep",
+      "consequencesBehavioural": "Thinking about quitting the course",
+      "dispute": "One test does not reflect my full ability; making a plan to improve is more helpful.",
+      "emotionalEffect": "Hope, renewed goals",
+      "psychologicalEffect": "Goal-focused thinking",
+      "physicalEffect": "Improved energy",
+      "behaviouralEffect": "Revising and creating a study plan",
+      "note": "Create a clear study plan for the next two weeks with small achievable goals.",
+      "createdAt": "2025-07-18T09:30:00.000Z"
+    }
+  ]
+  

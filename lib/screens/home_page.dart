@@ -3,13 +3,14 @@ import 'dart:convert';
 
 import 'package:cbt_drktv/utils/logout_helper.dart';
 
+import 'package:cbt_drktv/widgets/help_sheet_in.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:cbt_drktv/utils/analytics_helper.dart'; // 👈 NEW
 
 /// Palette
 const Color teal1 = Color.fromARGB(255, 1, 108, 108);
@@ -84,11 +85,12 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   int mood = 5;
   final user = FirebaseAuth.instance.currentUser;
 
   late Future<_ProgressSummary> _progressFuture;
+  late AnimationController _drRingController;
 
   // Known programs — keep titles and lesson counts in sync with JSONs in assets
   final Map<String, Map<String, dynamic>> _programMeta = {
@@ -103,7 +105,17 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _progressFuture = _loadProgressSummary();
-    syncLocalAnalyticsOncePerDay();
+    _drRingController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _drRingController.dispose();
+
+    super.dispose();
   }
 
   // Helper: check enrollment and navigate or show dialog
@@ -179,6 +191,114 @@ class _HomePageState extends State<HomePage> {
         const SnackBar(content: Text('Failed to check course access')),
       );
     }
+  }
+
+  Widget _buildGuidedAudiosCard() {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, '/minimeditation'),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          gradient: LinearGradient(
+            colors: [teal3.withOpacity(0.85), teal6.withOpacity(0.85)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
+          boxShadow: [
+            BoxShadow(
+              color: teal3.withOpacity(0.45),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Doctor Image
+            ClipRRect(
+              borderRadius: const BorderRadius.horizontal(
+                left: Radius.circular(18),
+              ),
+              child: Image.asset(
+                'images/drkanhaiya.png',
+                width: 90,
+                height: 110,
+                fit: BoxFit.cover,
+              ),
+            ),
+
+            const SizedBox(width: 14),
+
+            // Text
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 14,
+                  horizontal: 4,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text(
+                        "DOCTOR GUIDED",
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.1,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    const Text(
+                      "Guided Audios by Dr. Kanhaiya",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        height: 1.2,
+                      ),
+                    ),
+
+                    const SizedBox(height: 6),
+
+                    Text(
+                      "Calming voice guidance for anxiety, OCD and stress",
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.85),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const Padding(
+              padding: EdgeInsets.only(right: 12),
+              child: Icon(
+                Icons.play_circle_fill,
+                color: Colors.white,
+                size: 36,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _confirmAndDeleteAccount() async {
@@ -464,9 +584,9 @@ class _HomePageState extends State<HomePage> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(Icons.link, size: 18, color: Colors.white),
-                                SizedBox(width: 8),
+                                SizedBox(width: 2),
                                 Text(
-                                  'Join on website ',
+                                  'Join on website',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 15,
@@ -720,21 +840,61 @@ class _HomePageState extends State<HomePage> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // ---- Dr. Kanhaiya Circular Photo ----
-            Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: teal3.withOpacity(0.35),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+            SizedBox(
+              width: 75,
+              height: 75,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Rotating neon ring
+                  RotationTransition(
+                    turns: _drRingController,
+                    child: Container(
+                      width: 75,
+                      height: 75,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: SweepGradient(
+                          colors: [
+                            Colors.transparent,
+                            const Color(
+                              0xFFB388FF,
+                            ).withOpacity(0.4), // soft neon violet
+                            const Color(0xFF7C4DFF), // bright purple core
+                            const Color(0xFFB388FF).withOpacity(0.4),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Glow blur
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: teal3.withOpacity(0.6),
+                          blurRadius: 18,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Avatar
+                  ClipOval(
+                    child: Image.asset(
+                      'images/drkanhaiya.png',
+                      width: 64,
+                      height: 64,
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ],
-              ),
-              child: ClipOval(
-                child: Image.asset('images/drkanhaiya.png', fit: BoxFit.cover),
               ),
             ),
 
@@ -834,7 +994,6 @@ class _HomePageState extends State<HomePage> {
 
   // Consent + navigation handler (add below the widget)
   void _onOpenDrKanhaiyaChat() async {
-    trackFeatureUse('home_drkanhaiya_chat_tap');
     final prefs = await SharedPreferences.getInstance();
     final hideConsent = prefs.getBool('hide_drkanhaiya_consent') ?? false;
 
@@ -1519,19 +1678,6 @@ class _HomePageState extends State<HomePage> {
                         }
                       },
                       itemBuilder: (ctx) => [
-                        PopupMenuItem(
-                          value: 'subscription',
-                          child: Row(
-                            children: const [
-                              Icon(Icons.cancel, color: Colors.white, size: 18),
-                              SizedBox(width: 10),
-                              Text(
-                                'Cancel Subscription',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ],
-                          ),
-                        ),
                         const PopupMenuItem(
                           value: 'privacy',
                           child: Text(
@@ -1574,7 +1720,20 @@ class _HomePageState extends State<HomePage> {
                             style: TextStyle(color: Colors.white),
                           ),
                         ),
-                        const PopupMenuDivider(),
+
+                        PopupMenuItem(
+                          value: 'subscription',
+                          child: Row(
+                            children: const [
+                              Icon(Icons.cancel, color: Colors.white, size: 18),
+                              SizedBox(width: 10),
+                              Text(
+                                'Cancel Subscription',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ],
+                          ),
+                        ),
 
                         PopupMenuItem(
                           value: 'delete_account',
@@ -1630,6 +1789,8 @@ class _HomePageState extends State<HomePage> {
 
                       const SizedBox(height: 12),
                       _buildDrKanhaiyaChatCard(),
+                      const SizedBox(height: 12),
+                      _buildGuidedAudiosCard(),
 
                       const SizedBox(height: 10),
                       _buildThoughtDetectiveCard(),
@@ -1688,9 +1849,7 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pushNamed(context, '/safety');
-                        },
+                        onPressed: () => showHelpSheetIn(context),
                         icon: const Icon(Icons.volunteer_activism),
                         label: const Text('Get Help'),
                         style: ElevatedButton.styleFrom(
@@ -2171,11 +2330,8 @@ class _HomePageState extends State<HomePage> {
 
         return Expanded(
           child: GestureDetector(
-            onTap: () => navigateWithTracking(
-              context,
-              featureKey: t['feature'] as String,
-              routeName: t['route'] as String,
-            ),
+            onTap: () => Navigator.pushNamed(context, t['route'] as String),
+
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 6),
               padding: const EdgeInsets.symmetric(vertical: 14),

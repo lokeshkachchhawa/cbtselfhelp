@@ -12,6 +12,8 @@ import 'package:flutter/services.dart'
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
+bool _examplesInHindi = true; // false = English, true = Hindi
+
 const _kThoughtStorageKey = 'thought_records_v1';
 final _uuid = Uuid();
 
@@ -300,15 +302,19 @@ class _ThoughtRecordPageState extends State<ThoughtRecordPage> {
 
   Future<void> _loadExamples() async {
     try {
-      final jsonStr = await rootBundle.loadString('assets/examples_hi.json');
+      final file = _examplesInHindi
+          ? 'assets/examples_hi.json'
+          : 'assets/examples_en.json';
+
+      final jsonStr = await rootBundle.loadString(file);
       final List<dynamic> parsed = json.decode(jsonStr) as List<dynamic>;
+
       _examples = parsed
           .map((e) => Map<String, String>.from(e as Map))
           .toList(growable: false);
     } catch (e) {
-      // fallback: empty list if asset missing or parse error
       _examples = [];
-      debugPrint('Failed to load examples asset: $e');
+      debugPrint('Failed to load examples: $e');
     }
     if (mounted) setState(() {});
   }
@@ -994,9 +1000,44 @@ class _ThoughtRecordPageState extends State<ThoughtRecordPage> {
       child: Scaffold(
         backgroundColor: surfaceDark,
         appBar: AppBar(
-          title: const Text('Thought Records'),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Thought',
+                style: TextStyle(
+                  fontSize: 16, // 👈 same as ABCDE
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: const Text(
+                  'Records CBT Tool',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          centerTitle: false,
           elevation: 0,
           backgroundColor: Colors.transparent,
+
+          // Gradient background
           flexibleSpace: Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -1006,60 +1047,194 @@ class _ThoughtRecordPageState extends State<ThoughtRecordPage> {
               ),
             ),
           ),
-          bottom: TabBar(
-            indicatorColor: Colors.white,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
-            tabs: const [
-              Tab(text: 'Examples\n(उदाहरण)'),
-              Tab(text: 'My thoughts\n(मेरे विचार)'),
-            ],
-          ),
-          actions: [
-            IconButton(
-              onPressed: _showTutorial,
-              icon: const Icon(Icons.help_outline, color: Colors.white70),
-              tooltip: 'Show tutorial',
+
+          // Tab bar with improved styling
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(48),
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: Colors.white.withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: TabBar(
+                indicatorColor: Colors.white,
+                indicatorWeight: 3,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white60,
+                labelStyle: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.2,
+                ),
+                unselectedLabelStyle: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+                tabs: [
+                  const Tab(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('Examples'),
+                        SizedBox(height: 2),
+                        Text('(उदाहरण)', style: TextStyle(fontSize: 10)),
+                      ],
+                    ),
+                  ),
+                  Tab(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('My Thoughts'),
+                            ThoughtCountBadge(_items.length),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        const Text(
+                          '(मेरे विचार)',
+                          style: TextStyle(fontSize: 10),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-            IconButton(
-              onPressed: () => _startNew(),
-              icon: const Icon(Icons.add, color: Colors.white70),
-              tooltip: 'New thought record',
+          ),
+
+          // Action buttons with improved design
+          actions: [
+            // 🔤 Language toggle (pill style)
+            GestureDetector(
+              onTap: () {
+                setState(() => _examplesInHindi = !_examplesInHindi);
+                _loadExamples();
+              },
+              child: Container(
+                margin: const EdgeInsets.only(right: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: _examplesInHindi
+                        ? [Colors.orange, Colors.deepOrange]
+                        : [teal3, teal4],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.language, size: 16, color: Colors.white),
+                    const SizedBox(width: 6),
+                    Text(
+                      _examplesInHindi ? 'हिंदी' : 'EN',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // ❓ Help button (pill style)
+            GestureDetector(
+              onTap: _showTutorial,
+              child: Container(
+                margin: const EdgeInsets.only(right: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [
+                      Color(0xFF5C7CFA),
+                      Color(0xFF4C6EF5),
+                    ], // soft blue help
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: const [
+                    Icon(Icons.help_outline, size: 16, color: Colors.white),
+                    SizedBox(width: 6),
+                    Text(
+                      'Help',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
 
         // FAB
-        floatingActionButton: Container(
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Colors.green, teal2],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.25),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+        floatingActionButton: GlowPulse(
+          color: teal2, // soft mint glow
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Colors.green, teal2],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-            ],
-          ),
-          child: FloatingActionButton.extended(
-            onPressed: () => _startNew(),
-            icon: const Icon(Icons.add, color: Colors.white),
-            label: const Text(
-              'Add Thought',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: teal2.withOpacity(0.5),
+                  blurRadius: 20,
+                  spreadRadius: 1,
+                ),
+              ],
             ),
-            backgroundColor: Colors.transparent, // key part
-            elevation: 0, // avoid double shadow
+            child: FloatingActionButton.extended(
+              onPressed: () => _startNew(),
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text(
+                'Add Thought',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+            ),
           ),
         ),
+
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
 
         body: TabBarView(
@@ -1560,6 +1735,106 @@ class ReadOnlyColoredFieldTile extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class ThoughtCountBadge extends StatelessWidget {
+  final int count;
+
+  const ThoughtCountBadge(this.count, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    if (count == 0) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(left: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.redAccent,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.red.withOpacity(0.6),
+            blurRadius: 6,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: Text(
+        count > 99 ? '99+' : count.toString(),
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class GlowPulse extends StatefulWidget {
+  final Widget child;
+  final Color color;
+
+  const GlowPulse({required this.child, required this.color, super.key});
+
+  @override
+  State<GlowPulse> createState() => _GlowPulseState();
+}
+
+class _GlowPulseState extends State<GlowPulse>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scale;
+  late Animation<double> _opacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+
+    _scale = Tween<double>(
+      begin: 1.0,
+      end: 1.25,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+
+    _opacity = Tween<double>(begin: 0.6, end: 0.0).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        AnimatedBuilder(
+          animation: _controller,
+          builder: (_, __) {
+            return Transform.scale(
+              scale: _scale.value,
+              child: Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.color.withOpacity(_opacity.value),
+                ),
+              ),
+            );
+          },
+        ),
+        widget.child,
+      ],
     );
   }
 }

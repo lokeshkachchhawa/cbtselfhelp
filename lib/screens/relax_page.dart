@@ -1,7 +1,6 @@
 // lib/screens/relax_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:cbt_drktv/utils/analytics_helper.dart'; // 👈 NEW
 
 /// Enhanced RelaxPage with improved UI/UX:
 /// - Vibrant per-feature colors with glowing effects
@@ -37,19 +36,24 @@ class RelaxPage extends StatefulWidget {
 
 class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
   late final AnimationController _controller;
-  late final TrackingRouteAware _routeTracker;
 
   final Duration singleDuration = const Duration(milliseconds: 450);
   final double staggerDelay = 0.08;
 
   final List<_Feature> _features = [
     _Feature(
+      title: 'Guided Audios by Dr. Kanhaiya',
+      subtitle: 'Calming guided audios for anxiety, OCD and relaxation',
+      icon: Icons.timer_rounded,
+      color: meditationAmber,
+      route: '/minimeditation',
+    ),
+    _Feature(
       title: 'Breathing Exercises',
       subtitle: 'Guided inhale/exhale with calming circle animation',
       icon: Icons.air_rounded,
       color: breathBlue,
       route: '/relax/breath',
-      analyticsKey: 'feature_relax_breath', // 🔁 UPDATED
     ),
     _Feature(
       title: 'Progressive Muscle Relaxation',
@@ -57,7 +61,6 @@ class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
       icon: Icons.self_improvement_rounded,
       color: muscleViolet,
       route: '/relax_pmr',
-      analyticsKey: 'feature_relax_pmr', // 🔁 UPDATED
     ),
     _Feature(
       title: 'Grounding (5-4-3-2-1)',
@@ -65,24 +68,12 @@ class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
       icon: Icons.spa_rounded,
       color: groundGreen,
       route: '/grounding',
-      analyticsKey: 'feature_relax_grounding', // 🔁 UPDATED
-    ),
-    _Feature(
-      title: 'Mini Meditation Timer',
-      subtitle: 'Timed sessions with peaceful background sounds',
-      icon: Icons.timer_rounded,
-      color: meditationAmber,
-      route: '/minimeditation',
-      analyticsKey: 'feature_relax_meditation', // 🔁 UPDATED
     ),
   ];
 
   @override
   void initState() {
     super.initState();
-
-    // 👇 NEW: track time spent on Relax screen
-    _routeTracker = TrackingRouteAware('screen_relax');
 
     final int items = _features.length + 1;
     final double totalSeconds =
@@ -96,17 +87,7 @@ class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final route = ModalRoute.of(context);
-    if (route is PageRoute) {
-      routeObserver.subscribe(_routeTracker, route);
-    }
-  }
-
-  @override
   void dispose() {
-    routeObserver.unsubscribe(_routeTracker); // 👈 NEW
     _controller.dispose();
     super.dispose();
   }
@@ -134,24 +115,7 @@ class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: surfaceDark,
-      appBar: AppBar(
-        title: const Text(
-          'Relax',
-          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20),
-        ),
-        elevation: 0,
-        systemOverlayStyle: SystemUiOverlayStyle.light,
-        backgroundColor: Colors.transparent,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [teal3, teal5],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
-      ),
+
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -183,7 +147,6 @@ class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
                         icon: feature.icon,
                         color: feature.color,
                         route: feature.route,
-                        analyticsKey: feature.analyticsKey,
                       ),
                     ),
                   ),
@@ -224,104 +187,182 @@ class _RelaxPageState extends State<RelaxPage> with TickerProviderStateMixin {
 
   Widget _header() {
     return Container(
-      padding: const EdgeInsets.all(18),
+      height: 220,
+      width: double.infinity,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [teal4.withOpacity(0.3), teal6.withOpacity(0.2)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFF020617), // deep black
+            teal6.withOpacity(0.55),
+            teal4.withOpacity(0.35),
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: teal3.withOpacity(0.3), width: 1.5),
       ),
-      child: Row(
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
         children: [
-          // Circular icon with teal glow
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  teal3.withOpacity(0.35),
-                  teal3.withOpacity(0.15),
-                  Colors.transparent,
-                ],
-                center: const Alignment(-0.3, -0.3),
-                radius: 1.0,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: teal3.withOpacity(0.5),
-                  blurRadius: 28,
-                  spreadRadius: 4,
-                  offset: const Offset(0, 6),
-                ),
-                BoxShadow(
-                  color: teal3.withOpacity(0.3),
-                  blurRadius: 16,
-                  spreadRadius: 2,
-                  offset: const Offset(0, 4),
-                ),
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-              border: Border.all(color: teal3.withOpacity(0.3), width: 2),
-            ),
-            child: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [teal3.withOpacity(0.2), teal4.withOpacity(0.1)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Icon(
-                Icons.spa_rounded,
-                color: Colors.white,
-                size: 32,
-                shadows: [
-                  Shadow(
-                    color: teal3.withOpacity(0.8),
-                    blurRadius: 12,
-                    offset: const Offset(0, 2),
+          // 🧑‍⚕️ Doctor image with cinematic fade
+          _buildDoctorImage(),
+
+          // 🌑 Dark overlay for text readability
+          _buildOverlay(),
+
+          // 🎬 Text content
+          _buildTextContent(),
+          // ⬅️ Floating Back Button (AppBar-like)
+          Positioned(
+            top: 12,
+            left: 12,
+            child: SafeArea(
+              child: GestureDetector(
+                onTap: () => Navigator.of(context).maybePop(),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.45),
+                    shape: BoxShape.circle,
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black54,
+                        blurRadius: 10,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Relax & Reset',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
+                  child: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
                     color: Colors.white,
-                    letterSpacing: 0.3,
+                    size: 18,
                   ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  'Quick practices to calm your body and mind',
-                  style: TextStyle(
-                    color: mutedText,
-                    fontSize: 13.5,
-                    height: 1.3,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDoctorImage() {
+    return Positioned(
+      left: -10,
+      bottom: 0,
+      top: 0,
+      child: ShaderMask(
+        shaderCallback: (rect) {
+          return const LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [Colors.white, Colors.white, Colors.transparent],
+            stops: [0.0, 0.6, 1.0], // Added stops for better control
+          ).createShader(rect);
+        },
+        blendMode: BlendMode.dstIn,
+        child: Image.asset(
+          'images/drkanhaiya.png',
+          fit: BoxFit.cover,
+          width: 160,
+          filterQuality: FilterQuality.medium, // Performance optimization
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOverlay() {
+    return Positioned.fill(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.black.withOpacity(0.55), Colors.transparent],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            stops: const [0.0, 0.7], // More control over gradient
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextContent() {
+    return Positioned(
+      left: 180,
+      right: 20,
+      top: 28,
+      bottom: 28, // Increased from 26 to fix overflow
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Tag badge
+          _buildTagBadge(),
+
+          const SizedBox(height: 8), // Reduced from 14
+          // Title
+          const Text(
+            'Relax',
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+              letterSpacing: 0.4,
+              height: 1.1,
+              shadows: [
+                Shadow(
+                  offset: Offset(0, 2),
+                  blurRadius: 4,
+                  color: Colors.black26,
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 6), // Reduced from 8
+          // Description
+          Flexible(
+            // Added Flexible to prevent overflow
+            child: Text(
+              'Guided audios and calming tools by Dr. Kanhaiya for anxiety, OCD and stress',
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.45,
+                color: mutedText.withOpacity(0.95),
+                shadows: const [
+                  Shadow(
+                    offset: Offset(0, 1),
+                    blurRadius: 3,
+                    color: Colors.black38,
+                  ),
+                ],
+              ),
+              maxLines: 5,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTagBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
+      ),
+      child: const Text(
+        'DOCTOR GUIDED',
+        style: TextStyle(
+          color: Colors.white70,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.2,
+        ),
       ),
     );
   }
@@ -334,7 +375,6 @@ class _EnhancedFeatureCard extends StatefulWidget {
   final IconData icon;
   final Color color;
   final String route;
-  final String analyticsKey; // 👈 NEW
 
   const _EnhancedFeatureCard({
     required this.title,
@@ -342,7 +382,6 @@ class _EnhancedFeatureCard extends StatefulWidget {
     required this.icon,
     required this.color,
     required this.route,
-    required this.analyticsKey, // 👈 NEW
   });
 
   @override
@@ -385,11 +424,7 @@ class _EnhancedFeatureCardState extends State<_EnhancedFeatureCard>
         _pressController.reverse();
 
         Future.delayed(const Duration(milliseconds: 120), () {
-          navigateWithTracking(
-            context,
-            featureKey: widget.analyticsKey,
-            routeName: widget.route,
-          );
+          Navigator.pushNamed(context, widget.route);
         });
       },
       onTapCancel: () {
@@ -674,7 +709,6 @@ class _Feature {
   final IconData icon;
   final Color color;
   final String route;
-  final String analyticsKey; // 👈 NEW
 
   _Feature({
     required this.title,
@@ -682,6 +716,5 @@ class _Feature {
     required this.icon,
     required this.color,
     required this.route,
-    required this.analyticsKey, // 👈 NEW
   });
 }

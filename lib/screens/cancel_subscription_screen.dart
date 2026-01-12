@@ -3,6 +3,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+// ================= THEME =================
+const Color teal1 = Color(0xFF016C6C);
+const Color teal2 = Color(0xFF79C2BF);
+const Color teal3 = Color(0xFF008F89);
+const Color teal4 = Color(0xFF007A78);
+const Color teal5 = Color(0xFF005E5C);
+
+const Color surfaceDark = Color(0xFF0F1F1E);
+const Color cardDark = Color(0xFF142726);
+
 class CancelSubscriptionScreen extends StatefulWidget {
   const CancelSubscriptionScreen({super.key});
 
@@ -13,16 +23,65 @@ class CancelSubscriptionScreen extends StatefulWidget {
 
 class _CancelSubscriptionScreenState extends State<CancelSubscriptionScreen> {
   bool _loading = false;
+  bool? _cancelAtCycleEnd;
+  DateTime? _nextRenewalEndsAt;
+
   String? _status;
   String? _plan;
   String? _subscriptionId;
   String? _error;
+
+  String? _cancelReason;
+  final TextEditingController _feedbackCtrl = TextEditingController();
+  String getPrettyStatus(Map sub) {
+    final bool cancelAtCycleEnd = sub['cancelAtCycleEnd'] == true;
+    final DateTime? end = sub['nextRenewalEndsAt']?.toDate();
+
+    if (end == null) return "Unknown";
+
+    final stillActive = DateTime.now().isBefore(end);
+
+    if (cancelAtCycleEnd && stillActive) return "Cancels on ${_format(end)}";
+    if (stillActive) return "Active";
+    return "Ended";
+  }
+
+  String _format(DateTime d) {
+    return "${d.day} ${_month(d.month)} ${d.year}";
+  }
+
+  String _month(int m) {
+    const mths = [
+      "",
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+    return mths[m];
+  }
 
   @override
   void initState() {
     super.initState();
     _load();
   }
+
+  @override
+  void dispose() {
+    _feedbackCtrl.dispose();
+    super.dispose();
+  }
+
+  // ================= LOAD SUB =================
 
   Future<void> _load() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -39,20 +98,202 @@ class _CancelSubscriptionScreenState extends State<CancelSubscriptionScreen> {
       _status = sub?['status'];
       _plan = sub?['plan'];
       _subscriptionId = sub?['subscriptionId'];
+      _cancelAtCycleEnd = sub?['cancelAtCycleEnd'] == true;
+      _nextRenewalEndsAt = sub?['nextRenewalEndsAt']?.toDate();
     });
   }
 
+  // ================= ERRORS =================
+
+  String _friendlyError(Object e) {
+    if (e is FirebaseFunctionsException) {
+      switch (e.code) {
+        case 'permission-denied':
+          return 'You are not allowed to perform this action.';
+        case 'unauthenticated':
+          return 'Session expired. Please login again.';
+        case 'invalid-argument':
+          return 'Invalid request. Please try again.';
+        default:
+          return 'Unable to cancel subscription right now.';
+      }
+    }
+    return 'Something went wrong. Please try again.';
+  }
+
+  void _showError(String msg) {
+    setState(() => _error = msg);
+    Future.delayed(const Duration(seconds: 4), () {
+      if (mounted) setState(() => _error = null);
+    });
+  }
+
+  // ================= CANCEL REASON SHEET =================
+
+  Future<bool> _askCancelReason() async {
+    _cancelReason = null;
+    _feedbackCtrl.clear();
+
+    return await showModalBottomSheet<bool>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (ctx) {
+            return StatefulBuilder(
+              builder: (ctx, setModalState) {
+                return Container(
+                  decoration: const BoxDecoration(
+                    color: cardDark,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(24),
+                    ),
+                  ),
+                  padding: EdgeInsets.only(
+                    left: 20,
+                    right: 20,
+                    top: 16,
+                    bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 42,
+                            height: 4,
+                            margin: const EdgeInsets.only(bottom: 20),
+                            decoration: BoxDecoration(
+                              color: Colors.white24,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ),
+                        const Text(
+                          "Before you cancel",
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          "Your feedback helps us improve 🙏",
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                        const SizedBox(height: 20),
+
+                        ...[
+                          "Too expensive",
+                          "Not using enough",
+                          "App is confusing",
+                          "Missing features",
+                          "Personal reasons",
+                          "Other",
+                        ].map(
+                          (r) => Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            decoration: BoxDecoration(
+                              color: _cancelReason == r
+                                  ? teal3.withOpacity(0.15)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: _cancelReason == r
+                                    ? teal3
+                                    : Colors.white12,
+                              ),
+                            ),
+                            child: RadioListTile<String>(
+                              value: r,
+                              groupValue: _cancelReason,
+                              onChanged: (v) =>
+                                  setModalState(() => _cancelReason = v),
+                              activeColor: teal2,
+                              title: Text(
+                                r,
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        TextField(
+                          controller: _feedbackCtrl,
+                          maxLines: 3,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            hintText: "Optional feedback",
+                            hintStyle: const TextStyle(color: Colors.white38),
+                            filled: true,
+                            fillColor: surfaceDark,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: Colors.white12,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        ElevatedButton(
+                          onPressed: _cancelReason == null
+                              ? null
+                              : () => Navigator.pop(ctx, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.shade600,
+                            minimumSize: const Size.fromHeight(48),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            "Proceed to Cancel",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text(
+                            "Keep Subscription",
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ) ??
+        false;
+  }
+
+  // ================= CANCEL =================
+
   Future<void> _cancel() async {
     if (_subscriptionId == null) {
-      setState(() => _error = 'No active subscription found.');
+      _showError("No active subscription found.");
       return;
     }
 
+    if (_status == "cancel_scheduled" || _status == "cancelled") {
+      _showError("Cancellation already scheduled.");
+      return;
+    }
+
+    final proceed = await _askCancelReason();
+    if (!proceed) return;
+
     try {
-      setState(() {
-        _loading = true;
-        _error = null;
-      });
+      setState(() => _loading = true);
 
       final fn = FirebaseFunctions.instanceFor(
         region: 'asia-south1',
@@ -63,148 +304,183 @@ class _CancelSubscriptionScreenState extends State<CancelSubscriptionScreen> {
         'cancelAtCycleEnd': true,
       });
 
-      // Refresh subscription info
       await _load();
 
       if (!mounted) return;
 
-      final status = (res.data["status"] ?? "").toString();
-
-      final snack = (status == "cancel_scheduled")
-          ? "Cancellation scheduled — You’ll have access until the current cycle ends."
-          : "Subscription cancelled.";
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(snack)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            res.data["status"] == "cancel_scheduled"
+                ? "Cancellation scheduled till cycle end."
+                : "Subscription cancelled.",
+          ),
+          backgroundColor: teal4,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } catch (e) {
-      setState(() => _error = e.toString());
+      _showError(_friendlyError(e));
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
+  // ================= UI =================
+
   @override
   Widget build(BuildContext context) {
-    final teal = Colors.teal;
-
     return Scaffold(
+      backgroundColor: surfaceDark,
       appBar: AppBar(
         title: const Text("Cancel Subscription"),
-        backgroundColor: teal,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: _subscriptionId == null
-              ? _noSubscriptionUI()
-              : Column(
+        child: _subscriptionId == null
+            ? _noSubscriptionUI()
+            : Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ✅ STATUS BANNER
-                    if ((_status ?? '') == "cancel_scheduled") ...[
-                      Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.only(bottom: 16),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.amber.shade100,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.amber.shade300),
-                        ),
-                        child: const Text(
-                          'Your cancellation is scheduled. '
-                          'You will retain access until your current billing cycle ends.',
-                          style: TextStyle(color: Colors.black87, height: 1.25),
-                        ),
-                      ),
-                    ],
-
-                    Text(
-                      "Your Subscription",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: teal.shade700,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    _info("Plan", _plan ?? "--"),
-                    _info("Status", _status ?? "--"),
-                    _info("Subscription ID", _subscriptionId ?? "--"),
-
-                    const SizedBox(height: 24),
-
-                    Text(
-                      "If you cancel, you’ll still have access until the end of your current billing cycle.",
-                      style: TextStyle(color: Colors.grey.shade700),
-                    ),
-
-                    const SizedBox(height: 24),
-
                     if (_error != null)
-                      Text(_error!, style: const TextStyle(color: Colors.red)),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          _error!,
+                          style: const TextStyle(color: Colors.redAccent),
+                        ),
+                      ),
+
+                    _infoCard(),
 
                     const Spacer(),
 
-                    // ✅ DISABLE BUTTON when cancellation already scheduled
                     ElevatedButton(
-                      onPressed: (_status == "cancel_scheduled" || _loading)
-                          ? null
-                          : _cancel,
+                      onPressed: _loading ? null : _cancel,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red.shade600,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size.fromHeight(48),
+                        minimumSize: const Size.fromHeight(52),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(14),
                         ),
                       ),
                       child: _loading
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2.5,
-                              ),
-                            )
-                          : Text(
-                              (_status == "cancel_scheduled")
-                                  ? "Cancellation Scheduled"
-                                  : "Cancel Subscription",
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text(
+                              "Cancel Subscription",
+                              style: TextStyle(fontWeight: FontWeight.bold),
                             ),
                     ),
                   ],
                 ),
+              ),
+      ),
+    );
+  }
+
+  Widget _softInfo(String text) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(top: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(color: Colors.white70, height: 1.4),
+      ),
+    );
+  }
+
+  Widget _infoCard() {
+    final bool cancelAtCycleEnd = _cancelAtCycleEnd == true;
+    final DateTime? end = _nextRenewalEndsAt;
+
+    final bool stillActive = end != null && DateTime.now().isBefore(end);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardDark,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: cancelAtCycleEnd ? Colors.orangeAccent : Colors.white12,
         ),
       ),
-    );
-  }
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Your Subscription",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
 
-  /// empty state UI
-  Widget _noSubscriptionUI() {
-    return Center(
-      child: Text(
-        "No active subscription found.",
-        style: TextStyle(fontSize: 16, color: Colors.grey.shade800),
+          const SizedBox(height: 16),
+          _row("Plan", _plan ?? "--"),
+
+          if (cancelAtCycleEnd && stillActive) ...[
+            _row("Status", "Cancels on ${_format(end)}"),
+            const SizedBox(height: 10),
+            _softInfo(
+              "You will keep full premium access until ${_format(end)}. "
+              "No further charges will be made.",
+            ),
+          ] else if (stillActive) ...[
+            _row("Status", "Active"),
+          ] else ...[
+            _row("Status", "Ended"),
+            const SizedBox(height: 10),
+            _softInfo(
+              "Your premium access has ended. Renew to unlock all features.",
+            ),
+          ],
+        ],
       ),
     );
   }
 
-  Widget _info(String label, String value) {
+  Widget _row(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         children: [
-          Text("$label: ", style: const TextStyle(fontWeight: FontWeight.w600)),
-          Expanded(child: Text(value)),
+          Text(
+            "$label: ",
+            style: const TextStyle(
+              color: Colors.white70,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(color: Colors.white),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _noSubscriptionUI() {
+    return const Center(
+      child: Text(
+        "No active subscription found",
+        style: TextStyle(color: Colors.white70),
       ),
     );
   }

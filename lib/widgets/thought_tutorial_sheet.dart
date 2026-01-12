@@ -1,10 +1,8 @@
 // Thought Record Tutorial Sheet (EN/HI bilingual)
 // Style + layout aligned with ABCDE sheet (draggable, video, bilingual, cardDark surface)
 
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
-import 'package:cbt_drktv/widgets/tutorial_video_player.dart';
 
 // --- Palette (reusing from main app) ---
 const Color teal1 = Color(0xFFC6EDED);
@@ -71,28 +69,6 @@ Future<void> showThoughtTutorialSheet(
                     ),
 
                     // --- Video player
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final videoHeight = math.min(
-                          230.0,
-                          math.max(120.0, constraints.maxHeight * 0.45),
-                        );
-                        return ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: SizedBox(
-                            height: videoHeight,
-                            child: TutorialYoutubePlayer(
-                              videoUrl: 'https://youtu.be/9yl_u5e3i3k',
-                              height: videoHeight,
-                              autoPlay: false,
-                              showControls: true,
-                              onFullScreenToggle: (bool isFullScreen) {},
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-
                     const SizedBox(height: 12),
 
                     Expanded(

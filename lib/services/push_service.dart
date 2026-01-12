@@ -74,6 +74,8 @@ class PushService {
     if (u != null) {
       await FcmTokenRegistry.registerForUser(u.uid);
     }
+    // ✅ Subscribe to daily CBT tips topic
+    await FirebaseMessaging.instance.subscribeToTopic('all_users');
   }
 
   static Future<void> removeTokenOnLogout() async {

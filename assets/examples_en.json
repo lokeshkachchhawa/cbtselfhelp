@@ -1,0 +1,48 @@
+[
+    {
+      "title": "1 — Speaking in a Meeting",
+      "situation": "I shared my idea in a team meeting. Some people picked up their phones and no one responded right away.",
+      "automaticThought": "They ignored me; my idea was useless.",
+      "evidenceFor": "No one immediately supported or praised it, and a few people were looking at their phones.",
+      "evidenceAgainst": "Later, a colleague appreciated my point; that same person often checks their phone during meetings.",
+      "alternativeThought": "They might have been busy or replying to something important; my idea could still be useful, and I can follow up later.",
+      "note": "Next time, I will send a short summary of my main point by email."
+    },
+    {
+      "title": "2 — Friend Not Replying",
+      "situation": "I sent my friend a sensitive message, but they did not reply right away.",
+      "automaticThought": "They are upset with me or no longer like me.",
+      "evidenceFor": "They still haven’t replied, and recently they have been replying late.",
+      "evidenceAgainst": "They are often busy and usually apologize later for replying late.",
+      "alternativeThought": "They might be busy or away from their phone; I can stay calm and check in later.",
+      "note": "If I don’t hear back in 48 hours, I will gently follow up."
+    },
+    {
+      "title": "3 — Fear of Giving a Presentation",
+      "situation": "I have to give a presentation next week and I feel very anxious.",
+      "automaticThought": "I will fail badly while speaking; people will think I am stupid.",
+      "evidenceFor": "Last time my voice shook and I didn’t feel fully confident.",
+      "evidenceAgainst": "I have prepared well; my colleagues helped me practice and the feedback was positive.",
+      "alternativeThought": "Some nervousness is normal; with practice I can do better, and this is a learning experience.",
+      "note": "I will rehearse and practice once with a friend."
+    },
+    {
+      "title": "4 — Family Criticism",
+      "situation": "My family criticized my career decision and spoke negatively about it.",
+      "automaticThought": "My decision is wrong; I will fail.",
+      "evidenceFor": "They used harsh words and argued with me.",
+      "evidenceAgainst": "Some family members have supported me before; I have planned carefully and I have backup options.",
+      "alternativeThought": "This reflects their worry and viewpoint; I have reasons and a plan, and I can adjust my decision with full information.",
+      "note": "They are expressing concern — I will listen calmly and explain my plan."
+    },
+    {
+      "title": "5 — Frustration About Fitness Efforts",
+      "situation": "I have been exercising and dieting for a month, but my weight has not gone down.",
+      "automaticThought": "My efforts are useless; I will never succeed.",
+      "evidenceFor": "The number on the scale changed very little, and I feel discouraged.",
+      "evidenceAgainst": "My energy and stamina have improved; my clothes feel different; weight loss varies from person to person.",
+      "alternativeThought": "Progress is not measured only by the scale; I can focus on small goals and adjust my strategy.",
+      "note": "I will track my habits, get brief advice from a nutritionist, and set a two-week goal."
+    }
+  ]
+  

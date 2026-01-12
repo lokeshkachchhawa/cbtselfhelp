@@ -333,30 +333,30 @@ class _TutorialYoutubePlayerState extends State<TutorialYoutubePlayer> {
                   ),
 
                 // Chapters button (custom overlay for embedded view)
-                Positioned(
-                  bottom: 8,
-                  right: 8,
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(10),
-                      onTap: _openChaptersSheet,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.white12),
-                        ),
-                        padding: const EdgeInsets.all(8),
-                        child: const Icon(
-                          Icons.menu_book_rounded,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                // Positioned(
+                //   bottom: 8,
+                //   right: 8,
+                //   child: Material(
+                //     color: Colors.transparent,
+                //     child: InkWell(
+                //       borderRadius: BorderRadius.circular(10),
+                //       onTap: _openChaptersSheet,
+                //       child: Container(
+                //         decoration: BoxDecoration(
+                //           color: Colors.black54,
+                //           borderRadius: BorderRadius.circular(10),
+                //           border: Border.all(color: Colors.white12),
+                //         ),
+                //         padding: const EdgeInsets.all(8),
+                //         child: const Icon(
+                //           Icons.menu_book_rounded,
+                //           color: Colors.white,
+                //           size: 20,
+                //         ),
+                //       ),
+                //     ),
+                //   ),
+                // ),
               ],
             ),
           ),
