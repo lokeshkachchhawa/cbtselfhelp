@@ -298,6 +298,21 @@ class _CancelSubscriptionScreenState extends State<CancelSubscriptionScreen> {
       final fn = FirebaseFunctions.instanceFor(
         region: 'asia-south1',
       ).httpsCallable('subsCancel');
+      final user = FirebaseAuth.instance.currentUser!;
+      final email = user.email;
+
+      await FirebaseFirestore.instance
+          .collection("subscription_cancellations")
+          .add({
+            "uid": user.uid,
+            "email": email, // 👈 added
+            "subscriptionId": _subscriptionId,
+            "plan": _plan,
+            "platform": "ios",
+            "cancelReason": _cancelReason,
+            "cancelFeedback": _feedbackCtrl.text.trim(),
+            "createdAt": FieldValue.serverTimestamp(),
+          });
 
       final res = await fn.call({
         'subscriptionId': _subscriptionId!,
