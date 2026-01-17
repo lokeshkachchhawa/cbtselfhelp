@@ -1,5 +1,6 @@
 // lib/screens/home_page.dart
 import 'dart:convert';
+import 'dart:ui';
 
 import 'package:cbt_drktv/utils/logout_helper.dart';
 
@@ -900,81 +901,133 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Widget _buildGoodMomentsCard() {
     return GestureDetector(
       onTap: () => Navigator.pushNamed(context, '/good-moments'),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(24),
           gradient: LinearGradient(
-            colors: [teal4.withOpacity(0.95), teal6.withOpacity(0.95)],
+            colors: [
+              teal4.withOpacity(0.98),
+              teal5.withOpacity(0.96),
+              teal6.withOpacity(0.94),
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          border: Border.all(color: Colors.white.withOpacity(0.12)),
+          border: Border.all(color: Colors.white.withOpacity(0.15), width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: teal3.withOpacity(0.35),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
+              color: teal3.withOpacity(0.4),
+              blurRadius: 24,
+              spreadRadius: 2,
+              offset: const Offset(0, 10),
             ),
             BoxShadow(
-              color: Colors.black.withOpacity(0.4),
-              blurRadius: 14,
-              offset: const Offset(0, 6),
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              // Icon
-              Container(
-                width: 54,
-                height: 54,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(colors: [teal2, teal3]),
-                ),
-                child: const Icon(
-                  Icons.favorite,
-                  color: Colors.white,
-                  size: 28,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.white.withOpacity(0.1),
+                    Colors.white.withOpacity(0.05),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
-              const SizedBox(width: 14),
-
-              // Text
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'Good Moments Diary',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    // Enhanced Icon Container
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.white.withOpacity(0.25),
+                            Colors.white.withOpacity(0.1),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.2),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: teal2.withOpacity(0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.favorite_rounded,
+                        color: Colors.orange,
+                        size: 30,
                       ),
                     ),
-                    SizedBox(height: 6),
-                    Text(
-                      'Write calm, safe or happy moments.\nRead them when anxiety hits.',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 13,
-                        height: 1.35,
+                    const SizedBox(width: 16),
+
+                    // Enhanced Text Content
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Good Moments Diary',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Write calm, safe or happy moments.\nRead them when anxiety hits.',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.85),
+                              fontSize: 13.5,
+                              height: 1.4,
+                              letterSpacing: 0.1,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Enhanced Arrow with Container
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withOpacity(0.15),
+                      ),
+                      child: Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        color: Colors.white.withOpacity(0.9),
+                        size: 16,
                       ),
                     ),
                   ],
                 ),
               ),
-
-              const Icon(
-                Icons.arrow_forward_ios,
-                color: Colors.white70,
-                size: 16,
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -1961,7 +2014,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
                       _buildGoodMomentsCard(), // ⭐ ADD HERE ⭐
 
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 5),
 
                       // Programs carousel (simple horizontal list)
                       const Text(

@@ -506,7 +506,6 @@ class _GoodMomentsDiaryPageState extends State<GoodMomentsDiaryPage> {
 
                   const SizedBox(height: 16),
 
-                  // Divider
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 20),
                     child: Divider(color: Colors.white10, height: 1),
@@ -514,7 +513,7 @@ class _GoodMomentsDiaryPageState extends State<GoodMomentsDiaryPage> {
 
                   const SizedBox(height: 12),
 
-                  /// 🔑 Scrollable filter list
+                  /// 🔑 FILTER LIST WITH COUNTS
                   Expanded(
                     child: SingleChildScrollView(
                       physics: const BouncingScrollPhysics(),
@@ -523,6 +522,11 @@ class _GoodMomentsDiaryPageState extends State<GoodMomentsDiaryPage> {
                         children: [
                           ...['All', ..._feelings].map((f) {
                             final selected = _filter == f;
+
+                            // ✅ COUNT LOGIC
+                            final int count = f == 'All'
+                                ? _items.length
+                                : _items.where((m) => m.feeling == f).length;
 
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 10),
@@ -607,6 +611,37 @@ class _GoodMomentsDiaryPageState extends State<GoodMomentsDiaryPage> {
                                           ),
                                         ),
                                       ),
+
+                                      // 🔢 COUNT BADGE
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: selected
+                                              ? AppTheme.teal3.withOpacity(0.25)
+                                              : Colors.black26,
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          border: Border.all(
+                                            color: selected
+                                                ? AppTheme.teal3
+                                                : Colors.white12,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          count.toString(),
+                                          style: TextStyle(
+                                            color: selected
+                                                ? AppTheme.teal1
+                                                : Colors.white70,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -650,9 +685,12 @@ class _GoodMomentsDiaryPageState extends State<GoodMomentsDiaryPage> {
           ),
         ),
         actions: [
-          if (_items.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.help_outline),
+          // HELP / TUTORIAL ICON (always visible)
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: IconButton(
+              icon: const Icon(Icons.help_outline_rounded, size: 22),
+              tooltip: 'How this works',
               onPressed: () {
                 showModalBottomSheet(
                   context: context,
@@ -662,29 +700,36 @@ class _GoodMomentsDiaryPageState extends State<GoodMomentsDiaryPage> {
                 );
               },
             ),
-
-          IconButton(
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(Icons.filter_list),
-                if (_filter != 'All')
-                  Positioned(
-                    right: -2,
-                    top: -2,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Colors.redAccent,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            onPressed: _showFilterOptions,
           ),
+
+          // FILTER ICON (only when items exist)
+          if (_items.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: IconButton(
+                icon: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Icon(Icons.filter_list_rounded, size: 22),
+                    if (_filter != 'All')
+                      Positioned(
+                        right: -2,
+                        top: -2,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: Colors.redAccent,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                tooltip: 'Filter moments',
+                onPressed: _showFilterOptions,
+              ),
+            ),
         ],
       ),
       floatingActionButton: GlowPulse(
@@ -849,39 +894,6 @@ class _GoodMomentsDiaryPageState extends State<GoodMomentsDiaryPage> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget buildGlowingCategoryPill(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFFFF5F6D), // pink-red
-            Color(0xFFFF2E63), // deep pink
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFFF5F6D).withOpacity(0.55),
-            blurRadius: 10,
-            spreadRadius: 1,
-          ),
-        ],
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w700,
-          fontSize: 12,
-          letterSpacing: 0.3,
         ),
       ),
     );
@@ -1264,7 +1276,7 @@ class _AddMomentSheetState extends State<AddMomentSheet> {
         ),
         decoration: BoxDecoration(
           color: AppTheme.surfaceDark,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           border: const Border(top: BorderSide(color: Colors.white10)),
           boxShadow: [
             BoxShadow(
@@ -1276,46 +1288,46 @@ class _AddMomentSheetState extends State<AddMomentSheet> {
         ),
         child: Column(
           children: [
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
 
             // Drag Handle
             Container(
-              width: 40,
-              height: 4,
+              width: 36,
+              height: 3,
               decoration: BoxDecoration(
                 color: Colors.white24,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
 
             // Header Section
             Column(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: AppTheme.teal3.withOpacity(0.15),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
                     Icons.auto_awesome,
-                    color: AppTheme.teal1,
-                    size: 28,
+                    color: Colors.orange,
+                    size: 24,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 const Text(
                   'Capture a Good Moment',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 24,
+                    fontSize: 20,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.5,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 32),
                   child: Text(
@@ -1323,15 +1335,15 @@ class _AddMomentSheetState extends State<AddMomentSheet> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: AppTheme.dimText,
-                      fontSize: 14,
-                      height: 1.4,
+                      fontSize: 13,
+                      height: 1.3,
                     ),
                   ),
                 ),
               ],
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
 
             // Scrollable Content
             Expanded(
@@ -1339,96 +1351,112 @@ class _AddMomentSheetState extends State<AddMomentSheet> {
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.only(bottom: 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Feeling Selection
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
+                    /// ================= FEELING SECTION =================
+                    Container(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.08),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            Icons.sentiment_satisfied_alt,
-                            size: 18,
-                            color: AppTheme.teal1,
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 20),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.sentiment_satisfied_alt,
+                                  size: 16,
+                                  color: AppTheme.teal1,
+                                ),
+                                SizedBox(width: 6),
+                                Text(
+                                  'How are you feeling?',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          SizedBox(width: 8),
-                          Text(
-                            'How are you feeling?',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
+                          const SizedBox(height: 10),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              alignment: WrapAlignment.center,
+                              children: _feelings.map((f) {
+                                final active = _selectedFeeling == f;
+                                return ChoiceChip(
+                                  label: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(_getFeelingEmoji(f)),
+                                      const SizedBox(width: 4),
+                                      Text(f),
+                                    ],
+                                  ),
+                                  selected: active,
+                                  selectedColor: AppTheme.teal3,
+                                  backgroundColor: AppTheme.cardDark,
+                                  side: BorderSide(
+                                    color: active
+                                        ? AppTheme.teal3
+                                        : Colors.white10,
+                                    width: active ? 1.5 : 1,
+                                  ),
+                                  labelStyle: TextStyle(
+                                    color: active
+                                        ? Colors.black
+                                        : Colors.white70,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 8,
+                                  ),
+                                  onSelected: (_) =>
+                                      setState(() => _selectedFeeling = f),
+                                );
+                              }).toList(),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        alignment: WrapAlignment.center,
-                        children: _feelings.map((f) {
-                          final active = _selectedFeeling == f;
-                          return AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            child: ChoiceChip(
-                              label: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(_getFeelingEmoji(f)),
-                                  const SizedBox(width: 6),
-                                  Text(f),
-                                ],
-                              ),
-                              selected: active,
-                              selectedColor: AppTheme.teal3,
-                              backgroundColor: AppTheme.cardDark,
-                              side: BorderSide(
-                                color: active ? AppTheme.teal3 : Colors.white10,
-                                width: active ? 1.5 : 1,
-                              ),
-                              labelStyle: TextStyle(
-                                color: active ? Colors.black : Colors.white70,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 10,
-                              ),
-                              elevation: active ? 2 : 0,
-                              shadowColor: AppTheme.teal3.withOpacity(0.3),
-                              onSelected: (_) =>
-                                  setState(() => _selectedFeeling = f),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
 
-                    const SizedBox(height: 24),
-
-                    // Image Section
+                    /// ================= IMAGE SECTION =================
+                    // ================= IMAGE SECTION =================
                     const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 20),
                       child: Row(
                         children: [
                           Icon(
                             Icons.image_outlined,
-                            size: 18,
+                            size: 16,
                             color: AppTheme.teal1,
                           ),
-                          SizedBox(width: 8),
+                          SizedBox(width: 6),
                           Text(
                             'Add photos',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 14,
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -1437,40 +1465,41 @@ class _AddMomentSheetState extends State<AddMomentSheet> {
                             'Optional',
                             style: TextStyle(
                               color: AppTheme.dimText,
-                              fontSize: 12,
+                              fontSize: 11,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 12),
+
+                    const SizedBox(height: 10),
+
                     SizedBox(
-                      height: 140,
+                      height: 110,
                       child: ListView(
                         scrollDirection: Axis.horizontal,
                         physics: const BouncingScrollPhysics(),
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         children: [
-                          // Add Image Button
+                          // ➕ ADD IMAGE BUTTON
                           GestureDetector(
                             onTap: _showImageSourcePicker,
                             child: Container(
-                              width: 140,
-                              margin: const EdgeInsets.only(right: 12),
+                              width: 110,
+                              margin: const EdgeInsets.only(right: 10),
                               decoration: BoxDecoration(
                                 color: AppTheme.cardDark,
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
                                   color: AppTheme.teal3.withOpacity(0.3),
                                   width: 1.5,
-                                  strokeAlign: BorderSide.strokeAlignInside,
                                 ),
                               ),
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.all(12),
+                                    padding: const EdgeInsets.all(10),
                                     decoration: BoxDecoration(
                                       color: AppTheme.teal3.withOpacity(0.15),
                                       shape: BoxShape.circle,
@@ -1478,15 +1507,15 @@ class _AddMomentSheetState extends State<AddMomentSheet> {
                                     child: const Icon(
                                       Icons.add_a_photo_rounded,
                                       color: AppTheme.teal1,
-                                      size: 24,
+                                      size: 20,
                                     ),
                                   ),
-                                  const SizedBox(height: 8),
+                                  const SizedBox(height: 6),
                                   const Text(
                                     'Add Photo',
                                     style: TextStyle(
                                       color: Colors.white70,
-                                      fontSize: 12,
+                                      fontSize: 11,
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -1495,18 +1524,19 @@ class _AddMomentSheetState extends State<AddMomentSheet> {
                             ),
                           ),
 
-                          // Selected Images
+                          // 🖼️ SELECTED IMAGES WITH NUMBERING
                           ..._selectedImages.asMap().entries.map((entry) {
                             final index = entry.key;
                             final file = entry.value;
 
                             return Container(
-                              width: 140,
-                              margin: const EdgeInsets.only(right: 12),
+                              width: 110,
+                              margin: const EdgeInsets.only(right: 10),
                               child: Stack(
                                 children: [
+                                  // IMAGE
                                   ClipRRect(
-                                    borderRadius: BorderRadius.circular(16),
+                                    borderRadius: BorderRadius.circular(14),
                                     child: Container(
                                       decoration: BoxDecoration(
                                         border: Border.all(
@@ -1514,7 +1544,7 @@ class _AddMomentSheetState extends State<AddMomentSheet> {
                                             0.3,
                                           ),
                                         ),
-                                        borderRadius: BorderRadius.circular(16),
+                                        borderRadius: BorderRadius.circular(14),
                                       ),
                                       child: Image.file(
                                         file,
@@ -1524,10 +1554,11 @@ class _AddMomentSheetState extends State<AddMomentSheet> {
                                       ),
                                     ),
                                   ),
-                                  // Remove Button
+
+                                  // ❌ REMOVE BUTTON
                                   Positioned(
-                                    top: 8,
-                                    right: 8,
+                                    top: 6,
+                                    right: 6,
                                     child: Material(
                                       color: Colors.transparent,
                                       child: InkWell(
@@ -1539,7 +1570,7 @@ class _AddMomentSheetState extends State<AddMomentSheet> {
                                         },
                                         borderRadius: BorderRadius.circular(20),
                                         child: Container(
-                                          padding: const EdgeInsets.all(6),
+                                          padding: const EdgeInsets.all(5),
                                           decoration: BoxDecoration(
                                             color: Colors.black87,
                                             shape: BoxShape.circle,
@@ -1550,31 +1581,32 @@ class _AddMomentSheetState extends State<AddMomentSheet> {
                                           ),
                                           child: const Icon(
                                             Icons.close_rounded,
-                                            size: 16,
+                                            size: 14,
                                             color: Colors.white,
                                           ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                  // Image Number Badge
+
+                                  // 🔢 NUMBER BADGE
                                   Positioned(
-                                    bottom: 8,
-                                    left: 8,
+                                    bottom: 6,
+                                    left: 6,
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
+                                        horizontal: 6,
+                                        vertical: 3,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.black54,
-                                        borderRadius: BorderRadius.circular(8),
+                                        color: Colors.black.withOpacity(0.6),
+                                        borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Text(
                                         '${index + 1}',
                                         style: const TextStyle(
                                           color: Colors.white,
-                                          fontSize: 12,
+                                          fontSize: 11,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
@@ -1588,78 +1620,99 @@ class _AddMomentSheetState extends State<AddMomentSheet> {
                       ),
                     ),
 
-                    const SizedBox(height: 24),
+                    // =================================================
 
-                    // Text Input Section
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
+                    /// ================= TEXT SECTION =================
+                    Container(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.08),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            Icons.edit_note_rounded,
-                            size: 18,
-                            color: AppTheme.teal1,
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 20),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.edit_note_rounded,
+                                  size: 16,
+                                  color: AppTheme.teal1,
+                                ),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Describe your moment',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          SizedBox(width: 8),
-                          Text(
-                            'Describe your moment',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
+                          const SizedBox(height: 10),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: TextField(
+                              controller: _textCtrl,
+                              minLines: 4,
+                              maxLines: null,
+                              maxLength: 500,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                height: 1.5,
+                              ),
+                              decoration: InputDecoration(
+                                hintText:
+                                    'What happened? How did it make you feel?\n\nDescribe the details that made this moment special...',
+                                hintStyle: const TextStyle(
+                                  color: Colors.white38,
+                                  height: 1.4,
+                                ),
+                                filled: true,
+                                fillColor: AppTheme.cardDark,
+                                counterStyle: const TextStyle(
+                                  color: AppTheme.dimText,
+                                  fontSize: 11,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: const BorderSide(
+                                    color: Colors.white10,
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: const BorderSide(
+                                    color: Colors.white10,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: const BorderSide(
+                                    color: AppTheme.teal3,
+                                    width: 2,
+                                  ),
+                                ),
+                                contentPadding: const EdgeInsets.all(14),
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: TextField(
-                        controller: _textCtrl,
-                        autofocus: true,
-                        minLines: 5,
-                        maxLines: null,
-                        maxLength: 500,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          height: 1.6,
-                        ),
-                        decoration: InputDecoration(
-                          hintText:
-                              'What happened? How did it make you feel?\n\nDescribe the details that made this moment special...',
-                          hintStyle: const TextStyle(
-                            color: Colors.white38,
-                            height: 1.5,
-                          ),
-                          filled: true,
-                          fillColor: AppTheme.cardDark,
-                          counterStyle: const TextStyle(
-                            color: AppTheme.dimText,
-                            fontSize: 11,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(color: Colors.white10),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(color: Colors.white10),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(
-                              color: AppTheme.teal3,
-                              width: 2,
-                            ),
-                          ),
-                          contentPadding: const EdgeInsets.all(16),
-                        ),
-                      ),
-                    ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                   ],
                 ),
               ),
@@ -1667,7 +1720,7 @@ class _AddMomentSheetState extends State<AddMomentSheet> {
 
             // Save Button
             Container(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
               decoration: const BoxDecoration(
                 border: Border(
                   top: BorderSide(color: Colors.white10, width: 0.5),
@@ -1678,9 +1731,9 @@ class _AddMomentSheetState extends State<AddMomentSheet> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.teal4,
                   foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(56),
+                  minimumSize: const Size.fromHeight(50),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                   disabledBackgroundColor: AppTheme.teal6,
                   elevation: 0,
@@ -1688,8 +1741,8 @@ class _AddMomentSheetState extends State<AddMomentSheet> {
                 ),
                 child: _saving
                     ? const SizedBox(
-                        height: 20,
-                        width: 20,
+                        height: 18,
+                        width: 18,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.5,
                           valueColor: AlwaysStoppedAnimation<Color>(
@@ -1702,14 +1755,14 @@ class _AddMomentSheetState extends State<AddMomentSheet> {
                         children: [
                           const Icon(
                             Icons.check_circle_outline_rounded,
-                            size: 20,
+                            size: 18,
                           ),
                           const SizedBox(width: 8),
                           const Text(
                             'Save Moment',
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
-                              fontSize: 16,
+                              fontSize: 15,
                               letterSpacing: 0.3,
                             ),
                           ),
@@ -1821,33 +1874,7 @@ class MomentDetailSheet extends StatelessWidget {
                 child: Row(
                   children: [
                     // Feeling Badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppTheme.teal3.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: AppTheme.teal3.withOpacity(0.3),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            moment.feeling,
-                            style: const TextStyle(
-                              color: AppTheme.teal1,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    buildGlowingCategoryPill(moment.feeling),
                     const Spacer(),
 
                     // Action Buttons with Tooltips
@@ -2277,4 +2304,57 @@ class _ImageSourceOption extends StatelessWidget {
       ),
     );
   }
+}
+
+Widget buildGlowingCategoryPill(String text) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(14),
+
+      // 🌈 Gradient background
+      gradient: const LinearGradient(
+        colors: [
+          Color(0xFFFF5F6D), // soft pink-red
+          Color(0xFFFF2E63), // deep rose
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+
+      // ✨ Glow effect
+      boxShadow: [
+        BoxShadow(
+          color: const Color(0xFFFF5F6D).withOpacity(0.55),
+          blurRadius: 12,
+          spreadRadius: 1,
+        ),
+      ],
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // optional small dot
+        Container(
+          width: 6,
+          height: 6,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 6),
+
+        Text(
+          text,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+            letterSpacing: 0.4,
+          ),
+        ),
+      ],
+    ),
+  );
 }
