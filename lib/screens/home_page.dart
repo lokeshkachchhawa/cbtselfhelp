@@ -199,101 +199,178 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       child: Container(
         margin: const EdgeInsets.only(bottom: 14),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           gradient: LinearGradient(
-            colors: [teal3.withOpacity(0.85), teal6.withOpacity(0.85)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFF0D4D4D).withOpacity(0.95), // Dark teal
+              const Color(0xFF1A3838).withOpacity(0.9), // Deeper teal
+              const Color(0xFF2D1F1A).withOpacity(0.95), // Dark amber brown
+            ],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            stops: const [0.0, 0.5, 1.0],
           ),
-          border: Border.all(color: Colors.white.withOpacity(0.08)),
+          border: Border.all(
+            color: const Color(0xFF5A7A7A).withOpacity(0.4),
+            width: 1.5,
+          ),
           boxShadow: [
             BoxShadow(
-              color: teal3.withOpacity(0.45),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
+              color: const Color(0xFF0D4D4D).withOpacity(0.4),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
+              spreadRadius: 2,
+            ),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.5),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
-        child: Row(
+        child: Stack(
           children: [
-            // Doctor Image
-            ClipRRect(
-              borderRadius: const BorderRadius.horizontal(
-                left: Radius.circular(18),
-              ),
-              child: Image.asset(
-                'images/drkanhaiya.png',
-                width: 90,
-                height: 110,
-                fit: BoxFit.cover,
+            // Subtle mandala pattern overlay
+            Positioned(
+              right: -20,
+              top: -20,
+              child: Opacity(
+                opacity: 0.08,
+                child: Icon(Icons.circle, size: 140, color: Colors.white),
               ),
             ),
 
-            const SizedBox(width: 14),
-
-            // Text
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 14,
-                  horizontal: 4,
+            Row(
+              children: [
+                // Doctor Image with subtle glow
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.horizontal(
+                      left: Radius.circular(20),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF0D7D7D).withOpacity(0.5),
+                        blurRadius: 12,
+                        offset: const Offset(4, 0),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.horizontal(
+                      left: Radius.circular(20),
+                    ),
+                    child: Image.asset(
+                      'images/drkanhaiya.png',
+                      width: 90,
+                      height: 110,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Text(
-                        "DOCTOR GUIDED",
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.1,
+
+                const SizedBox(width: 16),
+
+                // Text
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 16,
+                      horizontal: 4,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 11,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                const Color(0xFF0D7D7D).withOpacity(0.3),
+                                const Color(0xFFB8860B).withOpacity(0.25),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: const Color(0xFF5A9A9A).withOpacity(0.4),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.spa,
+                                size: 10,
+                                color: const Color(0xFFE8DCC8),
+                              ),
+                              const SizedBox(width: 5),
+                              const Text(
+                                "MINDFUL JOURNEY",
+                                style: TextStyle(
+                                  color: Color(0xFFE8DCC8),
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+
+                        const SizedBox(height: 9),
+
+                        const Text(
+                          "Guided Audio's by Dr. Kanhaiya",
+                          style: TextStyle(
+                            color: Color(0xFFFFF8E7),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            height: 1.25,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+
+                        const SizedBox(height: 6),
+
+                        Text(
+                          "Find inner peace with calming voice guidance",
+                          style: TextStyle(
+                            color: const Color(0xFFD4C9B0).withOpacity(0.9),
+                            fontSize: 12.5,
+                            height: 1.3,
+                            letterSpacing: 0.1,
+                          ),
+                        ),
+                      ],
                     ),
-
-                    const SizedBox(height: 8),
-
-                    const Text(
-                      "Guided Audios by Dr. Kanhaiya",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        height: 1.2,
-                      ),
-                    ),
-
-                    const SizedBox(height: 6),
-
-                    Text(
-                      "Calming voice guidance for anxiety, OCD and stress",
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.85),
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
 
-            const Padding(
-              padding: EdgeInsets.only(right: 12),
-              child: Icon(
-                Icons.play_circle_fill,
-                color: Colors.white,
-                size: 36,
-              ),
+                Padding(
+                  padding: const EdgeInsets.only(right: 14),
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFF0D7D7D).withOpacity(0.5),
+                          const Color(0xFFDAA520).withOpacity(0.4),
+                        ],
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.play_circle_filled,
+                      color: Color(0xFFFFF8E7),
+                      size: 38,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -817,6 +894,90 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildGoodMomentsCard() {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, '/good-moments'),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            colors: [teal4.withOpacity(0.95), teal6.withOpacity(0.95)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          border: Border.all(color: Colors.white.withOpacity(0.12)),
+          boxShadow: [
+            BoxShadow(
+              color: teal3.withOpacity(0.35),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.4),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              // Icon
+              Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(colors: [teal2, teal3]),
+                ),
+                child: const Icon(
+                  Icons.favorite,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 14),
+
+              // Text
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Good Moments Diary',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      'Write calm, safe or happy moments.\nRead them when anxiety hits.',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const Icon(
+                Icons.arrow_forward_ios,
+                color: Colors.white70,
+                size: 16,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -1792,11 +1953,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       const SizedBox(height: 12),
                       _buildGuidedAudiosCard(),
 
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       _buildThoughtDetectiveCard(),
                       const SizedBox(height: 10),
                       _buildCoursesSection(),
                       const SizedBox(height: 16),
+
+                      _buildGoodMomentsCard(), // ⭐ ADD HERE ⭐
+
+                      const SizedBox(height: 10),
 
                       // Programs carousel (simple horizontal list)
                       const Text(
@@ -1807,6 +1972,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           color: Colors.white,
                         ),
                       ),
+
                       const SizedBox(height: 8),
                       _buildProgramsCarousel(),
 

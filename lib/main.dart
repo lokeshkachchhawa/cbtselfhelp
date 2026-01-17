@@ -12,6 +12,7 @@ import 'package:cbt_drktv/screens/cbt_game.dart';
 import 'package:cbt_drktv/screens/course_detail_page.dart';
 import 'package:cbt_drktv/screens/doctor_home.dart';
 import 'package:cbt_drktv/screens/drktv_chat_screen.dart';
+import 'package:cbt_drktv/screens/good_moments_diary.dart';
 import 'package:cbt_drktv/screens/home_page.dart';
 import 'package:cbt_drktv/screens/relax_page.dart';
 
@@ -28,7 +29,6 @@ import 'package:provider/provider.dart';
 // Screens & utils
 import 'screens/signin_page.dart';
 import 'screens/signup_page.dart';
-import 'screens/onboarding_page.dart';
 import 'screens/baseline_page.dart';
 import 'utils/auth_router.dart';
 import 'screens/paywall_screen.dart'; // <-- ADD THIS
@@ -79,7 +79,7 @@ class MyApp extends StatelessWidget {
 
         routes: {
           '/home': (_) => const HomePage(),
-          '/onboarding': (_) => OnboardingPage(),
+
           '/baseline': (_) => BaselinePage(),
           '/thought': (_) => const ThoughtRecordPage(),
           '/signin': (_) => const SignInScreen(),
@@ -109,6 +109,7 @@ class MyApp extends StatelessWidget {
           "/cbt-game": (_) => const CBTGameScreen(),
           '/cancel': (_) => const CancelSubscriptionScreen(),
           '/community': (_) => const CommunityPage(),
+          '/good-moments': (context) => const GoodMomentsDiaryPage(),
         },
       ),
     );

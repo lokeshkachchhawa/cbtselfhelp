@@ -458,6 +458,58 @@ exports.geminiGenerate = onCall(
   }
 );
 
+exports.geminiGenerateTest = onCall(
+  { region: 'asia-south1', secrets: [GEMINI_API_KEY], timeoutSeconds: 30, memory: '256MiB' },
+  async (req) => {
+    try {
+      if (!req.auth) throw new HttpsError('unauthenticated', 'Sign in required');
+
+      const { prompt = '', mimeType = 'text' } = req.data || {};
+      if (!prompt || typeof prompt !== 'string') {
+        throw new HttpsError('invalid-argument', 'Provide a non-empty prompt');
+      }
+
+      // 🔥 Load TEST AI config
+      const cfgSnap = await admin.firestore()
+        .collection('app_config')
+        .doc('ai')
+        .get();
+
+      const cfg = cfgSnap.exists ? cfgSnap.data() : {};
+
+      const systemPrompt = cfg.systemPrompt || 'You are a CBT test assistant.';
+      const temperature = typeof cfg.temperature === 'number' ? cfg.temperature : 0.7;
+      const maxOutputTokens = typeof cfg.maxTokens === 'number' ? cfg.maxTokens : 800;
+
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY.value());
+
+      const model = genAI.getGenerativeModel({
+        model: GEMINI_MODEL(),
+        systemInstruction: systemPrompt,
+      });
+
+      const result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature,
+          maxOutputTokens,
+          ...(mimeType === 'json'
+            ? { responseMimeType: 'application/json' }
+            : {}),
+        },
+      });
+
+      const text = result?.response?.text();
+      if (!text) throw new Error('Empty response from Gemini');
+
+      return { ok: true, model: GEMINI_MODEL(), text };
+    } catch (err) {
+      console.error('geminiGenerateTest error:', err?.message || err);
+      if (err instanceof HttpsError) throw err;
+      throw new HttpsError('internal', err?.message || 'Unknown server error');
+    }
+  }
+);
 
 // ---------- Daily CBT Tip Scheduler (40-day loop) ----------
 exports.sendDailyCbtTip = onSchedule(

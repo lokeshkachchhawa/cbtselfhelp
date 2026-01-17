@@ -492,7 +492,7 @@ ${tr.alternativeThought}
     try {
       final reply = await _callGeminiCF(
         prompt: prompt.toString(),
-        system: _systemPromptForCBT(),
+
         temperature: 0.8,
         maxOutputTokens: 800,
       );
@@ -505,20 +505,19 @@ ${tr.alternativeThought}
 
   Future<String> _callGeminiCF({
     required String prompt,
-    String? system,
     double temperature = 0.7,
     int maxOutputTokens = 800,
-    String mimeType = 'text', // or 'json'
+    String mimeType = 'text',
   }) async {
     try {
-      final callable = _functions.httpsCallable('geminiGenerate');
-      final resp = await callable.call(<String, dynamic>{
+      final callable = _functions.httpsCallable('geminiGenerateTest');
+      final resp = await callable.call({
         'prompt': prompt,
-        if (system != null && system.isNotEmpty) 'system': system,
         'temperature': temperature,
         'maxOutputTokens': maxOutputTokens,
         'mimeType': mimeType,
       });
+
       final data = Map<String, dynamic>.from(resp.data as Map);
       if (data['ok'] == true) {
         final text = (data['text'] as String?)?.trim() ?? '';
@@ -1925,33 +1924,6 @@ ${tr.alternativeThought}
   // ---------------------------------------------------------
   // ✅ Keep system prompt as-is
   // ---------------------------------------------------------
-  String _systemPromptForCBT() {
-    return '''
-Role: Dr. Kanhaiya (DrKtv), MBBS MD (Psychiatry). Specialist in CBT & ERP.
-Objective: Retrain the user's nervous system by discouraging reassurance-seeking and promoting exposure/uncertainty tolerance.
-
-Rules:
-- NO reassurance (don't say: "you're safe/okay").
-- NO fear removal. Focus on non-reaction to fear.
-- Distinguish: Thought ≠ Danger; Sensation ≠ Harm.
-- Identify compulsions: (checking, analyzing, googling).
-- Language: If Hindi/Hinglish, use Hindi (Devanagari) with English terms in brackets (e.g., विचार (thought)).
-- Tone: Calm, doctor-like, firm, non-motivational. No long greetings. 1-2 emojis max.
-
-Response Structure:
-1. Label: Name the event (e.g., "Anxiety Loop").
-2. Mechanics: 1 sentence on why it feels real.
-3. Instruction: Label -> Allow -> No Action -> Resume Life.
-4. Practice: 1-2 short lines of practice (e.g., "Let the thought sit there").
-
-Safety & Admin:
-- Self-harm: Break character. Advise immediate professional help.
-- Appointments: Only if asked, provide +91 77377 5617 (8am-8pm).
-
-Goal: Training the nervous system, not comforting it.
-
-''';
-  }
 
   // New helper: ensure chatIndex doc exists and update pending count/lastMessage
   Future<void> _updateChatIndexForPending(String lastMessageText) async {
@@ -2092,7 +2064,7 @@ ${worksheetMap['dispute'] ?? ''}
     try {
       final reply = await _callGeminiCF(
         prompt: prompt.toString(),
-        system: _systemPromptForCBT(),
+
         temperature: 0.8,
         maxOutputTokens: 800,
       );
@@ -2354,7 +2326,7 @@ ${worksheetMap['dispute'] ?? ''}
       // 🔹 Generate AI response via Cloud Function → pending for doctor review
       final reply = await _callGeminiCF(
         prompt: fullPrompt,
-        system: _systemPromptForCBT(),
+
         temperature: 0.8,
         maxOutputTokens: 800,
         mimeType: 'text',
@@ -2391,39 +2363,22 @@ ${worksheetMap['dispute'] ?? ''}
   }
 
   String _buildPromptWithContext(String latestUserText) {
-    const maxContextMessages = 8; // last 8 messages for context
-    final buffer = StringBuffer()
-      ..writeln(
-        'You are replying as Dr. Kanhaiya in a CBT-style mental health chat.',
-      )
-      ..writeln(
-        'Use the recent conversation to keep replies natural and contextual.',
-      )
-      ..writeln()
-      ..writeln('--- Conversation so far ---');
+    const maxContextMessages = 8;
+    final buffer = StringBuffer()..writeln('--- Conversation so far ---');
 
-    // Take last N messages
     final recent = _messages.length <= maxContextMessages
         ? _messages
         : _messages.sublist(_messages.length - maxContextMessages);
 
     for (final m in recent) {
-      // Worksheets are already described separately in messages, but you can skip them
       if (m.type == 'worksheet') continue;
-
       final who = m.isUser ? 'User' : 'Assistant';
       buffer.writeln('$who: ${m.text}');
     }
 
-    // Make sure latest user text is clearly at the end
     buffer
       ..writeln('User: $latestUserText')
-      ..writeln('--- End conversation ---')
-      ..writeln()
-      ..writeln(
-        'Now reply as Dr. Kanhaiya following the system prompt rules: '
-        'concise, warm, CBT-style, Hinglish/Hindi mix, and end with a small reflective/encouraging question.',
-      );
+      ..writeln('--- End conversation ---');
 
     return buffer.toString();
   }
