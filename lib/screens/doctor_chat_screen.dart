@@ -64,6 +64,16 @@ class _DoctorChatThreadState extends State<DoctorChatThread> {
     }
   }
 
+  void _copyText(String text) {
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Message copied'),
+        duration: Duration(seconds: 1),
+      ),
+    );
+  }
+
   void _scrollToBottom({bool animated = true}) {
     if (!_scrollController.hasClients) return;
 
@@ -492,56 +502,66 @@ class _DoctorChatThreadState extends State<DoctorChatThread> {
 
   Widget _buildUserBubble(String text, int ts) {
     final time = DateTime.fromMillisecondsSinceEpoch(ts);
+
     return Align(
       alignment: Alignment.centerLeft,
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.75,
-        ),
-        margin: const EdgeInsets.only(top: 8, bottom: 8, right: 60),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: _kUserBubbleColor,
-          borderRadius: const BorderRadius.only(
-            topRight: Radius.circular(16),
-            bottomRight: Radius.circular(16),
-            topLeft: Radius.circular(4),
-            bottomLeft: Radius.circular(16),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 2,
-              offset: const Offset(1, 1),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.75,
             ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            RichText(
-              text: _parseBoldSpans(
-                text,
-                const TextStyle(color: Colors.white, fontSize: 15, height: 1.4),
-                const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  height: 1.4,
-                  fontWeight: FontWeight.bold,
+            margin: const EdgeInsets.only(top: 8, right: 60),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: _kUserBubbleColor,
+              borderRadius: const BorderRadius.only(
+                topRight: Radius.circular(16),
+                bottomRight: Radius.circular(16),
+                topLeft: Radius.circular(4),
+                bottomLeft: Radius.circular(16),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RichText(
+                  text: _parseBoldSpans(
+                    text,
+                    const TextStyle(color: Colors.white, fontSize: 15),
+                    const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 6),
+                Text(
+                  '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 11,
+                  ),
+                ),
+              ],
             ),
+          ),
 
-            const SizedBox(height: 4),
-            Text(
-              '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.7),
-                fontSize: 11,
+          // 🔽 COPY BUTTON
+          Padding(
+            padding: const EdgeInsets.only(left: 8, top: 2),
+            child: TextButton.icon(
+              onPressed: () => _copyText(text),
+              icon: const Icon(Icons.copy, size: 14, color: Colors.white54),
+              label: const Text(
+                'Copy',
+                style: TextStyle(color: Colors.white54, fontSize: 12),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

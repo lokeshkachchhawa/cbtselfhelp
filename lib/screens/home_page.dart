@@ -999,7 +999,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Write calm, safe or happy moments.\nRead them when anxiety hits.',
+                            'Write calm, safe or happy moments with images locally.\nView them when anxiety hits.',
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.85),
                               fontSize: 13.5,
@@ -2104,62 +2104,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   // ---------------- Mood UI & local storage ----------------
-  Future<void> _startBaselineFlowFromSheet(BuildContext sheetCtx) async {
-    // Close the bottom sheet first
-    Navigator.of(sheetCtx).pop();
-
-    final auth = FirebaseAuth.instance;
-    final fs = FirebaseFirestore.instance;
-    final user = auth.currentUser;
-
-    if (user == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please sign in to start the baseline')),
-      );
-      Navigator.pushNamed(context, '/signin');
-      return;
-    }
-
-    // Quick read of user's baseline status
-    bool alreadyDone = false;
-    try {
-      final snap = await fs.collection('users').doc(user.uid).get();
-      alreadyDone = (snap.data()?['baselineCompleted'] == true);
-    } catch (_) {}
-
-    // If already completed, confirm retake
-    if (alreadyDone && mounted) {
-      final retake = await showDialog<bool>(
-        context: context,
-        builder: (dctx) => AlertDialog(
-          title: const Text('Retake baseline?'),
-          content: const Text(
-            'You have completed the baseline earlier. Do you want to retake it now?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dctx).pop(false),
-              child: const Text('Not now'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(dctx).pop(true),
-              child: const Text('Retake'),
-            ),
-          ],
-        ),
-      );
-      if (retake != true) return;
-    }
-
-    if (!mounted) return;
-    // Navigate to your Baseline page
-    // Option A: using a named route you’ve registered
-    Navigator.pushNamed(context, '/baseline');
-
-    // Option B (alternative): push the widget directly
-    // Navigator.push(context, MaterialPageRoute(builder: (_) => const BaselinePage()));
-  }
 
   Widget _buildMoodCard() {
     return InkWell(
@@ -2999,6 +2943,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // ---- Header ----
                 Row(
                   children: [
                     Expanded(
@@ -3017,23 +2962,35 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 ),
                 const SizedBox(height: 8),
 
-                // NEW: Baseline assessment launcher
+                // ---- Good Moment Diary (NEW) ----
                 ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: teal4,
-                    child: const Icon(Icons.assessment, color: Colors.white),
+                    backgroundColor: Colors.orange.withOpacity(0.9),
+                    child: const Icon(
+                      Icons.favorite_rounded,
+                      color: Colors.white,
+                    ),
                   ),
                   title: const Text(
-                    'Baseline assessment (PHQ-9)',
-                    style: TextStyle(color: Colors.white),
+                    'New good moment',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   subtitle: const Text(
-                    '9 quick questions to personalize your plan',
+                    'Save a calm, safe or happy moment',
                     style: TextStyle(color: Colors.white70),
                   ),
-                  onTap: () => _startBaselineFlowFromSheet(ctx),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    Navigator.pushNamed(context, '/good-moments');
+                  },
                 ),
 
+                const Divider(color: Colors.white12),
+
+                // ---- Thought Record ----
                 ListTile(
                   leading: CircleAvatar(
                     backgroundColor: teal4,
@@ -3052,6 +3009,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     Navigator.pushNamed(context, '/thought');
                   },
                 ),
+
+                // ---- ABCD Worksheet ----
                 ListTile(
                   leading: CircleAvatar(
                     backgroundColor: teal4,
@@ -3062,7 +3021,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     style: TextStyle(color: Colors.white),
                   ),
                   subtitle: const Text(
-                    'Open the ABCD worksheet (Activating event → Belief → Consequence → Dispute)',
+                    'Activating event → Belief → Consequence → Dispute',
                     style: TextStyle(color: Colors.white70),
                   ),
                   onTap: () {
@@ -3070,7 +3029,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     Navigator.pushNamed(context, '/abcd');
                   },
                 ),
-                const SizedBox(height: 8),
+
+                const SizedBox(height: 6),
               ],
             ),
           ),
