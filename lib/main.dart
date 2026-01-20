@@ -1,5 +1,6 @@
 // lib/main.dart
-import 'package:cbt_drktv/screens/community_feature.dart';
+import 'package:cbt_drktv/screens/community_discussions_page.dart';
+
 import 'package:cbt_drktv/programs/programs_page.dart';
 import 'package:cbt_drktv/relax/relax_sounds_page.dart';
 import 'package:cbt_drktv/relax/grounding_54321_page.dart';
@@ -108,7 +109,7 @@ class MyApp extends StatelessWidget {
           '/paywall': (_) => const PaywallScreen(),
           "/cbt-game": (_) => const CBTGameScreen(),
           '/cancel': (_) => const CancelSubscriptionScreen(),
-          '/community': (_) => const CommunityPage(),
+          '/community': (_) => const CommunityDiscussionsPage(),
           '/good-moments': (context) => const GoodMomentsDiaryPage(),
         },
       ),

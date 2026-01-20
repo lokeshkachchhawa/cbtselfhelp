@@ -11,6 +11,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   firebase_storage
   flutter_inappwebview_windows
   flutter_tts
+  share_plus
   url_launcher_windows
 )
 

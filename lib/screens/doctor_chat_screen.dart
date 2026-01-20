@@ -26,6 +26,19 @@ const Color _kBackgroundColor = Color.fromARGB(
 const Color _kApprovedColor = Color(0xFF007A78); // teal4 - approved
 const Color _kPendingColor = Color(0xFF79C2BF); // teal2 - pending (subtle)
 
+const List<String> kDiscussionCategories = [
+  'Anxiety',
+  'OCD',
+  'Overthinking',
+  'Depression',
+  'Stress',
+  'Relationship',
+  'Self-esteem',
+  'CBT',
+  'Sleep',
+  'Other',
+];
+
 class DoctorChatThread extends StatefulWidget {
   final String chatId;
   final String userName;
@@ -222,6 +235,111 @@ class _DoctorChatThreadState extends State<DoctorChatThread> {
     return TextSpan(children: spans, style: defaultStyle);
   }
 
+  Future<Map<String, String>?> _selectCategoryDialog() async {
+    String selected = kDiscussionCategories.first;
+    final customCtrl = TextEditingController();
+
+    return showDialog<Map<String, String>>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Select Category'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                value: selected,
+                items: kDiscussionCategories
+                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                    .toList(),
+                onChanged: (v) => selected = v!,
+                decoration: const InputDecoration(labelText: 'Category'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: customCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Custom label (optional)',
+                  hintText: 'e.g. Health anxiety',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final custom = customCtrl.text.trim();
+
+                Navigator.pop(ctx, {
+                  'primary': custom.isNotEmpty ? custom : selected,
+                });
+              },
+              child: const Text('Publish'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _publishAsPublicQA(
+    QueryDocumentSnapshot<Map<String, dynamic>> assistantDoc,
+  ) async {
+    final parentId = assistantDoc['parentId'] as String?;
+    if (parentId == null) return;
+
+    // Fetch original user question
+    final userSnap = await _firestore
+        .collection('chats')
+        .doc(widget.chatId)
+        .collection('messages')
+        .doc(parentId)
+        .get();
+
+    if (!userSnap.exists) return;
+
+    final originalQuestion = (userSnap['text'] ?? '').toString();
+    final answerText = (assistantDoc['text'] ?? '').toString();
+
+    // ✏️ STEP 1: Edit QUESTION only
+    final editedQuestion = await _editQuestionOnlyDialog(
+      initialQuestion: originalQuestion,
+    );
+    if (editedQuestion == null) return;
+
+    // 🏷 STEP 2: Select category
+    final category = await _selectCategoryDialog();
+    if (category == null) return;
+
+    // 🚀 STEP 3: Publish
+    await _firestore.collection('public_discussions').add({
+      'question': {'text': editedQuestion, 'askedAt': userSnap['timestamp']},
+      'answer': {
+        'text': answerText,
+        'answeredAt': assistantDoc['timestamp'],
+        'answeredBy': 'Dr. Kanhaiya',
+      },
+      'category': {'primary': category['primary']},
+      'meta': {'language': 'hi', 'source': 'doctor_chat', 'approved': true},
+      'stats': {'views': 0, 'likes': 0},
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    await assistantDoc.reference.set({
+      'publishedToPublic': true,
+      'publishedPublicAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('✅ Published as public Q&A')),
+      );
+    }
+  }
+
   Future<void> _sendManualDoctorMessage() async {
     final text = _assistantCtrl.text.trim();
     if (text.isEmpty) return;
@@ -328,6 +446,57 @@ class _DoctorChatThreadState extends State<DoctorChatThread> {
         ).showSnackBar(SnackBar(content: Text('Error approving: $e')));
       }
     }
+  }
+
+  Future<String?> _editQuestionOnlyDialog({
+    required String initialQuestion,
+  }) async {
+    final qCtrl = TextEditingController(text: initialQuestion);
+    final formKey = GlobalKey<FormState>();
+
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Edit Question (Public)'),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 700),
+            child: Form(
+              key: formKey,
+              child: TextFormField(
+                controller: qCtrl,
+                minLines: 3,
+                maxLines: 6,
+                maxLength: 1000,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Question',
+                  hintText:
+                      'Remove personal details, rephrase for public clarity',
+                ),
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? 'Question cannot be empty'
+                    : null,
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (!(formKey.currentState?.validate() ?? false)) return;
+                Navigator.pop(ctx, qCtrl.text.trim());
+              },
+              child: const Text('Next'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _editAssistantDialog(
@@ -570,6 +739,8 @@ class _DoctorChatThreadState extends State<DoctorChatThread> {
     required QueryDocumentSnapshot<Map<String, dynamic>> doc,
   }) {
     final data = doc.data();
+    final publishedToPublic = (data['publishedToPublic'] ?? false) as bool;
+
     final text = (data['text'] ?? '').toString();
     final approved = (data['approved'] ?? false) as bool;
     final edited = (data['editedByDoctor'] ?? false) as bool;
@@ -673,23 +844,59 @@ class _DoctorChatThreadState extends State<DoctorChatThread> {
                 ],
               ),
             ] else
-              Align(
-                alignment: Alignment.centerRight,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (edited)
-                      const Icon(Icons.edit, size: 14, color: Colors.white70),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Published • ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (edited)
+                        const Icon(Icons.edit, size: 14, color: Colors.white70),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Published • ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
                       ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  if (!publishedToPublic)
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.public, size: 16),
+                      label: const Text(
+                        'Publish as Q&A',
+                        style: TextStyle(fontSize: 13),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: Colors.white54),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        minimumSize: const Size(0, 32),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      onPressed: () => _publishAsPublicQA(doc),
+                    )
+                  else
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.verified, size: 14, color: Colors.white70),
+                        SizedBox(width: 6),
+                        Text(
+                          'Published to Community',
+                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                ],
               ),
           ],
         ),

@@ -2051,6 +2051,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         },
                       ),
 
+                      const SizedBox(height: 16),
+
+                      communityDiscussionCard(context),
+
                       const SizedBox(height: 24),
                     ],
                   ),
@@ -2098,6 +2102,82 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget communityDiscussionCard(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () => Navigator.pushNamed(context, '/community'),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF016C6C), // teal1
+              Color(0xFF004E4D), // teal6
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.25),
+              blurRadius: 10,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Icon section
+            Container(
+              height: 54,
+              width: 54,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.12),
+              ),
+              child: const Icon(
+                Icons.forum_outlined,
+                color: Colors.white,
+                size: 28,
+              ),
+            ),
+
+            const SizedBox(width: 16),
+
+            // Text section
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    'Community Discussions',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    'Real questions & doctor-approved answers',
+                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+
+            const Icon(
+              Icons.arrow_forward_ios,
+              color: Colors.white70,
+              size: 16,
+            ),
+          ],
         ),
       ),
     );
