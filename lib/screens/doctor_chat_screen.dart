@@ -26,7 +26,7 @@ const Color _kBackgroundColor = Color.fromARGB(
 const Color _kApprovedColor = Color(0xFF007A78); // teal4 - approved
 const Color _kPendingColor = Color(0xFF79C2BF); // teal2 - pending (subtle)
 
-const List<String> kDiscussionCategories = [
+const List<String> kSuggestedCategories = [
   'Anxiety',
   'OCD',
   'Overthinking',
@@ -75,6 +75,30 @@ class _DoctorChatThreadState extends State<DoctorChatThread> {
     if (oldWidget.chatId != widget.chatId) {
       _initialAutoScrollDone = false;
     }
+  }
+
+  Future<void> _upsertCategory(String categoryName) async {
+    final ref = FirebaseFirestore.instance
+        .collection('categories')
+        .doc(categoryName);
+
+    await FirebaseFirestore.instance.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+
+      if (snap.exists) {
+        tx.update(ref, {
+          'count': FieldValue.increment(1),
+          'lastUsedAt': FieldValue.serverTimestamp(),
+        });
+      } else {
+        tx.set(ref, {
+          'name': categoryName,
+          'count': 1,
+          'createdAt': FieldValue.serverTimestamp(),
+          'lastUsedAt': FieldValue.serverTimestamp(),
+        });
+      }
+    });
   }
 
   void _copyText(String text) {
@@ -236,7 +260,7 @@ class _DoctorChatThreadState extends State<DoctorChatThread> {
   }
 
   Future<Map<String, String>?> _selectCategoryDialog() async {
-    String selected = kDiscussionCategories.first;
+    String selected = kSuggestedCategories.first;
     final customCtrl = TextEditingController();
 
     return showDialog<Map<String, String>>(
@@ -249,7 +273,7 @@ class _DoctorChatThreadState extends State<DoctorChatThread> {
             children: [
               DropdownButtonFormField<String>(
                 value: selected,
-                items: kDiscussionCategories
+                items: kSuggestedCategories
                     .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                     .toList(),
                 onChanged: (v) => selected = v!,
@@ -316,6 +340,9 @@ class _DoctorChatThreadState extends State<DoctorChatThread> {
     if (category == null) return;
 
     // 🚀 STEP 3: Publish
+    final categoryName = category['primary']!.trim();
+
+    // 1️⃣ Create public discussion
     await _firestore.collection('public_discussions').add({
       'question': {'text': editedQuestion, 'askedAt': userSnap['timestamp']},
       'answer': {
@@ -323,11 +350,16 @@ class _DoctorChatThreadState extends State<DoctorChatThread> {
         'answeredAt': assistantDoc['timestamp'],
         'answeredBy': 'Dr. Kanhaiya',
       },
-      'category': {'primary': category['primary']},
+      'category': {'primary': categoryName},
       'meta': {'language': 'hi', 'source': 'doctor_chat', 'approved': true},
       'stats': {'views': 0, 'likes': 0},
       'createdAt': FieldValue.serverTimestamp(),
     });
+
+    // 2️⃣ 🔥 UPSERT CATEGORY
+    await _upsertCategory(categoryName);
+
+    // 3️⃣ Lock publish button
     await assistantDoc.reference.set({
       'publishedToPublic': true,
       'publishedPublicAt': FieldValue.serverTimestamp(),

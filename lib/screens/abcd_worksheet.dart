@@ -1,6 +1,5 @@
 // updated_abcd_worksheets.dart
 import 'dart:convert';
-import 'package:cbt_drktv/services/chat_share.dart';
 import 'package:cbt_drktv/widgets/abcd_tutorial_sheet.dart';
 
 import 'package:flutter/material.dart';
@@ -1377,16 +1376,17 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
         } else if (v == 'delete') {
           _deleteItem(item.id);
         } else if (v == 'share') {
+          // Copy worksheet content for external sharing
           final txt = [
             'ABCDE worksheet',
-            'A: ${item.activatingEvent}',
+            'A — Activating Event: ${item.activatingEvent}',
             'B — Belief: ${item.belief}',
             'C — Consequences:',
             '  Emotional: ${item.consequencesEmotional}',
             '  Psychological: ${item.consequencesPsychological}',
             '  Physical: ${item.consequencesPhysical}',
             '  Behavioural: ${item.consequencesBehavioural}',
-            'D: ${item.dispute}',
+            'D — Dispute: ${item.dispute}',
             'E — Effects:',
             '  Emotional: ${item.emotionalEffect}',
             '  Psychological: ${item.psychologicalEffect}',
@@ -1394,42 +1394,176 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
             '  Behavioural: ${item.behaviouralEffect}',
             if (item.note.isNotEmpty) 'Note: ${item.note}',
           ].join('\n');
+
           await Clipboard.setData(ClipboardData(text: txt));
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Copied to clipboard (for sharing)'),
-              ),
+              const SnackBar(content: Text('Copied to clipboard')),
             );
           }
         } else if (v == 'share_doctor') {
-          try {
-            await ChatShare.sendAbcdeWorksheetToDoctor(item.toMap());
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Worksheet shared with doctor')),
-              );
-            }
-          } catch (e) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Failed to share with doctor: $e')),
-              );
-            }
-          }
+          // EDUCATIONAL dialog instead of direct share
+          if (!mounted) return;
+
+          await showDialog<void>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+              actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF008F89).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.share_outlined,
+                      color: Color(0xFF008F89),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Share with Doctor',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 20,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 8),
+                  Text(
+                    'To keep your chat and guidance in one place, worksheets are shared from the chat screen.',
+                    style: TextStyle(
+                      fontSize: 15,
+                      height: 1.5,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey[200]!),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            '📎',
+                            style: TextStyle(fontSize: 20),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Use the Attach button in chat to send this worksheet',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey[700],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+              actions: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(
+                            color: Colors.grey[700],
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(ctx).pop();
+                          Navigator.pushNamed(context, '/drktv_chat');
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF008F89),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.chat_bubble_outline, size: 18),
+                            SizedBox(width: 8),
+                            Text(
+                              'Open Chat',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
         }
       },
       itemBuilder: (_) {
         final items = <PopupMenuEntry<String>>[
           const PopupMenuItem(value: 'edit', child: Text('Edit')),
-          const PopupMenuItem(value: 'share', child: Text('Copy for share')),
+          const PopupMenuItem(value: 'share', child: Text('Copy for sharing')),
           const PopupMenuItem(
             value: 'share_doctor',
-            child: Text('Share with Doctor'),
+            child: Text('Send to Doctor (via Chat)'),
           ),
         ];
 
-        // Add delete only if not the example
+        // Delete option (disabled for examples)
         if (!isExample) {
           items.add(
             const PopupMenuItem(
@@ -1438,7 +1572,6 @@ class _ABCDEWorksheetPageState extends State<ABCDEWorksheetPage>
             ),
           );
         } else {
-          // Optionally show a disabled Delete menu entry (visual hint)
           items.add(
             const PopupMenuItem(
               enabled: false,

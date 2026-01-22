@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'dart:ui';
 
+import 'package:cbt_drktv/main.dart';
 import 'package:cbt_drktv/utils/logout_helper.dart';
 
 import 'package:cbt_drktv/widgets/help_sheet_in.dart';
@@ -86,12 +87,14 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
+class _HomePageState extends State<HomePage>
+    with TickerProviderStateMixin, RouteAware {
   int mood = 5;
   final user = FirebaseAuth.instance.currentUser;
 
   late Future<_ProgressSummary> _progressFuture;
   late AnimationController _drRingController;
+  String? _photoUrl;
 
   // Known programs — keep titles and lesson counts in sync with JSONs in assets
   final Map<String, Map<String, dynamic>> _programMeta = {
@@ -101,10 +104,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   };
 
   static const String _kLocalMoodKey = 'local_mood_logs';
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      routeObserver.subscribe(this, route);
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    _loadUserPhoto(); // 👈 ADD THIS
     _progressFuture = _loadProgressSummary();
     _drRingController = AnimationController(
       vsync: this,
@@ -115,8 +128,41 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   void dispose() {
     _drRingController.dispose();
-
+    routeObserver.unsubscribe(this); // 🔥 ADD
     super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    // Called when another route is popped and HomePage becomes visible again
+    setState(() {
+      _progressFuture = _loadProgressSummary();
+    });
+  }
+
+  Future<void> _loadUserPhoto() async {
+    final u = FirebaseAuth.instance.currentUser;
+    if (u == null) return;
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(u.uid)
+          .get();
+
+      if (!doc.exists) return;
+
+      final url = doc.data()?['photoUrl'];
+
+      if (url is String && url.isNotEmpty) {
+        if (!mounted) return;
+        setState(() {
+          _photoUrl = url;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load photoUrl: $e');
+    }
   }
 
   // Helper: check enrollment and navigate or show dialog
@@ -1779,6 +1825,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   // ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
+    debugPrint('PHOTO URL: ${user?.photoURL}');
+
     return Scaffold(
       // Gradient background using palette
       body: Container(
@@ -1806,17 +1854,23 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 child: Row(
                   children: [
                     // small circular logo placeholder
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Icon(Icons.self_improvement, color: teal6),
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: Colors.white,
+                      child: ClipOval(
+                        child: (_photoUrl != null)
+                            ? Image.network(
+                                _photoUrl!,
+                                width: 48,
+                                height: 48,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    Icon(Icons.self_improvement, color: teal6),
+                              )
+                            : Icon(Icons.self_improvement, color: teal6),
                       ),
                     ),
+
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -2016,6 +2070,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
                       const SizedBox(height: 5),
 
+                      communityDiscussionCard(context),
+
+                      const SizedBox(height: 10),
+
                       // Programs carousel (simple horizontal list)
                       const Text(
                         'Programs (Quick learning)',
@@ -2052,10 +2110,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       ),
 
                       const SizedBox(height: 16),
-
-                      communityDiscussionCard(context),
-
-                      const SizedBox(height: 24),
                     ],
                   ),
                 ),
@@ -2796,7 +2850,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       CircularProgressIndicator(
                         value: data.percentComplete,
                         strokeWidth: 8,
-                        valueColor: const AlwaysStoppedAnimation<Color>(teal2),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          Color.fromARGB(255, 0, 176, 6),
+                        ),
                         backgroundColor: Colors.white12,
                       ),
                       Center(
@@ -2805,7 +2861,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            fontSize: 13,
                           ),
                         ),
                       ),
@@ -2867,7 +2923,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             CircularProgressIndicator(
                               value: p.percent,
                               strokeWidth: 5,
-                              valueColor: AlwaysStoppedAnimation<Color>(teal4),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                (Color.fromARGB(255, 0, 176, 6)),
+                              ),
                               backgroundColor: Colors.white12,
                             ),
                             Center(

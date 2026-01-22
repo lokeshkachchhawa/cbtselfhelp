@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:share_plus/share_plus.dart';
 
@@ -100,11 +101,201 @@ class _CommunityDiscussionsPageState extends State<CommunityDiscussionsPage> {
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
   CommunityFeedMode _feedMode = CommunityFeedMode.all;
+  final ScrollController _categoryScrollCtrl = ScrollController();
+  final int _pageSize = 10;
+  DocumentSnapshot? _lastDoc;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+
+  final ScrollController _feedScrollCtrl = ScrollController();
+
+  List<Map<String, dynamic>> _posts = [];
+  late Box _cacheBox;
+
+  @override
+  void initState() {
+    super.initState();
+    _cacheBox = Hive.box('community_posts');
+    _loadInitialPosts();
+
+    _feedScrollCtrl.addListener(() {
+      if (_feedScrollCtrl.position.pixels >=
+              _feedScrollCtrl.position.maxScrollExtent - 200 &&
+          !_isLoadingMore &&
+          _hasMore) {
+        _loadMorePosts();
+      }
+    });
+  }
+
+  String _cacheKey() {
+    return 'posts_${_feedMode.name}_$_selectedCategory';
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _categoryScrollCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadInitialPosts() async {
+    setState(() {
+      _posts.clear();
+      _lastDoc = null;
+      _hasMore = true;
+    });
+
+    // 🟢 1. LOAD FROM HIVE (instant UI)
+    final cached = _cacheBox.get(_cacheKey());
+
+    if (cached != null && cached is List) {
+      setState(() {
+        _posts = cached.map((e) {
+          return {'id': e['id'], 'data': Map<String, dynamic>.from(e['data'])};
+        }).toList();
+      });
+    }
+
+    // 🟢 2. FETCH FROM FIRESTORE (fresh data)
+    Query<Map<String, dynamic>> query = FirebaseFirestore.instance
+        .collection('public_discussions')
+        .orderBy('createdAt', descending: true)
+        .limit(_pageSize);
+
+    if (_selectedCategory != 'All') {
+      query = query.where('category.primary', isEqualTo: _selectedCategory);
+    }
+
+    final snap = await query.get();
+
+    if (snap.docs.isNotEmpty) {
+      _lastDoc = snap.docs.last;
+      _posts = snap.docs.map((d) {
+        return {'id': d.id, 'data': d.data()};
+      }).toList();
+    }
+
+    if (snap.docs.length < _pageSize) {
+      _hasMore = false;
+    }
+
+    // 🟢 3. SAVE TO HIVE
+    await _cacheBox.put(_cacheKey(), _posts);
+
+    setState(() {});
+  }
+
+  Future<void> _loadMorePosts() async {
+    if (_lastDoc == null) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    Query<Map<String, dynamic>> query = FirebaseFirestore.instance
+        .collection('public_discussions')
+        .orderBy('createdAt', descending: true)
+        .startAfterDocument(_lastDoc!)
+        .limit(_pageSize);
+
+    if (_selectedCategory != 'All') {
+      query = query.where('category.primary', isEqualTo: _selectedCategory);
+    }
+
+    final snap = await query.get();
+
+    if (snap.docs.isNotEmpty) {
+      _lastDoc = snap.docs.last;
+
+      _posts.addAll(
+        snap.docs.map((d) {
+          return {'id': d.id, 'data': d.data()};
+        }),
+      );
+    }
+
+    if (snap.docs.length < _pageSize) {
+      _hasMore = false;
+    }
+
+    // Update cache with combined list
+    await _cacheBox.put(_cacheKey(), _posts);
+
+    setState(() {
+      _isLoadingMore = false;
+    });
+  }
+
+  Future<void> _onRefresh() async {
+    await _cacheBox.delete(_cacheKey());
+    await _loadInitialPosts();
+  }
+
+  Widget _buildPaginatedFeed() {
+    if (_posts.isEmpty && _isLoadingMore) {
+      return const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(_kAccentColor),
+        ),
+      );
+    }
+
+    if (_posts.isEmpty) {
+      return _buildEmptyState();
+    }
+
+    return RefreshIndicator(
+      color: _kAccentColor,
+      backgroundColor: _kCardColor,
+      onRefresh: _onRefresh,
+      child: ListView.builder(
+        controller: _feedScrollCtrl,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        itemCount: _posts.length + (_isLoadingMore ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index >= _posts.length) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(_kAccentColor),
+                ),
+              ),
+            );
+          }
+
+          final post = _posts[index];
+          final data = post['data'] as Map<String, dynamic>;
+          final docId = post['id'] as String;
+
+          // 🔍 search filter
+          final question = (data['question']?['text'] ?? '')
+              .toString()
+              .toLowerCase();
+          final answer = (data['answer']?['text'] ?? '')
+              .toString()
+              .toLowerCase();
+          final category = (data['category']?['primary'] ?? '')
+              .toString()
+              .toLowerCase();
+
+          if (_searchQuery.isNotEmpty &&
+              !question.contains(_searchQuery) &&
+              !answer.contains(_searchQuery) &&
+              !category.contains(_searchQuery)) {
+            return const SizedBox.shrink();
+          }
+
+          return _DiscussionCard(
+            data: data,
+            docId: docId,
+            onTap: () => _openDiscussionDetail(context, data, docId),
+          );
+        },
+      ),
+    );
   }
 
   Widget _buildDiscussionFeed() {
@@ -112,7 +303,7 @@ class _CommunityDiscussionsPageState extends State<CommunityDiscussionsPage> {
 
     // -------- ALL DISCUSSIONS --------
     if (_feedMode == CommunityFeedMode.all) {
-      return _buildAllDiscussionsStream();
+      return _buildPaginatedFeed();
     }
 
     // -------- MY LIKES --------
@@ -127,58 +318,6 @@ class _CommunityDiscussionsPageState extends State<CommunityDiscussionsPage> {
     return _buildUserIndexedFeed(
       collectionPath: 'users/$userId/bookmarked_discussions',
       selectedCategory: _selectedCategory,
-    );
-  }
-
-  Widget _buildAllDiscussionsStream() {
-    Query<Map<String, dynamic>> query = FirebaseFirestore.instance.collection(
-      'public_discussions',
-    );
-
-    // ✅ CATEGORY FILTER
-    if (_selectedCategory != 'All') {
-      query = query.where('category.primary', isEqualTo: _selectedCategory);
-    }
-
-    // ✅ SORT
-    query = query.orderBy('createdAt', descending: true);
-
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: query.snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(_kAccentColor),
-            ),
-          );
-        }
-
-        if (snapshot.hasError) {
-          return _buildErrorState();
-        }
-
-        final docs = snapshot.data?.docs ?? [];
-
-        if (docs.isEmpty) {
-          return _buildEmptyState();
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: docs.length,
-          itemBuilder: (context, index) {
-            final data = docs[index].data();
-            final docId = docs[index].id;
-
-            return _DiscussionCard(
-              data: data,
-              docId: docId,
-              onTap: () => _openDiscussionDetail(context, data, docId),
-            );
-          },
-        );
-      },
     );
   }
 
@@ -234,11 +373,28 @@ class _CommunityDiscussionsPageState extends State<CommunityDiscussionsPage> {
                 }
 
                 final data = snap.data!.data() as Map<String, dynamic>;
-                final category = (data['category']?['primary'] ?? 'General')
-                    .toString();
 
-                // ✅ CATEGORY FILTER (client-side)
-                if (selectedCategory != 'All' && category != selectedCategory) {
+                final question = (data['question']?['text'] ?? '')
+                    .toString()
+                    .toLowerCase();
+                final answer = (data['answer']?['text'] ?? '')
+                    .toString()
+                    .toLowerCase();
+                final category = (data['category']?['primary'] ?? 'General')
+                    .toString()
+                    .toLowerCase();
+
+                // 🔍 SEARCH FILTER
+                if (_searchQuery.isNotEmpty &&
+                    !question.contains(_searchQuery) &&
+                    !answer.contains(_searchQuery) &&
+                    !category.contains(_searchQuery)) {
+                  return const SizedBox.shrink();
+                }
+
+                // 🏷 CATEGORY FILTER
+                if (selectedCategory != 'All' &&
+                    category != selectedCategory.toLowerCase()) {
                   return const SizedBox.shrink();
                 }
 
@@ -268,11 +424,6 @@ class _CommunityDiscussionsPageState extends State<CommunityDiscussionsPage> {
         backgroundColor: _kPrimaryColor,
         foregroundColor: Colors.white,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {},
-            tooltip: 'Notifications',
-          ),
           IconButton(
             icon: const Icon(Icons.more_vert),
             onPressed: () => _showFilterOptions(context),
@@ -304,7 +455,9 @@ class _CommunityDiscussionsPageState extends State<CommunityDiscussionsPage> {
                     setState(() {
                       _searchQuery = value.toLowerCase();
                     });
+                    _loadInitialPosts(); // 🔥 REQUIRED
                   },
+
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
                     hintText: 'Search discussions...',
@@ -345,7 +498,28 @@ class _CommunityDiscussionsPageState extends State<CommunityDiscussionsPage> {
                 ),
                 const SizedBox(height: 12),
                 // Category Filter
-                _buildCategoryFilter(),
+                StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('categories')
+                      .orderBy('name')
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const SizedBox(height: 36);
+                    }
+
+                    final categories = snapshot.data!.docs;
+
+                    final all = [
+                      {'name': 'All', 'count': null},
+                      ...categories.map(
+                        (d) => {'name': d.id, 'count': d['postCount'] ?? 0},
+                      ),
+                    ];
+
+                    return _buildCategoryFilter(all);
+                  },
+                ),
               ],
             ),
           ),
@@ -357,34 +531,23 @@ class _CommunityDiscussionsPageState extends State<CommunityDiscussionsPage> {
     );
   }
 
-  Widget _buildCategoryFilter() {
-    final categories = [
-      'All',
-      'Anxiety',
-      'OCD',
-      'Overthinking',
-      'Depression',
-      'Stress',
-      'Relationship',
-      'Self-esteem',
-      'CBT',
-      'Sleep',
-    ];
-
+  Widget _buildCategoryFilter(List<Map<String, dynamic>> categories) {
     return SizedBox(
       height: 36,
       child: ListView.builder(
+        controller: _categoryScrollCtrl,
         scrollDirection: Axis.horizontal,
         itemCount: categories.length,
         itemBuilder: (context, index) {
-          final category = categories[index];
-          final isSelected = _selectedCategory == category;
+          final name = categories[index]['name'] as String;
+          final count = categories[index]['count'] as int?;
+          final isSelected = _selectedCategory == name;
 
           return Padding(
             padding: const EdgeInsets.only(right: 8),
             child: FilterChip(
               label: Text(
-                category,
+                count == null ? name : '$name ($count)',
                 style: TextStyle(
                   color: isSelected ? _kPrimaryColor : Colors.white70,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
@@ -392,23 +555,30 @@ class _CommunityDiscussionsPageState extends State<CommunityDiscussionsPage> {
                 ),
               ),
               selected: isSelected,
-              onSelected: (selected) {
-                setState(() {
-                  _selectedCategory = category;
-                });
-              },
+              onSelected: (_) => _onCategorySelected(name, index),
               backgroundColor: const Color.fromARGB(255, 34, 74, 74),
               selectedColor: _kAccentColor,
-              checkmarkColor: _kPrimaryColor,
               side: BorderSide(
                 color: isSelected ? _kAccentColor : _kBorderColor,
-                width: 1,
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
           );
         },
       ),
+    );
+  }
+
+  void _onCategorySelected(String category, int index) {
+    setState(() {
+      _selectedCategory = category;
+    });
+    _loadInitialPosts(); // 🔥 VERY IMPORTANT
+
+    // 🎯 Smooth scroll so selected chip stays visible
+    _categoryScrollCtrl.animateTo(
+      index * 90.0 - MediaQuery.of(context).size.width / 2 + 45,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
     );
   }
 
@@ -538,7 +708,13 @@ class _CommunityDiscussionsPageState extends State<CommunityDiscussionsPage> {
                 style: TextStyle(color: Colors.white),
               ),
               onTap: () {
-                setState(() => _feedMode = CommunityFeedMode.myLikes);
+                setState(() {
+                  _feedMode = CommunityFeedMode.myLikes;
+                  _selectedCategory = 'All';
+                });
+
+                _loadInitialPosts();
+
                 _selectedCategory = 'All';
                 Navigator.pop(context);
               },
